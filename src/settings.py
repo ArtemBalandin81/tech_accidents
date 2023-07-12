@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     """Настройки проекта."""
 
     # APP_TITLE: str = 'Учет фактов простоя ИС'  # Если настройка не из .env
-    app_title: str
-    app_description: str
+    APP_TITLE: str
+    APP_DESCRIPTION: str
 
     APPLICATION_URL: str = "localhost"
     SECRET_KEY: str = "secret_key"
@@ -32,16 +32,17 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     #USE_NGROK: bool = False
 
-    class Config:
-        env_file = get_env_path()
-        #env_file = '.env'
-
     # Параметры подключения к БД
+    DATABASE_URL: str
     # POSTGRES_DB: str
     # POSTGRES_USER: str
     # POSTGRES_PASSWORD: str
     # DB_HOST: str = "localhost"
     # DB_PORT: int = 5432
+
+    class Config:
+        env_file = get_env_path()
+        #env_file = '.env'
 
     # Настройки бота
     #BOT_TOKEN: str
