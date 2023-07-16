@@ -12,11 +12,10 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable  # FAST_API USER
 class Base(DeclarativeBase):
     """Основа для базового класса."""
 
-    id: Mapped[int]
-    created_at: Mapped[date] = mapped_column(server_default=func.current_timestamp(), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[date] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[date] = mapped_column(
         server_default=func.current_timestamp(),
-        nullable=False,
         onupdate=func.current_timestamp(),
     )
     __name__: Mapped[str]
@@ -26,14 +25,14 @@ class Suspension(Base):
     """Модель простоев."""
 
     __tablename__ = "suspensions"
-    risk_accident: Mapped[str] = mapped_column(String(64), nullable=False)  # TO_DO Risk_Accident model (Many_to_many)
-    description: Mapped[str] = mapped_column()
-    datetime_start: Mapped[date] = mapped_column(Date, nullable=False)
-    datetime_finish: Mapped[date] = mapped_column(Date, nullable=True)
-    tech_process: Mapped[int] = mapped_column()
-    implementing_measures: Mapped[str] = mapped_column()
-    #user_id = Column(Integer, ForeignKey('user.id'))
-    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("user.id"))
+    risk_accident: Mapped[str] = mapped_column(String(64), nullable=True)  # TO_DO Risk_Accident model (Many_to_many)
+    description: Mapped[str]
+    datetime_start: Mapped[date] = mapped_column(nullable=True)
+    datetime_finish: Mapped[date] = mapped_column(nullable=True)
+    tech_process: Mapped[int]
+    implementing_measures: Mapped[str]
+    #user_id = Column(ForeignKey('user.id'))
+    user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 
     def __repr__(self):
         return f"Suspension: {self.datetime_start} по {self.datetime_finish}"
