@@ -27,7 +27,7 @@ async def get_user_db(session: AsyncSession = Depends(get_session)):
 
 #3.1 Транспорт: передавать токен будем чз заголовок HTTP-запроса Authorization:
 # Bearer. Указываем URL эндпоинта для получения токена.
-bearer_transport = BearerTransport(tokenUrl='auth/jwt/login')
+bearer_transport = BearerTransport(tokenUrl='api/auth/jwt/login')
 
 #3.2 Определяем стратегию: хранение токена в виде JWT.
 def get_jwt_strategy() -> JWTStrategy:

@@ -1,5 +1,5 @@
 """src/core/db/models.py"""
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import BigInteger, Date, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import AbstractConcreteBase
@@ -13,8 +13,10 @@ class Base(DeclarativeBase):
     """Основа для базового класса."""
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    created_at: Mapped[date] = mapped_column(server_default=func.current_timestamp())
-    updated_at: Mapped[date] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.current_timestamp()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
     )

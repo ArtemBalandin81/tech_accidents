@@ -1,4 +1,5 @@
 # main.py
+# (venv) ...$ uvicorn main0:app --reload
 
 from fastapi import FastAPI
 from enum import IntEnum, StrEnum

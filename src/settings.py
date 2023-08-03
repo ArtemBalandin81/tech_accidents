@@ -1,3 +1,4 @@
+"""src/settings.py"""
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -40,9 +41,19 @@ class Settings(BaseSettings):
     # DB_HOST: str = "localhost"
     # DB_PORT: int = 5432
 
+    @property
+    def database_url(self) -> str:
+        """Получить ссылку для подключения к DB."""
+        # return (
+        #     "postgresql+asyncpg://"
+        #     f"{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
+        #     f"@{self.DB_HOST}:{self.DB_PORT}/{self.POSTGRES_DB}"
+        # )
+        return "sqlite+aiosqlite:///./tech_accident_db_local.db"
+
     class Config:
-        env_file = get_env_path()
-        #env_file = '.env'
+        #env_file = get_env_path()
+        env_file = '.env'
 
     # Настройки бота
     #BOT_TOKEN: str
@@ -55,8 +66,11 @@ class Settings(BaseSettings):
     # LOG_FILE_SIZE: int = 10 * 2**20
     # LOG_FILES_TO_KEEP: int = 5
 
+
 @lru_cache()
 def get_settings():
     return Settings()
+
+
 
 settings = get_settings()

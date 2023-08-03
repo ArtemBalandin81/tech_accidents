@@ -1,3 +1,4 @@
+"""src/application.py"""
 from fastapi import FastAPI
 from src.api.router import api_router
 from src.settings import settings

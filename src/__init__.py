@@ -1,3 +1,4 @@
+"""src/__init__.py"""
 from .application import create_app
 # from fastapi import FastAPI
 # from enum import IntEnum, StrEnum
