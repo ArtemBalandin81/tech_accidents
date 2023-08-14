@@ -1,3 +1,4 @@
+"""src/api/endpoints/test_router.py"""
 from fastapi import APIRouter
 from enum import IntEnum, StrEnum
 from typing import Optional
