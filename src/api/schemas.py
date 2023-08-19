@@ -1,39 +1,64 @@
 """src/api/schemas.py"""
-from datetime import date
+from datetime import datetime, timedelta
+from typing import Dict, Optional
+
 from fastapi_users import schemas
-from pydantic import BaseModel, Extra, Field, NonNegativeInt
+from pydantic import BaseModel, Extra, Field
+
+from src.core.db.models import Suspension
+from src.core.enums import RiskAccidentSource, TechProcess
+
+from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
 
 
-class ResponseBase(BaseModel):
-    """Базовый класс для модели ответа."""
+
+class SuspensionBase(BaseModel):
+    """Базовый класс."""
+    datetime_start: datetime = Field(..., format=FROM_TIME)
+    datetime_finish: datetime = Field(..., format=TO_TIME)
+    description: str = Field(..., max_length=256)
+    implementing_measures: str = Field(..., max_length=256)
+
+
+class SuspensionResponse(SuspensionBase):
+    """Класс модели ответа для Suspension."""
+
+    risk_accident: str
+    tech_process: int
+    user_id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True
+        #orm_mode = True
 
 
-class RequestBase(BaseModel):
-    """Базовый класс для модели запроса."""
+class SuspensionRequest(SuspensionBase):
+    """Класс модели запроса для Suspension."""
+
+    risk_accident: RiskAccidentSource
+    tech_process: TechProcess
 
     class Config:
         extra = Extra.forbid
 
+    #user_id: должен через DI подтягиваться автоматом
 
-class SuspensionResponse(ResponseBase):
-    """Класс модели ответа для Suspension."""
+    # class Config:
+    #     json_schema_extra = {
+    #         "example": {
+    #             "risk_accident": "ROUTER",
+    #             "datetime_start": "31-12-2025: HH:MM:SS",
+    #             "datetime_finish:": "31-12-2025: HH:MM:SS",
+    #             "tech_process": "25",
+    #             "description": "Сбой подключения к интернет.",
+    #             "implementing_measures": "Перезагрузка оборудования.",
+    #         }
+    #     }
 
-    risk_accident: str
-    datetime_start: date
-    datetime_finish: date
-    tech_process: int
-    description: str
-    implementing_measures: str
-    user_id: int
-    created_at: date
-    updated_at: date
 
 
-class SuspensionRequest(RequestBase):
-    """Класс модели запроса для Suspension."""
 #
 #     id: NonNegativeInt = Field(...)
 #     title: StrictStr = Field(...)

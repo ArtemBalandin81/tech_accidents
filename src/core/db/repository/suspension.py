@@ -1,4 +1,6 @@
 """src/core/db/repository/suspension.py"""
+from typing import Optional
+
 from fastapi import Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,16 +9,25 @@ from sqlalchemy.sql.expression import false
 
 from src.core.db.db import get_session
 from src.core.db.models import Suspension, User
-from src.core.db.repository.base import ContentRepository
+from src.core.db.repository.base import AbstractRepository
 
 
-class SuspensionRepository(ContentRepository):
+class SuspensionRepository(AbstractRepository):
     """Репозиторий для работы с моделью Suspension."""
 
     def __init__(self, session: AsyncSession = Depends(get_session)) -> None:
         super().__init__(session, Suspension)
 
 
+
+    # async def create_suspension(self, schema_in, user: Optional[User] = None):
+    #     obj_in_data = schema_in.dict()
+    #     if user is not None:
+    #         obj_in_data['user_id'] = user.id
+    #     print(f'Print: {obj_in_data}')
+    #     instance = Suspension(**obj_in_data)
+    #     print(f'Print: {instance}')
+    #     await AbstractRepository.create(Suspension(**obj_in_data))
 
 ### ЭТО МЕТОДЫ ПРОЧАРИТИ
     # async def get_tasks_for_user(self, user_id: int, limit: int = 3, offset: int = 0) -> list[Task]:

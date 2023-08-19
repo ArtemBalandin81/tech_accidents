@@ -29,15 +29,15 @@ class Suspension(Base):
     __tablename__ = "suspensions"
     risk_accident: Mapped[str] = mapped_column(String(64), nullable=True)  # TO_DO Risk_Accident model (Many_to_many)
     description: Mapped[str]
-    datetime_start: Mapped[date] = mapped_column(nullable=True)
-    datetime_finish: Mapped[date] = mapped_column(nullable=True)
+    datetime_start: Mapped[datetime] = mapped_column(nullable=True)
+    datetime_finish: Mapped[datetime] = mapped_column(nullable=True)
     tech_process: Mapped[int]
     implementing_measures: Mapped[str]
     #user_id = Column(ForeignKey('user.id'))
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))
 
     def __repr__(self):
-        return f"Suspension: {self.datetime_start} по {self.datetime_finish}"
+        return f"Suspension: {self.id} {self.risk_accident} {self.datetime_start} по {self.datetime_finish}"
 
 
 class User(SQLAlchemyBaseUserTable[int], Base):
