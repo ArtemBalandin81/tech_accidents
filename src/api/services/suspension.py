@@ -25,21 +25,20 @@ class SuspensionService():
             in_object: SuspensionRequest | dict,  # Принимает схему или словарь
             user: User
     ) -> None:
-        #print(f'in_objectPrint: {type(in_object)}')
         if type(in_object) != dict:
             in_object = in_object.dict()
         if user is not None:
             in_object['user_id'] = user.id
-        print(f'in_objectPrint: {in_object}')
+        # print(f'in_objectPrint: {in_object}')  # TODO Отладка, убрать потом
         suspension = Suspension(**in_object)
         await self._repository.create(suspension)
 
     async def get_all(self) -> list[any]:
-        # return await self._repository.get_all()  # TODO Не работает, починить! Реализовано пока через костыль!
-        suspensions = []
-        for suspension in await self._repository.get_all():
-            suspensions.append(jsonable_encoder(suspension))
-        return suspensions
+        return await self._repository.get_all()
+        # suspensions = []  # TODO костыльная реализациия: убрать!
+        # for suspension in await self._repository.get_all():
+        #     suspensions.append(jsonable_encoder(suspension))
+        # return suspensions
 
 
 

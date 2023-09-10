@@ -1,7 +1,7 @@
 """src/core/db/models.py"""
 from datetime import date, datetime
 
-from sqlalchemy import BigInteger, Date, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String
 from sqlalchemy.ext.declarative import AbstractConcreteBase
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, relationship
 from sqlalchemy.sql import expression, func
@@ -14,11 +14,17 @@ class Base(DeclarativeBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
-        server_default=func.current_timestamp()
+        DateTime(timezone=True),
+        default=datetime.now(),
+        #repr="%d-%m-%Y: HH:MM"
+        # server_default=func.current_timestamp()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        DateTime(timezone=True),
+        default=datetime.now(),
+        onupdate=datetime.now()
+        # server_default=func.current_timestamp(),
+        # onupdate=func.current_timestamp(),
     )
     __name__: Mapped[str]
 
@@ -27,7 +33,7 @@ class Suspension(Base):
     """Модель простоев."""
 
     __tablename__ = "suspensions"
-    risk_accident: Mapped[str] = mapped_column(String(64), nullable=True)  # TO_DO Risk_Accident model (Many_to_many)
+    risk_accident: Mapped[str] = mapped_column(String(64), nullable=True)  # TODO Risk_Accident model (Many_to_many)
     description: Mapped[str]
     datetime_start: Mapped[datetime] = mapped_column(nullable=True)
     datetime_finish: Mapped[datetime] = mapped_column(nullable=True)

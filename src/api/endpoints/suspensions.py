@@ -21,7 +21,10 @@ suspension_router = APIRouter()
 
 @suspension_router.post(
     "/form",
-    #response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
+    # response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
+    # response_model_exclude_none=True,
+    # response_model_exclude_unset=True,
+    # response_model_exclude_defaults=True,
     description="Фиксации случая простоя из формы."
 )
 async def create_form_new_suspension(  # TODO вместо параметров функции использовать класс или еще что-то

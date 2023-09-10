@@ -34,7 +34,7 @@ def get_jwt_strategy() -> JWTStrategy:
     # В специальный класс из настроек приложения
     # передаётся секретное слово, используемое для генерации токена.
     # Вторым аргументом передаём срок действия токена в секундах.
-    return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
+    return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=60*60*24*5)
 
 #3.3 Создаём объект бэкенда аутентификации с выбранными параметрами.
 auth_backend = AuthenticationBackend(

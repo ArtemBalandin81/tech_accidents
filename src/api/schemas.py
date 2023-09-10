@@ -1,6 +1,5 @@
 """src/api/schemas.py"""
-from datetime import datetime, timedelta
-from typing import Dict, Optional
+from datetime import datetime
 
 from fastapi_users import schemas
 from pydantic import BaseModel, Extra, Field
@@ -8,21 +7,28 @@ from pydantic import BaseModel, Extra, Field
 from src.core.db.models import Suspension
 from src.core.enums import RiskAccidentSource, TechProcess
 
-from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+from .constants import DATE_TIME_FORMAT
 
+
+def convert_datetime_to_custom_str(dt: datetime) -> str:
+    """Переводит datetime из БД в формат str для удобства отображения."""
+    return dt.strftime(DATE_TIME_FORMAT)
 
 
 class SuspensionBase(BaseModel):
     """Базовый класс."""
-    datetime_start: datetime = Field(..., format=FROM_TIME)
-    datetime_finish: datetime = Field(..., format=TO_TIME)
+    datetime_start: datetime
+    datetime_finish: datetime
     description: str = Field(..., max_length=256)
     implementing_measures: str = Field(..., max_length=256)
+
+    class Config:
+        """Implement a custom json serializer by using pydantic's custom json encoders."""
+        json_encoders = {datetime: convert_datetime_to_custom_str}
 
 
 class SuspensionResponse(SuspensionBase):
     """Класс модели ответа для Suspension."""
-
     risk_accident: str
     tech_process: int
     user_id: int
@@ -31,7 +37,7 @@ class SuspensionResponse(SuspensionBase):
 
     class Config:
         from_attributes = True
-        #orm_mode = True
+        orm_mode = True
 
 
 class SuspensionRequest(SuspensionBase):
