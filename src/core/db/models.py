@@ -15,16 +15,15 @@ class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.now(),
-        #repr="%d-%m-%Y: HH:MM"
-        # server_default=func.current_timestamp()
+        #default=datetime.now(),
+        server_default=func.current_timestamp()
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=datetime.now(),
-        onupdate=datetime.now()
-        # server_default=func.current_timestamp(),
-        # onupdate=func.current_timestamp(),
+        #default=datetime.now(),
+        #onupdate=datetime.now()
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
     )
     __name__: Mapped[str]
 

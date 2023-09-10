@@ -6,26 +6,22 @@ from pydantic import BaseModel, Extra, Field
 
 from src.core.db.models import Suspension
 from src.core.enums import RiskAccidentSource, TechProcess
+from typing import Optional
 
-from .constants import DATE_TIME_FORMAT
-
-
-def convert_datetime_to_custom_str(dt: datetime) -> str:
-    """Переводит datetime из БД в формат str для удобства отображения."""
-    return dt.strftime(DATE_TIME_FORMAT)
+from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
 
 
 class SuspensionBase(BaseModel):
     """Базовый класс."""
-    datetime_start: datetime
-    datetime_finish: datetime
-    description: str = Field(..., max_length=256)
-    implementing_measures: str = Field(..., max_length=256)
+    datetime_start: datetime = Field(..., example=FROM_TIME)
+    datetime_finish: datetime = Field(..., example=TO_TIME)
+    description: str = Field(..., max_length=256, example="Сбой подключения к интернет.")
+    implementing_measures: str = Field(..., max_length=256, example="Перезагрузка оборудования.")
 
     class Config:
-        """Implement a custom json serializer by using pydantic's custom json encoders."""
-        json_encoders = {datetime: convert_datetime_to_custom_str}
-
+        """Implement a custom json serializer by using pydantic's custom json encoders.
+        Переводит datetime из БД в формат str для удобства отображения."""
+        json_encoders = {datetime: lambda db_date_time: db_date_time.strftime(DATE_TIME_FORMAT)}
 
 class SuspensionResponse(SuspensionBase):
     """Класс модели ответа для Suspension."""
@@ -46,22 +42,20 @@ class SuspensionRequest(SuspensionBase):
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
 
+
+
     class Config:
         extra = Extra.forbid
-
-    #user_id: должен через DI подтягиваться автоматом
-
-    # class Config:
-    #     json_schema_extra = {
-    #         "example": {
-    #             "risk_accident": "ROUTER",
-    #             "datetime_start": "31-12-2025: HH:MM:SS",
-    #             "datetime_finish:": "31-12-2025: HH:MM:SS",
-    #             "tech_process": "25",
-    #             "description": "Сбой подключения к интернет.",
-    #             "implementing_measures": "Перезагрузка оборудования.",
-    #         }
-    #     }
+        json_schema_extra = {
+            "example": {
+                "risk_accident": "ROUTER",
+                "datetime_start": "31-12-2025: HH:MM:SS",
+                "datetime_finish:": "31-12-2025: HH:MM:SS",
+                "tech_process": "25",
+                "description": "Сбой подключения к интернет.",
+                "implementing_measures": "Перезагрузка оборудования.",
+            }
+        }
 
 
 

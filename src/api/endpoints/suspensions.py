@@ -21,10 +21,8 @@ suspension_router = APIRouter()
 
 @suspension_router.post(
     "/form",
-    # response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
-    # response_model_exclude_none=True,
-    # response_model_exclude_unset=True,
-    # response_model_exclude_defaults=True,
+    response_model=SuspensionResponse,
+    response_model_exclude_none=True,
     description="Фиксации случая простоя из формы."
 )
 async def create_form_new_suspension(  # TODO вместо параметров функции использовать класс или еще что-то
@@ -39,7 +37,7 @@ async def create_form_new_suspension(  # TODO вместо параметров 
     # telegram_notification_service: TelegramNotificationService = Depends(), # TODO Для будущего телеграмм
     user: User = Depends(current_user),
     request: Request,
-) -> None:
+) -> SuspensionResponse:
     suspension_object = {
         "datetime_start": datetime_start,
         "datetime_finish": datetime_finish,
@@ -48,13 +46,13 @@ async def create_form_new_suspension(  # TODO вместо параметров 
         "description": description,
         "implementing_measures": implementing_measures,
     }
-    await suspension_service.actualize_object(suspension_object, user)
+    return await suspension_service.actualize_object(suspension_object, user)
 
 
 
 @suspension_router.post(
     "/",
-    #response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
+    response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
     description="Фиксации случая простоя из json."
 )
 async def create_new_suspension(
@@ -62,8 +60,8 @@ async def create_new_suspension(
     suspension_service: SuspensionService = Depends(),
     # telegram_notification_service: TelegramNotificationService = Depends(), # TODO Для будущего телеграмм
     user: User = Depends(current_user),
-) -> None:
-    await suspension_service.actualize_object(suspension_schemas, user)
+) -> SuspensionResponse:
+    return await suspension_service.actualize_object(suspension_schemas, user)
 
 
 @suspension_router.get(
