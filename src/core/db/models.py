@@ -1,7 +1,7 @@
 """src/core/db/models.py"""
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, TIMESTAMP
 from sqlalchemy.ext.declarative import AbstractConcreteBase
 from sqlalchemy.orm import DeclarativeBase, Mapped, backref, mapped_column, relationship
 from sqlalchemy.sql import expression, func
@@ -15,15 +15,18 @@ class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
+        #TIMESTAMP,
         #default=datetime.now(),
-        server_default=func.current_timestamp()
+        server_default=func.utc_thing(func.current_timestamp()),
+        #server_default=(func.now()+timedelta(hours=5)),
+        #server_default=func.now()   # TODO Время сервера привести к timezone
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         #default=datetime.now(),
-        #onupdate=datetime.now()
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        #onupdate=func.current_timestamp()
+        server_default=func.now()+timedelta(hours=5),  # TODO Время сервера привести к timezone
+        onupdate=func.now(),
     )
     __name__: Mapped[str]
 
