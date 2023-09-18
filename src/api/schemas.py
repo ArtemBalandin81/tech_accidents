@@ -1,5 +1,5 @@
 """src/api/schemas.py"""
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 from fastapi_users import schemas
 from pydantic import BaseModel, Extra, Field
@@ -9,6 +9,13 @@ from src.core.enums import RiskAccidentSource, TechProcess
 from typing import Optional
 
 from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+
+
+def convert_server_datetime_to_local_time(db_date_time: datetime) -> str:
+    return (db_date_time + timedelta(hours=5)).strftime(DATE_TIME_FORMAT)
+
+def transform_to_utc_datetime(db_date_time: datetime) -> str:
+    return (db_date_time.astimezone(tz=None)).strftime(DATE_TIME_FORMAT)
 
 
 class SuspensionBase(BaseModel):
@@ -21,7 +28,7 @@ class SuspensionBase(BaseModel):
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
         Переводит datetime из БД в формат str для удобства отображения."""
-        json_encoders = {datetime: lambda db_date_time: db_date_time.strftime(DATE_TIME_FORMAT)}
+        #json_encoders = {datetime: lambda db_date_time: (db_date_time + timedelta(hours=5)).strftime(DATE_TIME_FORMAT)}
 
 class SuspensionResponse(SuspensionBase):
     """Класс модели ответа для Suspension."""
@@ -34,6 +41,9 @@ class SuspensionResponse(SuspensionBase):
     class Config:
         from_attributes = True
         orm_mode = True
+        #json_encoders = {datetime: lambda server_time_shift: server_time_shift + timedelta(hours=5)}
+        #json_encoders = {datetime: lambda db_date_time: db_date_time + timedelta(hours=5)}
+        json_encoders = {datetime: transform_to_utc_datetime}
 
 
 class SuspensionRequest(SuspensionBase):
@@ -41,8 +51,6 @@ class SuspensionRequest(SuspensionBase):
 
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
-
-
 
     class Config:
         extra = Extra.forbid
