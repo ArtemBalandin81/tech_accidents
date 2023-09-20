@@ -48,7 +48,7 @@ class SuspensionResponse(SuspensionBase):
         orm_mode = True
 
 
-class SuspensionRequest(SuspensionBase):
+class SuspensionRequest(SuspensionBase):  # TODO реализовать схему валидации
     """Схема json-запроса для создания Suspension."""
 
     risk_accident: RiskAccidentSource
