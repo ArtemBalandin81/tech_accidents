@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi_users import schemas
-from pydantic import BaseModel, Extra, Field, field_serializer
+from pydantic import BaseModel, Extra, Field, field_serializer, root_validator, validator
 
 from src.core.db.models import Suspension
 from src.core.enums import RiskAccidentSource, TechProcess
@@ -19,7 +19,7 @@ def transform_to_utc_datetime(db_date_time: datetime) -> str:
 
 
 class SuspensionBase(BaseModel):
-    """Базовый класс."""
+    """Базовая схема."""
     datetime_start: datetime = Field(..., example=FROM_TIME)
     datetime_finish: datetime = Field(..., example=TO_TIME)
     description: str = Field(..., max_length=256, example="Сбой подключения к интернет.")
@@ -31,7 +31,7 @@ class SuspensionBase(BaseModel):
         json_encoders = {datetime: lambda db_date_time: (db_date_time + timedelta(hours=0)).strftime(DATE_TIME_FORMAT)}
 
 class SuspensionResponse(SuspensionBase):
-    """Класс модели ответа для Suspension."""
+    """Схема ответа для Suspension."""
     risk_accident: str
     tech_process: int
     user_id: int
@@ -48,20 +48,27 @@ class SuspensionResponse(SuspensionBase):
         orm_mode = True
 
 
-class SuspensionRequest(SuspensionBase):
-    """Класс модели запроса для Suspension."""
+class SuspensionRequest(SuspensionBase):  # TODO реализовать схему валидации
+    """Схема json-запроса для создания Suspension."""
 
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
+
+    # @root_validator  # TODO Note that `@root_validator` is deprecated and should be replaced with `@model_validator`
+    # def check_suspension_start_finish_correct_time(cls, values):
+    #     #full_name = ' '.join([values['name'], values['surname']]).title()  # TODO УБРАТЬ
+    #     if values["datetime_start"] > values["datetime_finish"]:
+    #         raise ValueError("Время начала простоя больше окончания!")  # TODO в константы ошибок!
+    #     return values
 
     class Config:
         extra = Extra.forbid
         json_schema_extra = {
             "example": {
-                "risk_accident": "ROUTER",
-                "datetime_start": "31-12-2025: HH:MM:SS",
-                "datetime_finish:": "31-12-2025: HH:MM:SS",
-                "tech_process": "25",
+                "risk_accident": "Риск инцидент: сбой в работе рутера.",  # TODO валидация и отображение ошибки???
+                "datetime_start": FROM_TIME,
+                "datetime_finish": TO_TIME,
+                "tech_process": 25,  # TODO валидация и отображение ошибки???
                 "description": "Сбой подключения к интернет.",
                 "implementing_measures": "Перезагрузка оборудования.",
             }
