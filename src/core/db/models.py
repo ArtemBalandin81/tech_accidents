@@ -15,17 +15,11 @@ class Base(DeclarativeBase):
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        #TIMESTAMP,
-        #default=datetime.now(),
         server_default=func.utc_thing(func.current_timestamp()),
-        #server_default=(func.now()+timedelta(hours=5)),
-        #server_default=func.now()   # TODO Время сервера привести к timezone
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        #default=datetime.now(),
-        #onupdate=func.current_timestamp()
-        server_default=func.now()+timedelta(hours=5),  # TODO Время сервера привести к timezone
+        server_default=func.now()+timedelta(hours=5),
         onupdate=func.now(),
     )
     __name__: Mapped[str]

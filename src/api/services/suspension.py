@@ -1,5 +1,6 @@
 """src/api/services/suspension.py"""
-from fastapi import Depends
+from datetime import datetime
+from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.schemas import SuspensionRequest
@@ -28,8 +29,11 @@ class SuspensionService():
         if type(in_object) != dict:
             in_object = in_object.dict()
         if user is not None:
-            in_object['user_id'] = user.id
-        # print(f'in_objectPrint: {in_object}')  # TODO Отладка, убрать потом
+            in_object["user_id"] = user.id
+        if in_object["datetime_start"] >= in_object["datetime_finish"]:
+            raise HTTPException(status_code=422, detail="start_time >= finish_time")
+        if in_object["datetime_finish"] > datetime.now():
+            raise HTTPException(status_code=422, detail="Check look ahead finish time")
         suspension = Suspension(**in_object)
         return await self._repository.create(suspension)
 
