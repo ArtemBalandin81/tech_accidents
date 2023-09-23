@@ -23,19 +23,23 @@ class SuspensionService():
 
     async def actualize_object(
             self,
+            suspension_id: int | None,
             in_object: SuspensionRequest | dict,  # Принимает схему или словарь
             user: User
     ):
         if type(in_object) != dict:
             in_object = in_object.dict()
-        if user is not None:
-            in_object["user_id"] = user.id
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
             raise HTTPException(status_code=422, detail="start_time >= finish_time")
         if in_object["datetime_finish"] > datetime.now():
             raise HTTPException(status_code=422, detail="Check look ahead finish time")
+        if user is not None:
+            in_object["user_id"] = user.id
         suspension = Suspension(**in_object)
-        return await self._repository.create(suspension)
+        if suspension_id is None:  # если suspension_id не передан - создаем, иначе - правим!
+            return await self._repository.create(suspension)
+        await self._repository.get(suspension_id)  # проверяем, что объект для правки существует!
+        return await self._repository.update(suspension_id, suspension)
 
     async def get_all(self) -> list[any]:
         return await self._repository.get_all()
@@ -44,6 +48,12 @@ class SuspensionService():
         #     suspensions.append(jsonable_encoder(suspension))
         # return suspensions
 
+    async def get(self, suspension_id: int) -> Suspension:
+        return await self._repository.get(suspension_id)
+
+    async def remove(self, suspension_id: int) -> None:
+        suspension = await self._repository.get(suspension_id)
+        return await self._repository.remove(suspension)
 
 
 #     async def register(self, site_user_schema: ExternalSiteUserRequest) -> None:

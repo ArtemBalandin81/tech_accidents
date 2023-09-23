@@ -37,6 +37,7 @@ class SuspensionResponse(SuspensionBase):
     user_id: int  #TODO сериализовать в "user_name_surname"
     created_at: datetime
     updated_at: datetime
+    id: int
 
     @field_serializer("created_at", "updated_at")  # TODO Автоматизировать под локальное время
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
