@@ -1,8 +1,9 @@
 """src/core/db/repository/base.py"""
 import abc
+from datetime import datetime
 from typing import TypeVar
 
-from sqlalchemy import ScalarResult, func, select, update
+from sqlalchemy import and_, ScalarResult, false, func, null, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -82,7 +83,7 @@ class ContentRepository(AbstractRepository, abc.ABC):
         """Изменяет is_archived с False на True у не указанных ids."""
         await self._session.execute(
             update(self._model)
-            .where(self._model.is_archived == False)  # noqa
+            .where(self._model.is_archived == false())
             .where(self._model.id.not_in(ids))
             .values({"is_archived": True})
         )
@@ -91,3 +92,16 @@ class ContentRepository(AbstractRepository, abc.ABC):
         """Возвращает id объектов модели из базы данных по указанным ids"""
         filtered_ids = await self._session.scalars(select(self._model.id).where(self._model.id.in_(ids)))
         return filtered_ids
+
+    async def get_all_by_period_time(
+            self,
+            datetime_start: datetime,
+            datetime_finish: datetime
+    ) -> list[DatabaseModel]:
+        """Возвращает id объектов модели из базы данных по указанным ids"""
+        objects = await self._session.execute(
+            select(self._model)
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )
+        return objects.scalars().all()

@@ -3,7 +3,7 @@ import json
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query, Request
 
-from src.api.constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
 from src.api.schemas import SuspensionRequest, SuspensionResponse
 from src.api.services import SuspensionService
 #from src.api.services.messages import TelegramNotificationService # TODO Для будущего телеграмм
@@ -15,6 +15,7 @@ from src.core.enums import RiskAccidentSource, TechProcess
 suspension_router = APIRouter()
 
 SUSPENSION_ID = "/{suspension_id}"
+PERIOD = "/period"
 
 @suspension_router.post(
     "/form",
@@ -87,8 +88,24 @@ async def partially_update_suspension(
 async def get_all_suspensions(suspension_service: SuspensionService = Depends()) -> list[SuspensionResponse]:
     return await suspension_service.get_all()
 
+@suspension_router.get(
+    PERIOD,
+    response_model=list[list[SuspensionResponse]],
+    response_model_exclude_none=True,
+    description="Получает список всех простоев за определенный период времени, интервал.",
+    tags=["Suspensions GET"]
+)
+async def get_all_by_period_time(
+        datetime_start: datetime = Query(..., example=FROM_TIME_NOW),
+        datetime_finish: datetime = Query(..., example=TO_TIME_PERIOD),
+        suspension_service: SuspensionService = Depends()
+) -> list[list[SuspensionResponse]]:
+    analytics = []  # TODO изменить схему ответа: сначала суммарная аналитика, а потом все случаи
+    suspensions = await suspension_service.get_all_by_period_time(datetime_start, datetime_finish)
+    return [analytics, suspensions]
 
-@suspension_router.get(  # TODO Эндпоинт для единичного случая риска
+
+@suspension_router.get(
     SUSPENSION_ID,
     response_model=SuspensionResponse,
     response_model_exclude_none=True,

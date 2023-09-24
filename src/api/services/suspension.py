@@ -1,8 +1,9 @@
 """src/api/services/suspension.py"""
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.constants import FROM_TIME_NOW, TO_TIME_PERIOD
 from src.api.schemas import SuspensionRequest
 from src.api.services.base import ContentService
 from src.core.db import get_session
@@ -48,28 +49,16 @@ class SuspensionService():
         #     suspensions.append(jsonable_encoder(suspension))
         # return suspensions
 
+    async def get_all_by_period_time(
+            self,
+            datetime_start: datetime = TO_TIME_PERIOD,
+            datetime_finish: datetime = FROM_TIME_NOW
+    ) -> list[any]:
+        return await self._repository.get_all_by_period_time(datetime_start, datetime_finish)
+
     async def get(self, suspension_id: int) -> Suspension:
         return await self._repository.get(suspension_id)
 
     async def remove(self, suspension_id: int) -> None:
         suspension = await self._repository.get(suspension_id)
         return await self._repository.remove(suspension)
-
-
-#     async def register(self, site_user_schema: ExternalSiteUserRequest) -> None:
-#         site_user = await self._repository.get_or_none(site_user_schema.id)
-#         if site_user:
-#             await self._repository.update(site_user.id, site_user_schema.to_orm())
-#         else:
-#             await self._repository.create(site_user_schema.to_orm())
-
-
-
-    # async def get_tasks_for_user(self, user_id: int) -> list[Task]:
-    #     return await self._repository.get_tasks_for_user(user_id)
-    #
-    # async def get_user_task_id(self, task_id: int) -> list[Task]:
-    #     return await self._repository.get_user_task_id(task_id)
-    #
-    # async def get_user_tasks_ids(self, ids: list[int]) -> list[Task]:
-    #     return await self._repository.get_user_tasks_ids(ids)
