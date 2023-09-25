@@ -1,10 +1,10 @@
 """src/api/endpoints/suspensions.py"""
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query, Request
 
 from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
-from src.api.schemas import SuspensionRequest, SuspensionResponse
+from src.api.schemas import SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 from src.api.services import SuspensionService
 #from src.api.services.messages import TelegramNotificationService # TODO Для будущего телеграмм
 from src.core.db.models import Suspension, User
@@ -16,6 +16,7 @@ suspension_router = APIRouter()
 
 SUSPENSION_ID = "/{suspension_id}"
 PERIOD = "/period"
+IN_MINS = 60 * 24
 
 @suspension_router.post(
     "/form",
@@ -50,7 +51,7 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
 
 @suspension_router.post(
     "/",
-    response_model=SuspensionResponse,  # TODO Сделать схему для ответа!!!
+    response_model=SuspensionResponse,
     description="Фиксации случая простоя из json.",
     tags=["Suspensions POST"]
 )
@@ -63,7 +64,7 @@ async def create_new_suspension(
     return await suspension_service.actualize_object(None, suspension_schemas, user)
 
 
-@suspension_router.patch(  # TODO подготовить обновление случая риска по айди
+@suspension_router.patch(
     SUSPENSION_ID,
     response_model={},
     dependencies=[Depends(current_superuser)],
@@ -90,19 +91,25 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
 
 @suspension_router.get(
     PERIOD,
-    response_model=list[list[SuspensionResponse]],
     response_model_exclude_none=True,
     description="Получает список всех простоев за определенный период времени, интервал.",
     tags=["Suspensions GET"]
 )
-async def get_all_by_period_time(
+async def get_all_for_period_time(
         datetime_start: datetime = Query(..., example=FROM_TIME_NOW),
         datetime_finish: datetime = Query(..., example=TO_TIME_PERIOD),
         suspension_service: SuspensionService = Depends()
-) -> list[list[SuspensionResponse]]:
-    analytics = []  # TODO изменить схему ответа: сначала суммарная аналитика, а потом все случаи
-    suspensions = await suspension_service.get_all_by_period_time(datetime_start, datetime_finish)
-    return [analytics, suspensions]
+) -> SuspensionAnalytics:
+    return SuspensionAnalytics(
+        suspensions_in_mins_total=(
+            await suspension_service.sum_suspensions_time_for_period(datetime_start, datetime_finish)
+        ),
+        suspensions_total=await suspension_service.count_suspensions_for_period(datetime_start, datetime_finish),
+        max_suspension_time_for_period=(
+            await suspension_service.max_suspension_time_for_period(datetime_start, datetime_finish)
+        ),
+        suspensions=await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
+    )
 
 
 @suspension_router.get(

@@ -1,6 +1,6 @@
 """src/core/db/repository/base.py"""
 import abc
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import TypeVar
 
 from sqlalchemy import and_, ScalarResult, false, func, null, select, update
@@ -89,19 +89,43 @@ class ContentRepository(AbstractRepository, abc.ABC):
         )
 
     async def get_by_ids(self, ids: list[int]) -> ScalarResult:
-        """Возвращает id объектов модели из базы данных по указанным ids"""
+        """Возвращает id объектов модели из базы данных по указанным ids."""
         filtered_ids = await self._session.scalars(select(self._model.id).where(self._model.id.in_(ids)))
         return filtered_ids
 
-    async def get_all_by_period_time(
+    async def get_all_for_period_time(
             self,
             datetime_start: datetime,
             datetime_finish: datetime
     ) -> list[DatabaseModel]:
-        """Возвращает id объектов модели из базы данных по указанным ids"""
+        """Возвращает все объекты модели из базы данных за указанный период."""
         objects = await self._session.execute(
             select(self._model)
             .where(self._model.datetime_start >= datetime_start)
             .where(self._model.datetime_finish <= datetime_finish)
         )
         return objects.scalars().all()
+
+    async def sum_suspensions_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает время в днях за указанный период."""
+        return await self._session.scalar(
+            select(func.sum(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )
+
+    async def count_suspensions_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает количество случаев за указанные период."""
+        return await self._session.scalar(
+            select(func.count(self._model.datetime_start))
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )
+
+    async def max_suspension_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает максимальный простой за указанный период."""
+        return await self._session.scalar(
+            select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )

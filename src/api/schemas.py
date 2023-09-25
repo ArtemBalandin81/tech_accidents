@@ -7,6 +7,7 @@ from pydantic import BaseModel, Extra, Field, field_serializer, root_validator, 
 from src.core.db.models import Suspension
 from src.core.enums import RiskAccidentSource, TechProcess
 from typing import Optional
+from typing_extensions import TypedDict
 
 from .constants import DATE_TIME_FORMAT, FROM_TIME, TIME_ZONE_SHIFT, TO_TIME
 
@@ -69,32 +70,24 @@ class SuspensionRequest(SuspensionBase):  # TODO реализовать схем
         }
 
 
+class TotalTimeSuspensions(TypedDict):
+    """Класс ответа для аналитики за период времени."""
 
-#
-#     id: NonNegativeInt = Field(...)
-#     title: StrictStr = Field(...)
-#     name_organization: StrictStr = Field(...)
-#     deadline: date = Field(..., format=DATE_FORMAT)
-#     category_id: NonNegativeInt = Field(...)
-#     bonus: NonNegativeInt = Field(...)
-#     location: StrictStr = Field(...)
-#     link: StrictStr = Field(...)
-#     description: Optional[StrictStr] = None
-#
-#     class Config:
-#         json_schema_extra = {
-#             "example": {
-#                 "id": 1,
-#                 "title": "Task Title",
-#                 "name_organization": "My Organization",
-#                 "deadline": "2025-12-31",
-#                 "category_id": 1,
-#                 "bonus": 5,
-#                 "location": "My Location",
-#                 "link": "https://example.com",
-#                 "description": "Task description",
-#             }
-#         }
+    total_time_suspensions_in_mins: int
+
+
+class SuspensionAnalytics(BaseModel):
+    """Класс ответа для аналитики случаев простоя за период времени."""
+
+    #time_suspensions: TotalTimeSuspensions = {}
+    suspensions_in_mins_total: int
+    suspensions_total: int
+    max_suspension_time_for_period: int
+    suspensions: list[SuspensionResponse] = {}
+
+    class Config:
+        from_attributes = True
+        orm_mode = True
 
 
 class UserRead(schemas.BaseUser[int]):
