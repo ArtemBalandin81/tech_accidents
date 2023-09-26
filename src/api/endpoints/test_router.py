@@ -1,7 +1,12 @@
 """src/api/endpoints/test_router.py"""
-from fastapi import APIRouter
-from enum import IntEnum, StrEnum
+import requests
+
+from datetime import datetime
+from fastapi import APIRouter, Path, Query
 from typing import Optional
+
+from enum import IntEnum, StrEnum
+
 test_router = APIRouter()
 
 
@@ -21,7 +26,19 @@ class TechProcess(IntEnum):
     CLIENTS = 27
 
 
-@test_router.get('/{title}')
+@test_router.get("/test_get_url")
+def test_get_url(
+    *,  # чтобы определять любой порядок аргументов (именнованных и нет)
+    url: str = Query(..., example="https://www.agidel-am.ru"),
+#) -> dict[str, int | str]:
+#) -> str:
+):
+    #return {"test_get_url": url}
+    print(f"url: {url}")
+    status_code = requests.get(url).status_code
+    return {url: status_code, "time": datetime.now().isoformat(timespec='seconds')}
+
+@test_router.get("/{title}")
 def suspensions(
     *,  # чтобы определять любой порядок аргументов (именнованных и нет)
     title: str,
