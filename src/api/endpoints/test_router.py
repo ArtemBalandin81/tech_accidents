@@ -30,11 +30,7 @@ class TechProcess(IntEnum):
 def test_get_url(
     *,  # чтобы определять любой порядок аргументов (именнованных и нет)
     url: str = Query(..., example="https://www.agidel-am.ru"),
-#) -> dict[str, int | str]:
-#) -> str:
-):
-    #return {"test_get_url": url}
-    print(f"url: {url}")
+) -> dict[str, int | str]:
     status_code = requests.get(url).status_code
     return {url: status_code, "time": datetime.now().isoformat(timespec='seconds')}
 
