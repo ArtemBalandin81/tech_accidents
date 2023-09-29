@@ -16,10 +16,6 @@ def test_connection(CONNECTION_TEST_URL: str = "https://www.agidel-am.ru"):  # T
 def start_api():
     app = create_app()
     uvicorn.run(app, host="localhost", port=8001)
-    test_connection()
-
 
 if __name__ == "__main__":
-    test_connection()
     start_api()
-    test_connection()

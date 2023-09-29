@@ -82,12 +82,12 @@ class SuspensionService():
             datetime_start: datetime = TO_TIME_PERIOD,
             datetime_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        max_suspension_time_for_period = round(
-            await self._repository.max_suspension_time_for_period(datetime_start, datetime_finish) * IN_MINS
+        max_suspension_time_for_period = (
+            await self._repository.max_suspension_time_for_period(datetime_start, datetime_finish)
         )
         if max_suspension_time_for_period is None:
             return 0
-        return max_suspension_time_for_period
+        return round(max_suspension_time_for_period * IN_MINS)
 
 
     async def get(self, suspension_id: int) -> Suspension:
