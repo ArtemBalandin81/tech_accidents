@@ -64,7 +64,7 @@ class SuspensionService():
             datetime_start: datetime = TO_TIME_PERIOD,
             datetime_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        total_time_suspensions = await self._repository.sum_suspensions_time_for_period(datetime_start, datetime_finish)
+        total_time_suspensions = await self._repository.sum_time_for_period(datetime_start, datetime_finish)
         if total_time_suspensions is None:
             return 0
         total_time_suspensions_in_mins = round(total_time_suspensions * IN_MINS)
@@ -75,7 +75,7 @@ class SuspensionService():
             datetime_start: datetime = TO_TIME_PERIOD,
             datetime_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        return await self._repository.count_suspensions_for_period(datetime_start, datetime_finish)
+        return await self._repository.count_for_period(datetime_start, datetime_finish)
 
     async def max_suspension_time_for_period(
             self,
@@ -83,15 +83,21 @@ class SuspensionService():
             datetime_finish: datetime = FROM_TIME_NOW
     ) -> int:
         max_suspension_time_for_period = (
-            await self._repository.max_suspension_time_for_period(datetime_start, datetime_finish)
+            await self._repository.max_difference_time_for_period(datetime_start, datetime_finish)
         )
         if max_suspension_time_for_period is None:
             return 0
         return round(max_suspension_time_for_period * IN_MINS)
 
-
     async def get(self, suspension_id: int) -> Suspension:
         return await self._repository.get(suspension_id)
+
+    async def get_last_suspension_id(self) -> int:
+        return await self._repository.get_last_id()
+
+    async def get_last_suspension_time(self) -> datetime:
+        last_suspension = await self._repository.get(await self._repository.get_last_id())
+        return last_suspension.datetime_start
 
     async def remove(self, suspension_id: int) -> None:
         suspension = await self._repository.get(suspension_id)

@@ -106,7 +106,14 @@ class ContentRepository(AbstractRepository, abc.ABC):
         )
         return objects.scalars().all()
 
-    async def sum_suspensions_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+    async def get_last_id(self) -> int:
+        """Возвращает последний по времени объект модели."""
+        return await self._session.scalar(
+            select(self._model.id)
+            .order_by(self._model.id.desc())
+        )
+
+    async def sum_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
         """Считает время в днях за указанный период."""
         return await self._session.scalar(
             select(func.sum(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
@@ -114,7 +121,7 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .where(self._model.datetime_finish <= datetime_finish)
         )
 
-    async def count_suspensions_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+    async def count_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
         """Считает количество случаев за указанные период."""
         return await self._session.scalar(
             select(func.count(self._model.datetime_start))
@@ -122,8 +129,8 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .where(self._model.datetime_finish <= datetime_finish)
         )
 
-    async def max_suspension_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает максимальный простой за указанный период."""
+    async def max_difference_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает максимальную разницу между началом и концом за указанный период."""
         return await self._session.scalar(
             select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
             .where(self._model.datetime_start >= datetime_start)

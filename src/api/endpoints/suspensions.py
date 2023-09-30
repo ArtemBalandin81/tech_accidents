@@ -15,7 +15,7 @@ from src.core.enums import RiskAccidentSource, TechProcess
 suspension_router = APIRouter()
 
 SUSPENSION_ID = "/{suspension_id}"
-PERIOD = "/period"
+ANALYTICS = "/analytics"
 IN_MINS = 60 * 24
 
 @suspension_router.post(
@@ -90,7 +90,7 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     return await suspension_service.get_all()
 
 @suspension_router.get(
-    PERIOD,
+    ANALYTICS,
     response_model_exclude_none=True,
     description="Получает список всех простоев за определенный период времени, интервал.",
     tags=["Suspensions GET"]
@@ -108,6 +108,8 @@ async def get_all_for_period_time(
         max_suspension_time_for_period=(
             await suspension_service.max_suspension_time_for_period(datetime_start, datetime_finish)
         ),
+        last_time_suspension=await suspension_service.get_last_suspension_time(),
+        last_time_suspension_id=await suspension_service.get_last_suspension_id(),
         suspensions=await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
     )
 

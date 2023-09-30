@@ -46,8 +46,7 @@ class SuspensionResponse(SuspensionBase):
         return (server_time + timedelta(hours=TIME_ZONE_SHIFT)).strftime(DATE_TIME_FORMAT)
 
     class Config:
-        from_attributes = True
-        orm_mode = True
+        from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
 
 
 class SuspensionRequest(SuspensionBase):  # TODO реализовать схему валидации
@@ -83,11 +82,13 @@ class SuspensionAnalytics(BaseModel):
     suspensions_in_mins_total: int
     suspensions_total: int
     max_suspension_time_for_period: int
+    last_time_suspension: datetime
+    last_time_suspension_id: int
     suspensions: list[SuspensionResponse] = {}
 
     class Config:
-        from_attributes = True
-        orm_mode = True
+        from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+        json_encoders = {datetime: lambda db_date_time: db_date_time.strftime(DATE_TIME_FORMAT)}
 
 
 class UserRead(schemas.BaseUser[int]):
