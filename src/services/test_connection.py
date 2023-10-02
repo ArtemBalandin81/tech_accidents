@@ -2,7 +2,7 @@ import asyncio
 import requests
 from time import sleep
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from src.api.constants import CONNECTION_TEST_URL
 SLEEP = 5
@@ -16,23 +16,36 @@ async def test_connection(CONNECTION_TEST_URL: str = "https://www.agidel-am.ru")
     return result
 
 
-async def run_test_connection_asyncio(time_counter: int = 0):  #TODO после сбоя не перезапускается
+async def run_test_connection_asyncio(time_counter: int = SLEEP, suspension_start: bool | datetime = None):
     """ Запускает периодический процесс тестирование доступа к интернет."""
     try:
         while True:
             await asyncio.sleep(SLEEP)
             await test_connection()
-            if time_counter != 0:
-                print(f"простой составил: {time_counter}")
+            if time_counter != SLEEP:
+                print(f"suspension_start: {suspension_start}")  # а это правильный простой
+                print(f"datetime_finish: {datetime.now()}")
+                print(f"счетчик простоя: {time_counter}")  # этот простой сильно занижен
                 # TODO фиксируется время простоя и заносится в БД
-                # TODO нужно фиксировать время начало простоя и окончания
-                time_counter = 0  # обнуляем счетчик, если соединение восстановилось
+                time_counter = SLEEP  # обнуляем счетчик, если соединение восстановилось
+                suspension_start = None  # обнуляем счетчик времени старта простоя
     except requests.exceptions.ConnectionError:
-        print(f"connection_error: {ConnectionError}")
-        time_counter += SLEEP
-        print(f"time_counter: {time_counter}")
-        await asyncio.sleep(SLEEP)
-        await run_test_connection_asyncio(time_counter)  # рекурсией проверяем восстановление соединения + счетчик
+        if suspension_start is None:
+            print(f"connection_error_1st: {ConnectionError}")
+            suspension_start = datetime.now()
+            time_counter += SLEEP
+            print(f"time_counter_1st: {time_counter}")
+            print(f"suspension_REAL_START: {suspension_start}")
+            await asyncio.sleep(SLEEP)
+            await run_test_connection_asyncio(time_counter, suspension_start)
+        else:
+            print(f"connection_error: {ConnectionError}")
+            #print(f"datetime_start: {datetime.now()}")
+            time_counter += SLEEP
+            suspension_start = suspension_start
+            print(f"time_counter: {time_counter}")
+            await asyncio.sleep(SLEEP)
+            await run_test_connection_asyncio(time_counter, suspension_start)  # рекурсией проверяем восстановление соединения + счетчик
 
 
         # 1. Запускаем счетчик секунд.
