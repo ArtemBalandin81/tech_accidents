@@ -13,9 +13,10 @@ test_router = APIRouter()
 class RiskAccident(StrEnum):
     """Класс случаев риска"""
 
-    EQUIPMENT = 'Риск инцидент железо'
-    PO = 'Риск инцидент ПО'
-    PROVAIDER = 'Риск инцидент провайдер'
+    EQUIPMENT = "Риск инцидент железо"
+    PO = "Риск инцидент ПО"
+    PROVAIDER = "Риск инцидент провайдер"
+    ROUTER = "Сбой доступа в интернет"
 
 
 class TechProcess(IntEnum):

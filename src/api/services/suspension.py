@@ -14,7 +14,7 @@ from fastapi.encoders import jsonable_encoder
 IN_MINS = 60 * 24
 
 
-class SuspensionService():
+class SuspensionService:
     """Сервис для работы с моделью Suspension."""
 
     def __init__(
@@ -29,7 +29,7 @@ class SuspensionService():
             self,
             suspension_id: int | None,
             in_object: SuspensionRequest | dict,  # Принимает схему или словарь
-            user: User
+            user: User | int
     ):
         if type(in_object) != dict:
             in_object = in_object.dict()
@@ -37,7 +37,13 @@ class SuspensionService():
             raise HTTPException(status_code=422, detail="start_time >= finish_time")
         if in_object["datetime_finish"] > datetime.now():
             raise HTTPException(status_code=422, detail="Check look ahead finish time")
-        if user is not None:
+        # if user is not None:  #TODO странное условие - ни о чем. Лучше бросать исключение, если NONE!!!
+        #     in_object["user_id"] = user.id
+        if user is None:  #TODO Лучше бросать исключение, если NONE!!!
+            raise HTTPException(status_code=422, detail="Check USER is not NONE!")
+        if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
+            in_object["user_id"] = user
+        else:
             in_object["user_id"] = user.id
         suspension = Suspension(**in_object)
         if suspension_id is None:  # если suspension_id не передан - создаем, иначе - правим!

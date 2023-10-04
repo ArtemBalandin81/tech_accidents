@@ -38,7 +38,7 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
     user: User = Depends(current_user),
     request: Request,
 ) -> SuspensionResponse:
-    suspension_object = {
+    suspension_object = {  # TODO используй typedict
         "datetime_start": datetime_start,
         "datetime_finish": datetime_finish,
         "risk_accident": risk_accident,

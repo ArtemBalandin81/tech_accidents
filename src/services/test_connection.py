@@ -3,10 +3,15 @@ import requests
 from time import sleep
 
 from datetime import datetime, timedelta
+from fastapi import Depends
 
 from src.api.constants import CONNECTION_TEST_URL
-SLEEP = 5
+from src.api.services import SuspensionService
+#from src.core.db.models import User  #TODO user передаем определенный, автомат
+from src.core.db.user import current_superuser, current_user, unauthorized_user
 
+SLEEP: int = 5
+AUTO_FIX_USER: int = 2  #TODO user передаем определенный, автомат
 
 async def test_connection(CONNECTION_TEST_URL: str = "https://www.agidel-am.ru") -> dict[str, int | str]:  # TODO -> ???:
     """ Тестирует доступ к интернет и сохраняет случай простоя в случае отсутствия доступа."""
@@ -16,7 +21,13 @@ async def test_connection(CONNECTION_TEST_URL: str = "https://www.agidel-am.ru")
     return result
 
 
-async def run_test_connection_asyncio(time_counter: int = SLEEP, suspension_start: bool | datetime = None):
+async def run_test_connection_asyncio(
+        time_counter: int = SLEEP,
+        suspension_start: bool | datetime = None,
+        suspension_service: SuspensionService = Depends(),
+        #user: User = Depends(current_user),  #TODO user передаем определенный, автомат
+        user: int = AUTO_FIX_USER
+):  # TODO что на выходе -> ?
     """ Запускает периодический процесс тестирование доступа к интернет."""
     try:
         while True:
@@ -25,8 +36,18 @@ async def run_test_connection_asyncio(time_counter: int = SLEEP, suspension_star
             if time_counter != SLEEP:
                 print(f"suspension_start: {suspension_start}")  # а это правильный простой
                 print(f"datetime_finish: {datetime.now()}")
-                print(f"счетчик простоя: {time_counter}")  # этот простой сильно занижен
+                print(f"счетчик простоя: {time_counter}")  # счетчик простоя сильно занижен
                 # TODO фиксируется время простоя и заносится в БД
+                suspension_object = {  # TODO используй typedict  #TODO в константы зашить
+                    "datetime_start": suspension_start,
+                    "datetime_finish": datetime.now(),
+                    "risk_accident": "Риск инцидент: сбой в работе рутера.",
+                    "tech_process": 25,
+                    "description": "Кратковременный сбой доступа в Интернет.",
+                    "implementing_measures": "Перезагрузка оборудования.",
+                }
+                #TODO AttributeError: 'Depends' object has no attribute 'actualize_object'
+                #await SuspensionService().actualize_object(suspension_id=None, in_object=suspension_object, user=user)
                 time_counter = SLEEP  # обнуляем счетчик, если соединение восстановилось
                 suspension_start = None  # обнуляем счетчик времени старта простоя
     except requests.exceptions.ConnectionError:
@@ -40,7 +61,6 @@ async def run_test_connection_asyncio(time_counter: int = SLEEP, suspension_star
             await run_test_connection_asyncio(time_counter, suspension_start)
         else:
             print(f"connection_error: {ConnectionError}")
-            #print(f"datetime_start: {datetime.now()}")
             time_counter += SLEEP
             suspension_start = suspension_start
             print(f"time_counter: {time_counter}")
