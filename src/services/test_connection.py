@@ -24,7 +24,7 @@ async def test_connection(CONNECTION_TEST_URL: str = "https://www.agidel-am.ru")
 async def run_test_connection_asyncio(
         time_counter: int = SLEEP,
         suspension_start: bool | datetime = None,
-        suspension_service: SuspensionService = Depends(),
+        #suspension_service: SuspensionService = Depends(),
         #user: User = Depends(current_user),  #TODO user передаем определенный, автомат
         user: int = AUTO_FIX_USER
 ):  # TODO что на выходе -> ?
@@ -46,8 +46,8 @@ async def run_test_connection_asyncio(
                     "description": "Кратковременный сбой доступа в Интернет.",
                     "implementing_measures": "Перезагрузка оборудования.",
                 }
-                #TODO AttributeError: 'Depends' object has no attribute 'actualize_object'
-                #await SuspensionService().actualize_object(suspension_id=None, in_object=suspension_object, user=user)
+                #suspension_service = SuspensionService()
+                #await suspension_service.actualize_object(suspension_id=None, in_object=suspension_object, user=user)
                 time_counter = SLEEP  # обнуляем счетчик, если соединение восстановилось
                 suspension_start = None  # обнуляем счетчик времени старта простоя
     except requests.exceptions.ConnectionError:
@@ -66,6 +66,24 @@ async def run_test_connection_asyncio(
             print(f"time_counter: {time_counter}")
             await asyncio.sleep(SLEEP)
             await run_test_connection_asyncio(time_counter, suspension_start)  # рекурсией проверяем восстановление соединения + счетчик
+
+async def run_test_create_suspension(
+        time_counter: int = SLEEP,
+        suspension_start: bool | datetime = None,
+        user: int = AUTO_FIX_USER,
+):  # TODO что на выходе -> ?
+    """ Запускает периодический процесс сохранения простоя в БД."""
+    suspension_object = {
+        "datetime_start": datetime.now() - timedelta(minutes=5),
+        "datetime_finish": datetime.now(),
+        "risk_accident": "Риск инцидент: сбой в работе рутера.",
+        "tech_process": 25,
+        "description": "Кратковременный сбой доступа в Интернет.",
+        "implementing_measures": "Перезагрузка оборудования.",
+    }
+    suspension_service = SuspensionService()
+    await suspension_service.actualize_object(suspension_id=None, in_object=suspension_object, user=user)
+
 
 
         # 1. Запускаем счетчик секунд.
