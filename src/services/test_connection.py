@@ -9,6 +9,7 @@ from src.api.constants import CONNECTION_TEST_URL
 from src.api.services import SuspensionService
 #from src.core.db.models import User  #TODO user передаем определенный, автомат
 from src.core.db.user import current_superuser, current_user, unauthorized_user
+from src.api.endpoints.test_router import run_test_create_suspension
 
 SLEEP: int = 5
 AUTO_FIX_USER: int = 2  #TODO user передаем определенный, автомат
@@ -48,6 +49,7 @@ async def run_test_connection_asyncio(
                 }
                 #suspension_service = SuspensionService()
                 #await suspension_service.actualize_object(suspension_id=None, in_object=suspension_object, user=user)
+                #await run_test_create_suspension()
                 time_counter = SLEEP  # обнуляем счетчик, если соединение восстановилось
                 suspension_start = None  # обнуляем счетчик времени старта простоя
     except requests.exceptions.ConnectionError:
@@ -81,8 +83,7 @@ async def run_test_create_suspension(
         "description": "Кратковременный сбой доступа в Интернет.",
         "implementing_measures": "Перезагрузка оборудования.",
     }
-    suspension_service = SuspensionService()
-    await suspension_service.actualize_object(suspension_id=None, in_object=suspension_object, user=user)
+    await SuspensionService().actualize_object(suspension_id=None, in_object=suspension_object, user=user)
 
 
 
