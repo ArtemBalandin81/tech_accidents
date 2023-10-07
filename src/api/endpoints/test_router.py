@@ -1,13 +1,12 @@
 """src/api/endpoints/test_router.py"""
 import requests
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, Path, Query
 from typing import Optional
 
 from enum import IntEnum, StrEnum
 
-from src.api.services import SuspensionService
 
 test_router = APIRouter()
 
@@ -38,21 +37,6 @@ def test_get_url(
 ) -> dict[str, int | str]:
     status_code = requests.get(url).status_code
     return {url: status_code, "time": datetime.now().isoformat(timespec='seconds')}
-
-@test_router.get("/run_test_create_suspension")
-async def run_test_create_suspension(
-    suspension_service: SuspensionService = Depends(),
-):  #TODO что отдает?
-    suspension_object = {
-        "datetime_start": datetime.now() - timedelta(minutes=5),
-        "datetime_finish": datetime.now(),
-        "risk_accident": "Риск инцидент: сбой в работе рутера.",
-        "tech_process": 25,
-        "description": "Кратковременный сбой доступа в Интернет.",
-        "implementing_measures": "Перезагрузка оборудования.",
-    }
-    await suspension_service.actualize_object(suspension_id=None, in_object=suspension_object, user=AUTO_FIX_USER)
-
 
 @test_router.get("/{title}")
 def suspensions(

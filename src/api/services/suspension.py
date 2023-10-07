@@ -1,5 +1,5 @@
 """src/api/services/suspension.py"""
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
