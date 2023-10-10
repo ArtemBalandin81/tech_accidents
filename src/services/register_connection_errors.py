@@ -1,3 +1,4 @@
+"""src/services/register_connection_errors.py"""
 import asyncio
 import contextlib
 import requests
@@ -11,7 +12,7 @@ from src.core.db.db import get_session
 from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
 
-SLEEP: int = 5
+SLEEP: int = 15
 
 
 class ConnectionErrorService:
