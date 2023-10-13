@@ -8,6 +8,7 @@ services:
     container_name: tech_accidents_backend
     restart: always
     volumes:
+#      - ./tech_accident_db_local.db:/app/tech_accident_db_local.db
       - sqllite_data:/app
     ports:
       - "8001:8001"
