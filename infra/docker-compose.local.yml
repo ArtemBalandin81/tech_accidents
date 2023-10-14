@@ -8,11 +8,11 @@ services:
     container_name: tech_accidents_backend
     restart: always
     volumes:
-#      - ./tech_accident_db_local.db:/app/tech_accident_db_local.db
-      - sqllite_data:/app
+      - ../tech_accident_db_local.db:/app/tech_accident_db_local.db
+#      - sqllite_data:/app  # так монтируется целиком каталог приложения (нужно удолять образ при каждом деплое)
     ports:
       - "8001:8001"
     env_file:
       - ../.env
-volumes:
-  sqllite_data:
+# volumes:
+#  sqllite_data:

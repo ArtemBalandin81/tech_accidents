@@ -1,12 +1,10 @@
 """src/api/endpoints/suspensions.py"""
-import json
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query
 
-from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
+from src.api.constants import FROM_TIME, FROM_TIME_NOW, TIME_ZONE_SHIFT, TO_TIME, TO_TIME_PERIOD
 from src.api.schemas import SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 from src.api.services import SuspensionService
-#from src.api.services.messages import TelegramNotificationService # TODO Для будущего телеграмм
 from src.core.db.models import Suspension, User
 from src.core.db.user import current_superuser, current_user, unauthorized_user
 
@@ -34,13 +32,11 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
     description: str = Query(..., max_length=256, example="Кратковременный сбой в работе оборудования."),
     implementing_measures: str = Query(..., max_length=256, example="Перезагрузка оборудования."),
     suspension_service: SuspensionService = Depends(),
-    # telegram_notification_service: TelegramNotificationService = Depends(), # TODO Для будущего телеграмм
     user: User = Depends(current_user),
-    request: Request,
 ) -> SuspensionResponse:
     suspension_object = {  # TODO используй typedict
-        "datetime_start": datetime_start,
-        "datetime_finish": datetime_finish,
+        "datetime_start": datetime_start - timedelta(hours=TIME_ZONE_SHIFT),  # TODO разобраться со сдвигом времени
+        "datetime_finish": datetime_finish - timedelta(hours=TIME_ZONE_SHIFT),
         "risk_accident": risk_accident,
         "tech_process": tech_process,
         "description": description,
@@ -58,7 +54,6 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
 async def create_new_suspension(
     suspension_schemas: SuspensionRequest,
     suspension_service: SuspensionService = Depends(),
-    # telegram_notification_service: TelegramNotificationService = Depends(), # TODO Для будущего телеграмм
     user: User = Depends(current_user),
 ) -> SuspensionResponse:
     return await suspension_service.actualize_object(None, suspension_schemas, user)
@@ -108,7 +103,7 @@ async def get_all_for_period_time(
         max_suspension_time_for_period=(
             await suspension_service.max_suspension_time_for_period(datetime_start, datetime_finish)
         ),
-        last_time_suspension=await suspension_service.get_last_suspension_time(),
+        last_time_suspension=await suspension_service.get_last_suspension_time() + timedelta(hours=TIME_ZONE_SHIFT),
         last_time_suspension_id=await suspension_service.get_last_suspension_id(),
         suspensions=await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
     )
@@ -129,7 +124,6 @@ async def get_suspension_by_id(
 
 @suspension_router.delete(
     SUSPENSION_ID,
-    #response_model=SuspensionResponse,
     dependencies=[Depends(current_superuser)],
     tags=["Suspensions POST"]
 )
