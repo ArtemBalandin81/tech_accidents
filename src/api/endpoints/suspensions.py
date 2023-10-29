@@ -1,8 +1,8 @@
 """src/api/endpoints/suspensions.py"""
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 
-from src.api.constants import FROM_TIME, FROM_TIME_NOW, TIME_ZONE_SHIFT, TO_TIME, TO_TIME_PERIOD
+from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
 from src.api.schemas import SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 from src.api.services import SuspensionService
 from src.core.db.models import Suspension, User
@@ -35,8 +35,8 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
     user: User = Depends(current_user),
 ) -> SuspensionResponse:
     suspension_object = {  # TODO используй typedict
-        "datetime_start": datetime_start - timedelta(hours=TIME_ZONE_SHIFT),  # TODO разобраться со сдвигом времени
-        "datetime_finish": datetime_finish - timedelta(hours=TIME_ZONE_SHIFT),
+        "datetime_start": datetime_start,
+        "datetime_finish": datetime_finish,
         "risk_accident": risk_accident,
         "tech_process": tech_process,
         "description": description,
@@ -61,7 +61,7 @@ async def create_new_suspension(
 
 @suspension_router.patch(
     SUSPENSION_ID,
-    response_model={},
+    response_model={},  #TODO SuspensionResponse UserWarning: `serialize_server_time_to_time_shift` overrides an existing Pydantic `@field_serializer` decorator
     dependencies=[Depends(current_superuser)],
     tags=["Suspensions POST"]
 )
@@ -103,7 +103,7 @@ async def get_all_for_period_time(
         max_suspension_time_for_period=(
             await suspension_service.max_suspension_time_for_period(datetime_start, datetime_finish)
         ),
-        last_time_suspension=await suspension_service.get_last_suspension_time() + timedelta(hours=TIME_ZONE_SHIFT),
+        last_time_suspension=await suspension_service.get_last_suspension_time(),
         last_time_suspension_id=await suspension_service.get_last_suspension_id(),
         suspensions=await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
     )

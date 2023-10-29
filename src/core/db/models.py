@@ -1,11 +1,15 @@
 """src/core/db/models.py"""
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, DateTime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
+from sqlalchemy.sql.sqltypes import TIMESTAMP
+from sqlalchemy.sql.expression import text
 
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
+
+from src.api.constants import TZINFO
 
 
 class Base(DeclarativeBase):
@@ -13,10 +17,21 @@ class Base(DeclarativeBase):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[datetime] = mapped_column(
-        server_default=func.current_timestamp()
+        #DateTime(timezone=True),
+        TIMESTAMP(timezone=True),  # локально дает создавать, а в доккер - нет
+        #server_default=text('now'),
+        server_default=func.current_timestamp(),  # локально дает создавать, а в доккер - нет
+        #server_default=func.now(TZINFO),
+        #default=func.now() + timedelta(hours=settings.TIMEZONE_OFFSET),
     )
+    #  Column(Datetime, lambda: default=datetime.datetime.now(datetime.timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(
+        #DateTime(timezone=True),
+        TIMESTAMP(timezone=True),
+        #server_default=text('now'),
         server_default=func.current_timestamp(),
+        #server_default=func.now(TZINFO),
+        #default=func.now() + timedelta(hours=settings.TIMEZONE_OFFSET),
         onupdate=func.current_timestamp(),
     )
     __name__: Mapped[str]

@@ -1,15 +1,15 @@
 """src/api/services/suspension.py"""
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.constants import FROM_TIME_NOW, TO_TIME_PERIOD
+from src.api.constants import FROM_TIME_NOW, TO_TIME_PERIOD, TZINFO
 from src.api.schemas import SuspensionAnalytics, SuspensionRequest, TotalTimeSuspensions
 from src.api.services.base import ContentService
 from src.core.db import get_session
 from src.core.db.models import Suspension, User
 from src.core.db.repository.suspension import SuspensionRepository
-from fastapi.encoders import jsonable_encoder
+from src.settings import settings
 
 IN_MINS = 60 * 24
 
@@ -35,7 +35,7 @@ class SuspensionService:
             in_object = in_object.dict()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
             raise HTTPException(status_code=422, detail="start_time >= finish_time")
-        if in_object["datetime_finish"] > datetime.now():
+        if in_object["datetime_finish"] > datetime.now(TZINFO):  #TODO docker datetime.now() не делает сдвиг час.пояса
             raise HTTPException(status_code=422, detail="Check look ahead finish time")
         # if user is not None:  #TODO странное условие - ни о чем. Лучше бросать исключение, если NONE!!!
         #     in_object["user_id"] = user.id

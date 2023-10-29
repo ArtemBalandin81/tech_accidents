@@ -1,5 +1,5 @@
 """src/api/schemas.py"""
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 from fastapi_users import schemas
 from pydantic import BaseModel, Extra, Field, field_serializer, root_validator, validator
@@ -7,7 +7,8 @@ from pydantic import BaseModel, Extra, Field, field_serializer, root_validator, 
 from src.core.enums import RiskAccidentSource, TechProcess
 from typing_extensions import TypedDict
 
-from .constants import DATE_TIME_FORMAT, FROM_TIME, TIME_ZONE_SHIFT, TO_TIME
+from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+from src.settings import settings
 
 
 class SuspensionBase(BaseModel):
@@ -31,10 +32,15 @@ class SuspensionResponse(SuspensionBase):
     updated_at: datetime
     id: int
 
-    @field_serializer("datetime_start", "datetime_finish", "created_at", "updated_at")  # TODO под локальное время
+    @field_serializer("datetime_start", "datetime_finish", "created_at", "updated_at")
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
         """Отображает сохраненное время сервера с требуемым сдвигом."""
-        return (server_time + timedelta(hours=TIME_ZONE_SHIFT)).strftime(DATE_TIME_FORMAT)
+        return server_time.strftime(DATE_TIME_FORMAT)
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
+        """Отображает сохраненное время сервера с требуемым сдвигом."""
+        return (server_time + timedelta(hours=settings.TIMEZONE_OFFSET)).strftime(DATE_TIME_FORMAT)
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
@@ -42,7 +48,6 @@ class SuspensionResponse(SuspensionBase):
 
 class SuspensionRequest(SuspensionBase):  # TODO реализовать схему валидации
     """Схема json-запроса для создания Suspension."""
-
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
 

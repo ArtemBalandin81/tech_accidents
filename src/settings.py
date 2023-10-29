@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     #USE_NGROK: bool = False
 
     # Параметры подключения к БД
+    TIMEZONE_OFFSET: int = 5
     DATABASE_URL: str
     # POSTGRES_DB: str
     # POSTGRES_USER: str
