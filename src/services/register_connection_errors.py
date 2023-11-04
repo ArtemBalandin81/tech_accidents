@@ -11,7 +11,6 @@ from src.api.constants import CONNECTION_TEST_URL, SLEEP_TEST_CONNECTION, TZINFO
 from src.core.db.db import get_session
 from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
-from src.settings import settings
 
 
 class ConnectionErrorService:
@@ -32,10 +31,10 @@ class ConnectionErrorService:
         """ Проверяет наличие доступа к интернет."""
         status_code = requests.get(CONNECTION_TEST_URL).status_code
         result = {CONNECTION_TEST_URL: status_code, "time": datetime.now(TZINFO).isoformat(timespec='seconds')}
-        print(result)
+        print(result)  #TODO заменить логированием
         return result
 
-    async def run_create_suspension(self, suspension_object: dict | None):  # TODO что на выходе -> ? -> Suspension -> None
+    async def run_create_suspension(self, suspension_object: dict | None) -> None:
         """ Запускает тестовое сохранение случая простоя в БД."""
         if suspension_object is None:
             suspension_object = self.suspension_example
@@ -43,26 +42,25 @@ class ConnectionErrorService:
         async with self._sessionmaker() as session:
             suspension_repository = SuspensionRepository(session)
             await suspension_repository.create(suspension)
-            print(f"Сохранен случай простоя в БД: {suspension}")
+            print(f"Сохранен случай простоя в БД: {suspension}")  #TODO заменить логированием
 
     async def run_check_connection(
             self,
             time_counter: int = SLEEP_TEST_CONNECTION,
             suspension_start: bool | datetime = None,
-            time_zone_shift: timedelta = timedelta(hours=settings.TIMEZONE_OFFSET)
-    ):  # TODO что на выходе -> ?
+    ) -> None:
         """ Запускает периодический процесс тестирование доступа к интернет и сохранение в БД простоев."""
         try:
             while True:
                 await asyncio.sleep(SLEEP_TEST_CONNECTION)
-                await self.check_connection()
+                await self.check_connection(CONNECTION_TEST_URL)
                 if time_counter != SLEEP_TEST_CONNECTION:
-                    print(f"suspension_start: {suspension_start + time_zone_shift}")  #TODO заменить логированием
-                    print(f"datetime_finish: {datetime.now(TZINFO) + time_zone_shift}")
+                    print(f"suspension_start: {suspension_start}")  #TODO заменить логированием
+                    print(f"datetime_finish: {datetime.now(TZINFO)}")
                     print(f"счетчик простоя: {time_counter}")
                     suspension = self.suspension_example  # фиксируется время простоя и заносится в БД
                     suspension["datetime_start"] = suspension_start
-                    suspension["datetime_finish"] = datetime.now(TZINFO) - time_zone_shift
+                    suspension["datetime_finish"] = datetime.now(TZINFO)
                     await self.run_create_suspension(suspension)
                     time_counter = SLEEP_TEST_CONNECTION  # обнуляем счетчик, если соединение восстановилось
                     suspension_start = None  # обнуляем счетчик времени старта простоя
@@ -73,8 +71,8 @@ class ConnectionErrorService:
                 print(f"time_counter: {time_counter} / error: {ConnectionError}")
                 await asyncio.sleep(SLEEP_TEST_CONNECTION)  # задаем задержку проверки соединения
                 await self.run_check_connection(time_counter, suspension_start)  # рекурсивно проверяем соединение
-            suspension_start = datetime.now(TZINFO) - time_zone_shift
+            suspension_start = datetime.now(TZINFO)
             time_counter += SLEEP_TEST_CONNECTION
-            print(f"1st_time_counter: {time_counter} / suspension_START: {suspension_start + time_zone_shift}")
+            print(f"1st_time_counter: {time_counter} / suspension_START: {suspension_start}")  #TODO заменить логир-м
             await asyncio.sleep(SLEEP_TEST_CONNECTION)
             await self.run_check_connection(time_counter, suspension_start)
