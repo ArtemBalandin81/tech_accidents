@@ -1,9 +1,9 @@
 """src/core/db/repository/base.py"""
 import abc
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import TypeVar
 
-from sqlalchemy import and_, ScalarResult, false, func, null, select, update
+from sqlalchemy import false, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -88,10 +88,10 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .values({"is_archived": True})
         )
 
-    async def get_by_ids(self, ids: list[int]) -> ScalarResult:
-        """Возвращает id объектов модели из базы данных по указанным ids."""
+    async def get_by_ids(self, ids: list[int]) -> list[int]:
+        """Возвращает id объектов модели из базы данных по указанным ids"""
         filtered_ids = await self._session.scalars(select(self._model.id).where(self._model.id.in_(ids)))
-        return filtered_ids
+        return filtered_ids.all()
 
     async def get_all_for_period_time(
             self,
