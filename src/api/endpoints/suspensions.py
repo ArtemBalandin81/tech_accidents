@@ -1,6 +1,6 @@
 """src/api/endpoints/suspensions.py"""
 from datetime import datetime
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
 from src.api.schemas import SuspensionAnalytics, SuspensionRequest, SuspensionResponse
@@ -12,9 +12,10 @@ from src.core.enums import RiskAccidentSource, TechProcess
 
 suspension_router = APIRouter()
 
-SUSPENSION_ID = "/{suspension_id}"
 ANALYTICS = "/analytics"
-IN_MINS = 60 * 24
+ONLY_AUTHOR = "Только создатель простоя и админ могут редактировать!"
+SUSPENSION_ID = "/{suspension_id}"
+
 
 @suspension_router.post(
     "/form",
@@ -62,7 +63,7 @@ async def create_new_suspension(
 @suspension_router.patch(
     SUSPENSION_ID,
     response_model={},  #TODO SuspensionResponse UserWarning: `serialize_server_time_to_time_shift` overrides an existing Pydantic `@field_serializer` decorator
-    dependencies=[Depends(current_superuser)],
+    dependencies=[Depends(current_user)],
     tags=["Suspensions POST"]
 )
 async def partially_update_suspension(
@@ -71,7 +72,11 @@ async def partially_update_suspension(
     suspension_service: SuspensionService = Depends(),
     user: User = Depends(current_user),
 ):
-    return await suspension_service.actualize_object(suspension_id, suspension_schemas, user)
+    suspension = await suspension_service.get(suspension_id)  # проверяем, что объект для правки существует!
+    if user.id == suspension.user_id or user.is_superuser is True:
+        return await suspension_service.actualize_object(suspension_id, suspension_schemas, user)
+    else:
+        raise HTTPException(status_code=403, detail=ONLY_AUTHOR)
 
 
 @suspension_router.get(
@@ -83,6 +88,7 @@ async def partially_update_suspension(
 )
 async def get_all_suspensions(suspension_service: SuspensionService = Depends()) -> list[SuspensionResponse]:
     return await suspension_service.get_all()
+
 
 @suspension_router.get(
     ANALYTICS,

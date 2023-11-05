@@ -1,17 +1,13 @@
 """src/api/services/suspension.py"""
-from datetime import datetime, timezone, timedelta
+from datetime import datetime
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.constants import FROM_TIME_NOW, TO_TIME_PERIOD, TZINFO
-from src.api.schemas import SuspensionAnalytics, SuspensionRequest, TotalTimeSuspensions
-from src.api.services.base import ContentService
+from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD, TZINFO
+from src.api.schemas import SuspensionRequest
 from src.core.db import get_session
 from src.core.db.models import Suspension, User
 from src.core.db.repository.suspension import SuspensionRepository
-from src.settings import settings
-
-IN_MINS = 60 * 24
 
 
 class SuspensionService:
@@ -25,6 +21,9 @@ class SuspensionService:
         self._repository: SuspensionRepository = suspension_repository
         self._session: AsyncSession = session
 
+    async def get(self, suspension_id: int) -> Suspension:
+        return await self._repository.get(suspension_id)
+
     async def actualize_object(
             self,
             suspension_id: int | None,
@@ -35,11 +34,9 @@ class SuspensionService:
             in_object = in_object.dict()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
             raise HTTPException(status_code=422, detail="start_time >= finish_time")
-        if in_object["datetime_finish"] > datetime.now(TZINFO):  #TODO docker datetime.now() не делает сдвиг час.пояса
+        if in_object["datetime_finish"] > datetime.now(TZINFO):
             raise HTTPException(status_code=422, detail="Check look ahead finish time")
-        # if user is not None:  #TODO странное условие - ни о чем. Лучше бросать исключение, если NONE!!!
-        #     in_object["user_id"] = user.id
-        if user is None:  #TODO Лучше бросать исключение, если NONE!!!
+        if user is None:
             raise HTTPException(status_code=422, detail="Check USER is not NONE!")
         if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
             in_object["user_id"] = user
@@ -48,15 +45,12 @@ class SuspensionService:
         suspension = Suspension(**in_object)
         if suspension_id is None:  # если suspension_id не передан - создаем, иначе - правим!
             return await self._repository.create(suspension)
-        await self._repository.get(suspension_id)  # проверяем, что объект для правки существует!
+        #await self._repository.get(suspension_id)  # проверяем, что объект для правки существует!  #todo удалить
+        await self.get(suspension_id)  # проверяем, что объект для правки существует!
         return await self._repository.update(suspension_id, suspension)
 
     async def get_all(self) -> list[any]:
         return await self._repository.get_all()
-        # suspensions = []  # TODO костыльная реализациия: убрать!
-        # for suspension in await self._repository.get_all():
-        #     suspensions.append(jsonable_encoder(suspension))
-        # return suspensions
 
     async def get_all_for_period_time(
             self,
@@ -73,8 +67,7 @@ class SuspensionService:
         total_time_suspensions = await self._repository.sum_time_for_period(datetime_start, datetime_finish)
         if total_time_suspensions is None:
             return 0
-        total_time_suspensions_in_mins = round(total_time_suspensions * IN_MINS)
-        return total_time_suspensions_in_mins
+        return round(total_time_suspensions * DISPLAY_TIME)
 
     async def count_suspensions_for_period(
             self,
@@ -93,7 +86,7 @@ class SuspensionService:
         )
         if max_suspension_time_for_period is None:
             return 0
-        return round(max_suspension_time_for_period * IN_MINS)
+        return round(max_suspension_time_for_period * DISPLAY_TIME)
 
     async def get(self, suspension_id: int) -> Suspension:
         return await self._repository.get(suspension_id)

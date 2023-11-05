@@ -3,7 +3,6 @@ import requests
 
 from datetime import datetime
 from fastapi import APIRouter, Depends, Path, Query
-from typing import Optional
 
 from enum import IntEnum, StrEnum
 
@@ -37,21 +36,3 @@ def test_get_url(
 ) -> dict[str, int | str]:
     status_code = requests.get(url).status_code
     return {url: status_code, "time": datetime.now().isoformat(timespec='seconds')}
-
-@test_router.get("/{title}")
-def suspensions(
-    *,  # чтобы определять любой порядок аргументов (именнованных и нет)
-    title: str,
-    description: Optional[str] = None,
-    tech_process: TechProcess,
-    risk_accident: RiskAccident,
-    suspension: int,
-    #is_damage: bool = False,
-) -> dict[str, str]:
-    result = ' '.join(
-        [title, str(tech_process), str(risk_accident), str(suspension)]
-    )
-    result = result.title()
-    if description is not None:
-        result += ', ' + str(description)
-    return {'Suspension': result}
