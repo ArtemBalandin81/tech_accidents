@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Generator
 
-from src.api.constants import CONNECTION_TEST_URL, SLEEP_TEST_CONNECTION, TZINFO
+from src.api.constants import CONNECTION_TEST_URL_AGI, CONNECTION_TEST_URL_YA, SLEEP_TEST_CONNECTION, TZINFO
 from src.core.db.db import get_session
 from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
@@ -27,10 +27,27 @@ class ConnectionErrorService:
             "user_id": 2,  # ПОД "user_id" = 2 подразумевается работа робота автомата фиксации простоев TODO хрупко!
         }
 
-    async def check_connection(self, CONNECTION_TEST_URL: str = "https://www.agidel-am.ru") -> dict[str, int | str]:
+    async def check_connection(
+            self,
+            CONNECTION_TEST_URL_AGI: str = "https://www.agidel-am.ru"
+    ) -> dict[str, int | str]:
         """ Проверяет наличие доступа к интернет."""
-        status_code = requests.get(CONNECTION_TEST_URL).status_code
-        result = {CONNECTION_TEST_URL: status_code, "time": datetime.now(TZINFO).isoformat(timespec='seconds')}
+        try:
+            status_code_url_agidel = requests.get(CONNECTION_TEST_URL_AGI).status_code
+        except requests.exceptions.ConnectionError:  # если ошибка соединения с сайтом Агидель
+            status_code_url_ya = requests.get(CONNECTION_TEST_URL_YA).status_code
+            result = {
+                CONNECTION_TEST_URL_AGI: "ConnectionError",
+                CONNECTION_TEST_URL_YA: status_code_url_ya,
+                "time": datetime.now(TZINFO).isoformat(timespec='seconds')
+            }
+            print(result)  # TODO заменить логированием
+            return result
+        result = {
+            CONNECTION_TEST_URL_AGI: status_code_url_agidel,
+            CONNECTION_TEST_URL_YA: "Didn't try, suppose OK!",
+            "time": datetime.now(TZINFO).isoformat(timespec='seconds')
+        }
         print(result)  #TODO заменить логированием
         return result
 
@@ -53,8 +70,8 @@ class ConnectionErrorService:
         try:
             while True:
                 await asyncio.sleep(SLEEP_TEST_CONNECTION)
-                await self.check_connection(CONNECTION_TEST_URL)
-                if time_counter != SLEEP_TEST_CONNECTION:
+                await self.check_connection(CONNECTION_TEST_URL_AGI)
+                if time_counter != SLEEP_TEST_CONNECTION:  # Начальный счетчик простоя = интервалу проверки соединения
                     print(f"suspension_start: {suspension_start}")  #TODO заменить логированием
                     print(f"datetime_finish: {datetime.now(TZINFO)}")
                     print(f"счетчик простоя: {time_counter}")
@@ -64,7 +81,7 @@ class ConnectionErrorService:
                     await self.run_create_suspension(suspension)
                     time_counter = SLEEP_TEST_CONNECTION  # обнуляем счетчик, если соединение восстановилось
                     suspension_start = None  # обнуляем счетчик времени старта простоя
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError:  # если ошибка соединения
             if suspension_start is not None:  # если не первый старт фиксации простоя
                 time_counter += SLEEP_TEST_CONNECTION
                 suspension_start = suspension_start
