@@ -21,9 +21,6 @@ class SuspensionService:
         self._repository: SuspensionRepository = suspension_repository
         self._session: AsyncSession = session
 
-    async def get(self, suspension_id: int) -> Suspension:
-        return await self._repository.get(suspension_id)
-
     async def actualize_object(
             self,
             suspension_id: int | None,

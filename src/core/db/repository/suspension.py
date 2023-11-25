@@ -1,15 +1,11 @@
 """src/core/db/repository/suspension.py"""
-from typing import Optional
-
 from fastapi import Depends
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
-from sqlalchemy.sql.expression import false
 
 from src.core.db.db import get_session
-from src.core.db.models import Suspension, User
-from src.core.db.repository.base import AbstractRepository, ContentRepository
+from src.core.db.models import Suspension
+from src.core.db.repository.base import ContentRepository
 
 
 class SuspensionRepository(ContentRepository):

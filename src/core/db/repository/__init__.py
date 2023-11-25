@@ -1,11 +1,11 @@
 """src/core/db/repository/__init__.py"""
 from .base import AbstractRepository, ContentRepository
 from .suspension import SuspensionRepository
-#from .user import UserRepository
+from .users import UsersRepository
 
 __all__ = (
     "AbstractRepository",
     "ContentRepository",
     "SuspensionRepository",
-    #"UserRepository",
+    "UsersRepository",
 )
