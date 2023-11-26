@@ -1,5 +1,5 @@
 """src/api/services/suspension.py"""
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -8,6 +8,7 @@ from src.api.schemas import SuspensionRequest
 from src.core.db import get_session
 from src.core.db.models import Suspension, User
 from src.core.db.repository.suspension import SuspensionRepository
+from src.settings import settings
 
 
 class SuspensionService:
@@ -24,15 +25,19 @@ class SuspensionService:
     async def actualize_object(
             self,
             suspension_id: int | None,
-            in_object: SuspensionRequest | dict,  # Принимает схему или словарь
+            in_object: SuspensionRequest | dict,  # todo сервис не должен принимать pydantic: ждет схему или словарь
             user: User | int
     ):
         if type(in_object) != dict:
             in_object = in_object.dict()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
-            raise HTTPException(status_code=422, detail="start_time >= finish_time")
-        if in_object["datetime_finish"] > datetime.now(TZINFO):
-            raise HTTPException(status_code=422, detail="Check look ahead finish time")
+            raise HTTPException(status_code=422, detail="Check start_time >= finish_time")
+        # todo в доккер идет не корректное сравнение, т.к. сдвигается на - 5 часов время now() - корректируем
+        if (
+                in_object["datetime_finish"].timestamp()
+                > (datetime.now() + timedelta(hours=settings.TIMEZONE_OFFSET)).timestamp()
+        ):  # для сравнения дат используем timestamp()
+            raise HTTPException(status_code=422, detail="Check finish_time > current time")
         if user is None:
             raise HTTPException(status_code=422, detail="Check USER is not NONE!")
         if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
@@ -42,7 +47,6 @@ class SuspensionService:
         suspension = Suspension(**in_object)
         if suspension_id is None:  # если suspension_id не передан - создаем, иначе - правим!
             return await self._repository.create(suspension)
-        #await self._repository.get(suspension_id)  # проверяем, что объект для правки существует!  #todo удалить
         await self.get(suspension_id)  # проверяем, что объект для правки существует!
         return await self._repository.update(suspension_id, suspension)
 

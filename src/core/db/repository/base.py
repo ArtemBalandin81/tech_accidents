@@ -103,6 +103,7 @@ class ContentRepository(AbstractRepository, abc.ABC):
             select(self._model)
             .where(self._model.datetime_start >= datetime_start)
             .where(self._model.datetime_finish <= datetime_finish)
+            .order_by(self._model.datetime_start.desc())
         )
         return objects.scalars().all()
 

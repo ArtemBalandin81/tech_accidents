@@ -1,8 +1,16 @@
 """src/api/endpoints/suspensions.py"""
 from datetime import datetime
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.api.constants import FROM_TIME, FROM_TIME_NOW, TO_TIME, TO_TIME_PERIOD
+from src.api.constants import (
+    ANALYTIC_FROM_TIME,
+    ANALYTIC_TO_TIME,
+    CREATE_SUSPENSION_FROM_TIME,
+    CREATE_SUSPENSION_TO_TIME,
+    DATE_TIME_FORMAT,
+)
 from src.api.schemas import (
     AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 )
@@ -32,10 +40,10 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
     description="Фиксации случая простоя из формы.",
     tags=["Suspensions POST"]
 )
-async def create_new_suspension_by_form(  # TODO вместо параметров функции использовать класс или еще что-то
+async def create_new_suspension_by_form(
     *,
-    datetime_start: datetime = Query(..., example=FROM_TIME),
-    datetime_finish: datetime = Query(..., example=TO_TIME),
+    datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME),
+    datetime_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME),
     risk_accident: RiskAccidentSource,
     tech_process: TechProcess,
     description: str = Query(..., max_length=256, example="Кратковременный сбой в работе оборудования."),
@@ -44,7 +52,9 @@ async def create_new_suspension_by_form(  # TODO вместо параметро
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticResponse:
-    suspension_object = {  # TODO используй typedict или pydantic suspension_router.get(SUSPENSION_ID
+    datetime_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    datetime_finish: datetime = datetime.strptime(datetime_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    suspension_object = {
         "datetime_start": datetime_start,
         "datetime_finish": datetime_finish,
         "risk_accident": risk_accident,
@@ -109,15 +119,18 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     tags=["Suspensions GET"]
 )
 async def get_all_for_period_time(
-    datetime_start: datetime = Query(..., example=FROM_TIME_NOW),
-    datetime_finish: datetime = Query(..., example=TO_TIME_PERIOD),
+    datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME),  # для удобства отображения в сваггер
+    datetime_finish: str = Query(..., example=ANALYTIC_TO_TIME),  # для удобства отображения в сваггер
+    user_id: Optional[int] = Query(None, example=""),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> SuspensionAnalytics:
+    datetime_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    datetime_finish: datetime = datetime.strptime(datetime_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
     suspensions = await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
     suspensions_list = []
     for suspension in suspensions:
-        user = await users_service.get(suspension.user_id)  # todo избавиться от дергания базы: грузить за 1 раз
+        user = await users_service.get(suspension.user_id)  # todo избавиться от дергания базы: загружать за 1 раз
         suspension_to_dict = await change_schema_response(suspension, user)
         suspensions_list.append(suspension_to_dict)
     return SuspensionAnalytics(

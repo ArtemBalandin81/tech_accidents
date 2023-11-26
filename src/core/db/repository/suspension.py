@@ -18,6 +18,6 @@ class SuspensionRepository(ContentRepository):
         """Возвращает все объекты модели из базы данных, отсортированные по времени."""
         objects = await self._session.execute(
             select(Suspension)
-            .order_by(Suspension.datetime_start)
+            .order_by(Suspension.datetime_start.desc())
         )
         return objects.scalars().all()
