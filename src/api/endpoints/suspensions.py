@@ -1,4 +1,5 @@
 """src/api/endpoints/suspensions.py"""
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Optional
 
@@ -23,6 +24,7 @@ from src.core.enums import RiskAccidentSource, TechProcess
 suspension_router = APIRouter()
 
 ANALYTICS = "/analytics"
+MY_SUSPENSIONS = "/my_suspensions"
 ONLY_AUTHOR = "Только автор простоя и админ могут редактировать!"
 SUSPENSION_ID = "/{suspension_id}"
 
@@ -127,25 +129,45 @@ async def get_all_for_period_time(
 ) -> SuspensionAnalytics:
     datetime_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
     datetime_finish: datetime = datetime.strptime(datetime_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-    suspensions = await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
+    if user_id is None:
+        suspensions = await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
+    else:
+        suspensions = await suspension_service.get_suspensions_for_period_for_user(
+            user_id, datetime_start, datetime_finish
+        )
     suspensions_list = []
     for suspension in suspensions:
         user = await users_service.get(suspension.user_id)  # todo избавиться от дергания базы: загружать за 1 раз
         suspension_to_dict = await change_schema_response(suspension, user)
         suspensions_list.append(suspension_to_dict)
-    return SuspensionAnalytics(
+    return SuspensionAnalytics(  # todo аналитику тоже придется перенастроить на использование юзера, или нет
         suspensions_in_mins_total=(
-            await suspension_service.sum_suspensions_time_for_period(datetime_start, datetime_finish)
+            await suspension_service.sum_suspensions_time_for_period(user_id, datetime_start, datetime_finish)
         ),
-        suspensions_total=await suspension_service.count_suspensions_for_period(datetime_start, datetime_finish),
-        max_suspension_time_for_period=(
-            await suspension_service.max_suspension_time_for_period(datetime_start, datetime_finish)
+        suspensions_total=(
+            await suspension_service.count_suspensions_for_period(user_id, datetime_start, datetime_finish)
         ),
-        last_time_suspension=await suspension_service.get_last_suspension_time(),
-        last_time_suspension_id=await suspension_service.get_last_suspension_id(),
+        suspension_max_time_for_period=(
+            await suspension_service.suspension_max_time_for_period(user_id, datetime_start, datetime_finish)
+        ),
+        last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
+        last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),
         # suspensions=suspensions,
         suspensions_detailed=suspensions_list
     )
+
+
+@suspension_router.get(
+    MY_SUSPENSIONS,
+    response_model_exclude_none=True,
+    description="Список случаев простоя текущего пользователя.",
+    tags=["Suspensions GET"]
+)
+async def get_my_suspensions(
+    suspension_service: SuspensionService = Depends(),
+    user: User = Depends(current_user)
+) -> Sequence[SuspensionResponse]:
+    return await suspension_service.get_suspensions_for_user(user.id)
 
 
 @suspension_router.get(
