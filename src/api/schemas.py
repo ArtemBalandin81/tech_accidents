@@ -120,7 +120,7 @@ class SuspensionAnalytics(BaseModel):
 
     suspensions_in_mins_total: int
     suspensions_total: int
-    max_suspension_time_for_period: int
+    suspension_max_time_for_period: int
     last_time_suspension: datetime
     last_time_suspension_id: int
     # suspensions: list[SuspensionResponse] = {}

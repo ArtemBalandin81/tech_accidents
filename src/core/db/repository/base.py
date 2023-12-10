@@ -78,20 +78,15 @@ class AbstractRepository(abc.ABC):
 
 
 class ContentRepository(AbstractRepository, abc.ABC):
-    @auto_commit
-    async def archive_by_ids(self, ids: list[int]) -> None:
-        """Изменяет is_archived с False на True у не указанных ids."""
-        await self._session.execute(
-            update(self._model)
-            .where(self._model.is_archived == false())
-            .where(self._model.id.not_in(ids))
-            .values({"is_archived": True})
-        )
+    """Класс контента, для дополнения паттерна Repository."""
 
-    async def get_by_ids(self, ids: list[int]) -> list[int]:
-        """Возвращает id объектов модели из базы данных по указанным ids"""
-        filtered_ids = await self._session.scalars(select(self._model.id).where(self._model.id.in_(ids)))
-        return filtered_ids.all()
+    async def count_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает количество случаев за указанные период."""
+        return await self._session.scalar(
+            select(func.count(self._model.datetime_start))
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )
 
     async def get_all_for_period_time(
             self,
@@ -114,26 +109,18 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .order_by(self._model.id.desc())
         )
 
+    async def suspension_max_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+        """Считает максимальную разницу между началом и концом за указанный период."""
+        return await self._session.scalar(
+            select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
+            .where(self._model.datetime_start >= datetime_start)
+            .where(self._model.datetime_finish <= datetime_finish)
+        )
+
     async def sum_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
         """Считает время в днях за указанный период."""
         return await self._session.scalar(
             select(func.sum(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-        )
-
-    async def count_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает количество случаев за указанные период."""
-        return await self._session.scalar(
-            select(func.count(self._model.datetime_start))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-        )
-
-    async def max_difference_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает максимальную разницу между началом и концом за указанный период."""
-        return await self._session.scalar(
-            select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
             .where(self._model.datetime_start >= datetime_start)
             .where(self._model.datetime_finish <= datetime_finish)
         )
