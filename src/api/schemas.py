@@ -68,10 +68,34 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
 class SuspensionBase(BaseModel):
     """Базовая схема."""
     id: int
-    datetime_start: datetime = Field(..., example=FROM_TIME)
-    datetime_finish: datetime = Field(..., example=TO_TIME)
-    description: str = Field(..., max_length=256, example="Сбой подключения к интернет.")
-    implementing_measures: str = Field(..., max_length=256, example="Перезагрузка оборудования.")
+    # duration: int
+    datetime_start: datetime = Field(
+        ...,
+        #alias='Начало простоя',  # TODO падает с ошибкой
+        example=FROM_TIME
+    )
+    datetime_finish: datetime = Field(
+        ...,
+        #alias='Окончание простоя',
+        example=TO_TIME
+    )
+    description: str = Field(
+        ...,
+        max_length=256,
+        #alias='Описание простоя',
+        example="Сбой подключения к интернет."
+    )
+    implementing_measures: str = Field(
+        ...,
+        max_length=256,
+        #alias='Принятые меры',
+        example="Перезагрузка оборудования."
+    )
+
+    # @field_serializer("duration")
+    # def serialize_duration(self, duration: int, _info):
+    #     """Рассчитывает время простоя."""
+    #     return duration.strftime(DATE_TIME_FORMAT)
 
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
