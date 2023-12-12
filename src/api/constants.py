@@ -16,3 +16,15 @@ FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).isoformat(timespec='mi
 FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='minutes')
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
+
+# create_suspension
+CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
+INTERNET_ERROR = "Сбой подключения к интернет."
+MEASURES = "Перезагрузка оборудования."
+
+# alias
+IMPLEMENTING_MEASURES = "Предпринятые действия"
+SUSPENSION_DESCRIPTION = "Описание простоя"
+SUSPENSION_FINISH = "Окончание простоя"
+SUSPENSION_START = "Начало простоя"
+USER_ID = "id пользователя"

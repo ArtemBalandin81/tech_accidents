@@ -7,7 +7,17 @@ from pydantic import BaseModel, EmailStr, Extra, Field, field_serializer, comput
 from src.core.enums import RiskAccidentSource, TechProcess
 from typing_extensions import TypedDict
 
-from .constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+from .constants import (
+    DATE_TIME_FORMAT,
+    FROM_TIME,
+    IMPLEMENTING_MEASURES,
+    INTERNET_ERROR,
+    MEASURES,
+    TO_TIME,
+    SUSPENSION_DESCRIPTION,
+    SUSPENSION_FINISH,
+    SUSPENSION_START,
+)
 from src.settings import settings
 
 
@@ -71,25 +81,25 @@ class SuspensionBase(BaseModel):
     # duration: int
     datetime_start: datetime = Field(
         ...,
-        #alias='Начало простоя',  # TODO падает с ошибкой
+        title=SUSPENSION_START,
         example=FROM_TIME
     )
     datetime_finish: datetime = Field(
         ...,
-        #alias='Окончание простоя',
+        title=SUSPENSION_FINISH,
         example=TO_TIME
     )
     description: str = Field(
         ...,
         max_length=256,
-        #alias='Описание простоя',
-        example="Сбой подключения к интернет."
+        title=SUSPENSION_DESCRIPTION,
+        example=INTERNET_ERROR
     )
     implementing_measures: str = Field(
         ...,
         max_length=256,
-        #alias='Принятые меры',
-        example="Перезагрузка оборудования."
+        title=IMPLEMENTING_MEASURES,
+        example=MEASURES
     )
 
     # @field_serializer("duration")
