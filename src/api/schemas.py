@@ -8,15 +8,26 @@ from src.core.enums import RiskAccidentSource, TechProcess
 from typing_extensions import TypedDict
 
 from .constants import (
+    CREATED,
     DATE_TIME_FORMAT,
     FROM_TIME,
     IMPLEMENTING_MEASURES,
     INTERNET_ERROR,
     MEASURES,
+    MINS_TOTAL,
+    RISK_ACCIDENT,
+    TECH_PROCESS,
     TO_TIME,
     SUSPENSION_DESCRIPTION,
     SUSPENSION_FINISH,
+    SUSPENSION_LAST_ID,
+    SUSPENSION_LAST_TIME,
+    SUSPENSION_MAX_TIME,
     SUSPENSION_START,
+    SUSPENSION_TOTAl,
+    UPDATED,
+    USER_ID,
+    USER_MAIL
 )
 from src.settings import settings
 
@@ -56,8 +67,8 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
     """Схема json-запроса для создания Suspension."""
     datetime_start: datetime = Field(..., example=FROM_TIME)
     datetime_finish: datetime = Field(..., example=TO_TIME)
-    description: str = Field(..., max_length=256, example="Сбой подключения к интернет.")
-    implementing_measures: str = Field(..., max_length=256, example="Перезагрузка оборудования.")
+    description: str = Field(..., max_length=256, example=INTERNET_ERROR)
+    implementing_measures: str = Field(..., max_length=256, example=MEASURES)
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
 
@@ -69,8 +80,8 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
                 "datetime_start": FROM_TIME,
                 "datetime_finish": TO_TIME,
                 "tech_process": 25,  # TODO валидация и отображение ошибки???
-                "description": "Сбой подключения к интернет.",
-                "implementing_measures": "Перезагрузка оборудования.",
+                "description": INTERNET_ERROR,
+                "implementing_measures": MEASURES,
             }
         }
 
@@ -82,23 +93,27 @@ class SuspensionBase(BaseModel):
     datetime_start: datetime = Field(
         ...,
         title=SUSPENSION_START,
+        serialization_alias=SUSPENSION_START,
         example=FROM_TIME
     )
     datetime_finish: datetime = Field(
         ...,
         title=SUSPENSION_FINISH,
+        serialization_alias=SUSPENSION_FINISH,
         example=TO_TIME
     )
     description: str = Field(
         ...,
         max_length=256,
         title=SUSPENSION_DESCRIPTION,
+        serialization_alias=SUSPENSION_DESCRIPTION,
         example=INTERNET_ERROR
     )
     implementing_measures: str = Field(
         ...,
         max_length=256,
         title=IMPLEMENTING_MEASURES,
+        serialization_alias=IMPLEMENTING_MEASURES,
         example=MEASURES
     )
 
@@ -115,11 +130,11 @@ class SuspensionBase(BaseModel):
 
 class SuspensionResponse(SuspensionBase):
     """Схема ответа для Suspension с использованием response_model."""
-    risk_accident: str
-    tech_process: int
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
+    risk_accident: str = Field(..., serialization_alias=RISK_ACCIDENT)
+    tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
+    user_id: int = Field(..., serialization_alias=USER_ID)
+    created_at: datetime = Field(..., serialization_alias=CREATED)
+    updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
     @field_serializer("datetime_start", "datetime_finish", "created_at", "updated_at")
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
@@ -137,13 +152,13 @@ class SuspensionResponse(SuspensionBase):
 
 class AnalyticResponse(SuspensionBase):
     """Схема ответа для аналитики."""
-    risk_accident: str
+    risk_accident: str = Field(..., serialization_alias=RISK_ACCIDENT)
     # tech_process: int
-    business_process: str
-    user_email: str
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
+    business_process: str = Field(..., serialization_alias=TECH_PROCESS)
+    user_email: str = Field(..., serialization_alias=USER_MAIL)
+    user_id: int = Field(..., serialization_alias=USER_ID)
+    created_at: datetime = Field(..., serialization_alias=CREATED)
+    updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
@@ -152,11 +167,11 @@ class AnalyticResponse(SuspensionBase):
 class SuspensionAnalytics(BaseModel):
     """Класс ответа для аналитики случаев простоя за период времени."""
 
-    suspensions_in_mins_total: int
-    suspensions_total: int
-    suspension_max_time_for_period: int
-    last_time_suspension: datetime
-    last_time_suspension_id: int
+    suspensions_in_mins_total: int = Field(..., serialization_alias=MINS_TOTAL)
+    suspensions_total: int = Field(..., serialization_alias=SUSPENSION_TOTAl)
+    suspension_max_time_for_period: int = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
+    last_time_suspension: datetime = Field(..., serialization_alias=SUSPENSION_LAST_TIME)
+    last_time_suspension_id: int = Field(..., serialization_alias=SUSPENSION_LAST_ID)
     # suspensions: list[SuspensionResponse] = {}
     suspensions_detailed: list[AnalyticResponse] = {}
 
