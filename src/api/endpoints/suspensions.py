@@ -10,7 +10,14 @@ from src.api.constants import (
     ANALYTIC_TO_TIME,
     CREATE_SUSPENSION_FROM_TIME,
     CREATE_SUSPENSION_TO_TIME,
+    CREATE_DESCRIPTION,
     DATE_TIME_FORMAT,
+    IMPLEMENTING_MEASURES,
+    MEASURES,
+    SUSPENSION_DESCRIPTION,
+    SUSPENSION_FINISH,
+    SUSPENSION_START,
+    USER_ID,
 )
 from src.api.schemas import (
     AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
@@ -44,12 +51,12 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
 )
 async def create_new_suspension_by_form(
     *,
-    datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME),
-    datetime_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME),
+    datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
+    datetime_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
     risk_accident: RiskAccidentSource,
     tech_process: TechProcess,
-    description: str = Query(..., max_length=256, example="Кратковременный сбой в работе оборудования."),
-    implementing_measures: str = Query(..., max_length=256, example="Перезагрузка оборудования."),
+    description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
+    implementing_measures: str = Query(..., max_length=256, example=MEASURES, alias=IMPLEMENTING_MEASURES),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
@@ -121,9 +128,9 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     tags=["Suspensions GET"]
 )
 async def get_all_for_period_time(
-    datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME),  # для удобства отображения в сваггер
-    datetime_finish: str = Query(..., example=ANALYTIC_TO_TIME),  # для удобства отображения в сваггер
-    user_id: Optional[int] = Query(None, example=""),
+    datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
+    datetime_finish: str = Query(..., example=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH),  # для отображения в сваггер
+    user_id: Optional[int] = Query(None, example="", alias=USER_ID),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> SuspensionAnalytics:
