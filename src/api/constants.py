@@ -19,6 +19,7 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 
 # create_suspension
 CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
+ROUTER_ERROR = "Риск инцидент: сбой в работе рутера."
 INTERNET_ERROR = "Сбой подключения к интернет."
 MEASURES = "Перезагрузка оборудования."
 

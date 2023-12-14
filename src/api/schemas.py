@@ -1,5 +1,5 @@
 """src/api/schemas.py"""
-from datetime import datetime, time, timedelta
+import time
 
 from fastapi_users import schemas
 from pydantic import BaseModel, EmailStr, Extra, Field, field_serializer, computed_field, root_validator, validator
@@ -54,7 +54,7 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
         extra = Extra.forbid
         json_schema_extra = {
             "example": {
-                "risk_accident": CREATE_DESCRIPTION,  # TODO валидация и отображение ошибки???
+                "risk_accident": ROUTER_ERROR,  # TODO валидация и отображение ошибки???
                 "datetime_start": FROM_TIME,
                 "datetime_finish": TO_TIME,
                 "tech_process": 25,  # TODO валидация и отображение ошибки???
@@ -80,6 +80,7 @@ class SuspensionBase(BaseModel):
         serialization_alias=SUSPENSION_FINISH,
         example=TO_TIME
     )
+
     description: str = Field(
         ...,
         max_length=256,
@@ -95,22 +96,12 @@ class SuspensionBase(BaseModel):
         example=MEASURES
     )
 
-    # @field_serializer("duration")
-    # def serialize_duration(self, duration: int, _info):
-    #     """Рассчитывает время простоя."""
-    #     return duration.strftime(DATE_TIME_FORMAT)
-
     @computed_field
     @property
-    def duration(self) -> int:  # int | str | timedelta | datetime | time:
-        #return julianday(self.datetime_finish) - julianday(self.datetime_start)
-        # int(time.mktime(time.strptime('2000-01-01 12:34:00', '%Y-%m-%d %H:%M:%S')))
-        #int(time.mktime(time.strptime(self.datetime_finish, DATE_TIME_FORMAT)))
-        #print(f'type: {type(self.datetime_finish)}')
-
-        return self.datetime_finish.time() #- self.datetime_finish.time()
-        #return int(datetime.strptime(self.datetime_finish, DATE_TIME_FORMAT))
-        #return int(datetime.mktime(datetime.strptime(self.datetime_finish, DATE_TIME_FORMAT)))
+    def duration(self) -> int | float:
+        suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
+        suspension_start = time.strptime(self.datetime_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
+        return (time.mktime(suspension_finish) - time.mktime(suspension_start))/60  # in minutes
 
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
