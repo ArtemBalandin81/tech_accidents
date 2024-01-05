@@ -1,38 +1,32 @@
 """src/api/endpoints/test_router.py"""
 import requests
 
-from datetime import datetime
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Query, Depends
+from pathlib import Path
 
-from enum import IntEnum, StrEnum
-
+from src.api.constants import ANALYTIC_TO_TIME
+from src.core.db.user import current_superuser
+from src.services.db_backup import DBBackupService
 
 test_router = APIRouter()
 
-
-class RiskAccident(StrEnum):
-    """Класс случаев риска"""
-
-    EQUIPMENT = "Риск инцидент железо"
-    PO = "Риск инцидент ПО"
-    PROVAIDER = "Риск инцидент провайдер"
-    ROUTER = "Сбой доступа в интернет"
-
-
-class TechProcess(IntEnum):
-    """Класс тех процессов"""
-
-    DU = 25
-    SPEC_DEP = 26
-    CLIENTS = 27
-
-
-AUTO_FIX_USER: int = 2  #TODO user передаем определенный, автомат
-
-@test_router.get("/test_get_url")
+@test_router.get("/test_get_url", description="Проверка доступа к сайту.")
 def test_get_url(
-    *,  # чтобы определять любой порядок аргументов (именнованных и нет)
     url: str = Query(..., example="https://www.agidel-am.ru"),
 ) -> dict[str, int | str]:
     status_code = requests.get(url).status_code
-    return {url: status_code, "time": datetime.now().isoformat(timespec='seconds')}
+    return {url: status_code, "time": ANALYTIC_TO_TIME}
+
+
+# todo должно проверяться, что файл-бэкап создался - тогда в ответе - ОК, или ошибка
+# todo возвращать схему пайдентик (переделать ответ под нее)
+# todo ("/db_backup", description="Бэкап БД.", dependencies=[Depends(current_superuser)],)
+@test_router.get("/db_backup", description="Бэкап БД.",)
+def db_backup(
+    backup_service: DBBackupService = Depends(),
+) -> dict[str, int | str]:
+    backup_service.check_backup_dir()
+    return {
+        "app_folder": backup_service.get_base_dir(),
+        "time": ANALYTIC_TO_TIME
+    }
