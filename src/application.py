@@ -7,7 +7,7 @@ from src.api.router import api_router
 
 from src.settings import settings
 from src.services.register_connection_errors import ConnectionErrorService
-
+from src.services.db_backup import DBBackupService
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -19,12 +19,13 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup_event():
         """Действия при запуске сервера."""
-        print("Server started :", datetime.now())  #TODO заменить логированием
+        print("Server started :", datetime.now())  # TODO заменить логированием
         asyncio.create_task(ConnectionErrorService().run_check_connection())
+        asyncio.create_task(DBBackupService().run_db_backup())
 
     @app.on_event("shutdown")
     async def shutdown_event():
         """Действия после остановки сервера."""
-        print('Server shutdown :', datetime.now())  #TODO заменить логированием
+        print('Server shutdown :', datetime.now())  # TODO заменить логированием
 
     return app

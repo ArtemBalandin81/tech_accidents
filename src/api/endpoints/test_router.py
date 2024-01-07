@@ -25,7 +25,7 @@ def test_get_url(
 def db_backup(
     backup_service: DBBackupService = Depends(),
 ) -> dict[str, int | str]:
-    backup_service.check_backup_dir()
+    backup_service.make_copy_db()
     return {
         "app_folder": backup_service.get_base_dir(),
         "time": ANALYTIC_TO_TIME
