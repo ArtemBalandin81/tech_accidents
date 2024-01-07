@@ -9,6 +9,7 @@ services:
     restart: always
     volumes:
       - ../tech_accident_db_local.db:/app/tech_accident_db_local.db
+      - ../db_backups:/app/db_backups  # монтируем каталог для бэкапов БД
 #      - sqllite_data:/app  # так монтируется целиком каталог приложения (нужно удолять образ при каждом деплое)
     ports:
       - "8001:8001"
