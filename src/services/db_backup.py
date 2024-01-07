@@ -33,7 +33,7 @@ class DBBackupService:
         """ Отдает путь к каталогу приложения."""
         return str(folder)
 
-    def get_list_of_files_in_dir(self, folder=BACKUP_DIR) -> list | Generator:  # todo async? Path - не мб асинхронным
+    def get_list_of_names_in_dir(self, folder=BACKUP_DIR) -> list | Generator:  # todo async? Path - не мб асинхронным
         """ Возвращает список файлов в каталоге, соответсвующих регулярному выражению файла-даты."""
         self.check_backup_dir_exists(folder)
         return [re.findall(DATE_PATTERN, str(file)) for file in folder.glob("*.db")]
@@ -52,7 +52,7 @@ class DBBackupService:
         if self.db_path.exists():
             Path(self.db_path).unlink()  # удаляем дублирующий tech_accident_db_local.db
             print("{}{}".format(settings.DATABASE_NAME, " успешно удален.")) # TODO заменить логгированием + константа
-        total_db_files = self.get_list_of_files_in_dir(folder)
+        total_db_files = self.get_list_of_names_in_dir(folder)
         if len(total_db_files) >= settings.MAX_DB_BACKUP_FILES:
             old_file_to_remove = "{}{}".format(min(total_db_files)[0], ".db")  # самый ранний файл: 2024-01-05.db
             Path(BACKUP_DIR.joinpath(old_file_to_remove)).unlink()

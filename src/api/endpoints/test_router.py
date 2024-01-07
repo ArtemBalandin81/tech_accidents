@@ -2,9 +2,9 @@
 import requests
 
 from fastapi import APIRouter, Query, Depends
-from pathlib import Path
 
 from src.api.constants import ANALYTIC_TO_TIME
+from src.api.schemas import DBBackupResponse
 from src.core.db.user import current_superuser
 from src.services.db_backup import DBBackupService
 
@@ -18,15 +18,15 @@ def test_get_url(
     return {url: status_code, "time": ANALYTIC_TO_TIME}
 
 
-# todo должно проверяться, что файл-бэкап создался - тогда в ответе - ОК, или ошибка
-# todo возвращать схему пайдентик (переделать ответ под нее)
-# todo ("/db_backup", description="Бэкап БД.", dependencies=[Depends(current_superuser)],)
-@test_router.get("/db_backup", description="Бэкап БД.",)
+@test_router.get("/db_backup", description="Бэкап БД.", dependencies=[Depends(current_superuser)],)
 def db_backup(
     backup_service: DBBackupService = Depends(),
-) -> dict[str, int | str]:
+) -> DBBackupResponse:
     backup_service.make_copy_db()
-    return {
-        "app_folder": backup_service.get_base_dir(),
-        "time": ANALYTIC_TO_TIME
-    }
+    list_of_files_names = backup_service.get_list_of_names_in_dir()
+    return DBBackupResponse(
+        total_backups=len(list_of_files_names),
+        last_backup=max(list_of_files_names)[0],
+        first_backup=min(list_of_files_names)[0],
+        time=ANALYTIC_TO_TIME
+    )

@@ -159,3 +159,11 @@ class SuspensionAnalytics(BaseModel):
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
         json_encoders = {datetime: lambda db_date_time: db_date_time.strftime(DATE_TIME_FORMAT)}
+
+
+class DBBackupResponse(BaseModel):
+    """Класс ответа для бэкапа БД."""
+    last_backup: str
+    first_backup: str
+    total_backups: int
+    time: str
