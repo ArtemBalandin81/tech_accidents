@@ -31,13 +31,13 @@ class SuspensionRepository(ContentRepository):
             .where(Suspension.datetime_finish <= datetime_finish)
         )
 
-    async def get_all(self) -> list[Suspension]:
+    async def get_all(self) -> Sequence[Suspension]:
         """Возвращает все объекты модели из базы данных, отсортированные по времени."""
-        objects = await self._session.execute(
+        objects = await self._session.scalars(
             select(Suspension)
             .order_by(Suspension.datetime_start.desc())
         )
-        return objects.scalars().all()
+        return objects.all()
 
     async def get_last_id_for_user(self, user_id: int) -> int:
         """Возвращает последний по времени простой для пользователя."""
