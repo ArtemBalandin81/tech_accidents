@@ -1,7 +1,7 @@
 """src/core/db/repository/base.py"""
 import abc
 from datetime import datetime
-from typing import TypeVar
+from typing import Sequence, TypeVar
 
 from sqlalchemy import false, func, select, update
 from sqlalchemy.exc import IntegrityError
@@ -22,8 +22,7 @@ class AbstractRepository(abc.ABC):
 
     async def get_or_none(self, _id: int) -> DatabaseModel | None:
         """Получает из базы объект модели по ID. В случае отсутствия возвращает None."""
-        db_obj = await self._session.execute(select(self._model).where(self._model.id == _id))
-        return db_obj.scalars().first()
+        return await self._session.scalar(select(self._model).where(self._model.id == _id))
 
     async def get(self, _id: int) -> DatabaseModel:
         """Получает объект модели по ID. В случае отсутствия объекта бросает ошибку."""
@@ -61,10 +60,10 @@ class AbstractRepository(abc.ABC):
         await self._session.execute(update(self._model), instances)
         return instances
 
-    async def get_all(self) -> list[DatabaseModel]:
+    async def get_all(self) -> Sequence[DatabaseModel]:
         """Возвращает все объекты модели из базы данных."""
-        objects = await self._session.execute(select(self._model))
-        return objects.scalars().all()
+        objects = await self._session.scalars(select(self._model))
+        return objects.all()
 
     @auto_commit
     async def create_all(self, objects: list[DatabaseModel]) -> None:
@@ -73,8 +72,7 @@ class AbstractRepository(abc.ABC):
 
     async def count_all(self) -> int:
         """Возвращает количество юнитов категории."""
-        objects = await self._session.execute(select(func.count()).select_from(self._model))
-        return objects.scalar()
+        return await self._session.scalar(select(func.count()).select_from(self._model))
 
 
 class ContentRepository(AbstractRepository, abc.ABC):
@@ -92,15 +90,15 @@ class ContentRepository(AbstractRepository, abc.ABC):
             self,
             datetime_start: datetime,
             datetime_finish: datetime
-    ) -> list[DatabaseModel]:
+    ) -> Sequence[DatabaseModel]:
         """Возвращает все объекты модели из базы данных за указанный период."""
-        objects = await self._session.execute(
+        objects = await self._session.scalars(
             select(self._model)
             .where(self._model.datetime_start >= datetime_start)
             .where(self._model.datetime_finish <= datetime_finish)
             .order_by(self._model.datetime_start.desc())
         )
-        return objects.scalars().all()
+        return objects.all()
 
     async def get_last_id(self) -> int:
         """Возвращает последний по времени объект модели."""
