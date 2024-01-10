@@ -24,9 +24,7 @@ class ContentService(abc.ABC):
                     to_create.append(model_class(**obj.dict(), is_archived=False))
                 else:
                     to_update.append({**obj.dict(), "is_archived": False})
-            if to_create:
-                await self._repository.create_all(to_create, commit=False)
-            if to_update:
-                await self._repository.update_all(to_update, commit=False)
+            await self._repository.create_all(to_create, commit=False) if to_create else None
+            await self._repository.update_all(to_update, commit=False) if to_update else None
             await session.commit()
             return [obj.id for obj in to_create]

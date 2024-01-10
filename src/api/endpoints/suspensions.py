@@ -5,20 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.api.constants import (
-    ANALYTIC_FROM_TIME,
-    ANALYTIC_TO_TIME,
-    CREATE_SUSPENSION_FROM_TIME,
-    CREATE_SUSPENSION_TO_TIME,
-    CREATE_DESCRIPTION,
-    DATE_TIME_FORMAT,
-    IMPLEMENTING_MEASURES,
-    MEASURES,
-    SUSPENSION_DESCRIPTION,
-    SUSPENSION_FINISH,
-    SUSPENSION_START,
-    USER_ID,
-)
+from src.api.constants import *
 from src.api.schemas import (
     AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 )
