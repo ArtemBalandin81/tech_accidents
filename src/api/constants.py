@@ -17,12 +17,6 @@ FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='m
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
 
-# create_suspension
-CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
-ROUTER_ERROR = "Риск инцидент: сбой в работе рутера."
-INTERNET_ERROR = "Сбой подключения к интернет."
-MEASURES = "Перезагрузка оборудования."
-
 # alias
 CREATED = "Дата создания"
 IMPLEMENTING_MEASURES = "Предпринятые действия"
@@ -39,3 +33,16 @@ TECH_PROCESS = "Тех-процесс"
 UPDATED = "Дата обновления"
 USER_MAIL = "Почта пользователя"
 USER_ID = "id пользователя"
+
+# create_suspension
+CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
+ROUTER_ERROR = "Риск инцидент: сбой в работе рутера."
+INTERNET_ERROR = "Сбой подключения к интернет."
+MEASURES = "Перезагрузка оборудования."
+
+# db_backups
+COPY_FILE_ERROR ="Ошибка при копировании файла."
+DELETED_OK = " успешно удален."
+DIR_CREATED = "Создан каталог."
+FILE_EXISTS_ERROR = "Файл уже существует."
+FILE_SAVED = "Файл успешно скопирован."

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD, TZINFO
+from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD
 from src.api.schemas import SuspensionRequest
 from src.core.db import get_session
 from src.core.db.models import Suspension, User

@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
         """Действия при запуске сервера."""
         print("Server started :", datetime.now())  # TODO заменить логированием
         asyncio.create_task(ConnectionErrorService().run_check_connection())
-        asyncio.create_task(DBBackupService().run_db_backup())
+        asyncio.create_task(DBBackupService().run_db_backup()) if settings.DB_BACKUP else None
 
     @app.on_event("shutdown")
     async def shutdown_event():

@@ -34,10 +34,12 @@ class Settings(BaseSettings):
     # USE_NGROK: bool = False
 
     # Параметры подключения к БД
-    DATABASE_URL: str
-    DATABASE_NAME: str
-    MAX_DB_BACKUP_FILES: int
-    SLEEP_DB_BACKUP: int
+    DATABASE_URL: str = "sqlite+aiosqlite:///./tech_accident_db_local.db"
+    DATABASE_NAME: str = "tech_accident_db_local.db"
+    DB_BACKUP: bool = True
+    DB_BACKUP_DIR: str = "db_backups"
+    MAX_DB_BACKUP_FILES: int = 50
+    SLEEP_DB_BACKUP: int = 60 * 60 * 24
     TIMEZONE_OFFSET: int = 5
     # POSTGRES_DB: str
     # POSTGRES_USER: str
