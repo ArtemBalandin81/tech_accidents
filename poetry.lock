@@ -66,6 +66,23 @@ test = ["anyio[trio]", "coverage[toml] (>=7)", "hypothesis (>=4.0)", "psutil (>=
 trio = ["trio (>=0.22)"]
 
 [[package]]
+name = "asgi-correlation-id"
+version = "4.2.0"
+description = "Middleware correlating project logs to individual requests"
+optional = false
+python-versions = ">=3.7,<4.0"
+files = [
+    {file = "asgi_correlation_id-4.2.0-py3-none-any.whl", hash = "sha256:bd3321a4022f38179db775d27c40cb45130ac9429d569cd59b5474cb2f65fb1b"},
+    {file = "asgi_correlation_id-4.2.0.tar.gz", hash = "sha256:9d7dcfc2ed016f6e594fffd553788ac70129db7f92bb4dc268ab0b1a3284de5a"},
+]
+
+[package.dependencies]
+starlette = ">=0.18"
+
+[package.extras]
+celery = ["celery"]
+
+[[package]]
 name = "asyncpg"
 version = "0.27.0"
 description = "An asyncio PostgreSQL driver"
@@ -1158,4 +1175,4 @@ standard = ["colorama (>=0.4)", "httptools (>=0.5.0)", "python-dotenv (>=0.13)",
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "a9df5eb5602db537fc6fc722ff65e671822b5707640ffb13ba06f5f4fd2d2a02"
+content-hash = "7a9d33502185d0663fcd8f9d3cc77e4e63176e9fe93152c53887865711dbe82c"

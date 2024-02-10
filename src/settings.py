@@ -25,8 +25,8 @@ def get_env_path() -> Path | None:
 
 class Settings(BaseSettings):
     """Настройки проекта."""
-    APP_TITLE: str
-    APP_DESCRIPTION: str
+    APP_TITLE: str = "Учет фактов простоя ИС"
+    APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
     SECRET_KEY: str = "secret_key"
     ROOT_PATH: str = "/api"
@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     LOG_FILES_TO_KEEP: int = 5
 
     # Настройки тестирования доступа к Интернет
-    SLEEP_TEST_CONNECTION: int
+    SLEEP_TEST_CONNECTION: int = 20
 
     @property
     def database_url(self) -> str:

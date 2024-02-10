@@ -4,7 +4,7 @@ from src.settings import settings
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
 DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DISPLAY_TIME = 60 * 24
-CONNECTION_TEST_URL_AGI = "https://www.agidel-am.ru"
+CONNECTION_TEST_URL_BASE = "https://www.agidel-am.ru"
 CONNECTION_TEST_URL_YA = "https://www.ya.ru"
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
@@ -44,5 +44,6 @@ MEASURES = "Перезагрузка оборудования."
 COPY_FILE_ERROR ="Ошибка при копировании файла."
 DELETED_OK = " успешно удален."
 DIR_CREATED = "Создан каталог."
+DIR_CREATED_ERROR = "Ошибка создания каталога."
 FILE_EXISTS_ERROR = "Файл уже существует."
 FILE_SAVED = "Файл успешно скопирован."
