@@ -51,7 +51,7 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
     tech_process: TechProcess
 
     class Config:
-        extra = Extra.forbid
+        extra = Extra.forbid  # TODO старый метод конфигурации, нужно обновить- model_config = ConfigDict(strict=False)
         json_schema_extra = {
             "example": {
                 "risk_accident": ROUTER_ERROR,  # TODO валидация и отображение ошибки???
@@ -163,7 +163,7 @@ class SuspensionAnalytics(BaseModel):
 
 class DBBackupResponse(BaseModel):
     """Класс ответа для бэкапа БД."""
-    last_backup: str
-    first_backup: str
+    last_backup: str | None
+    first_backup: str | None
     total_backups: int
     time: str
