@@ -14,14 +14,13 @@ os.makedirs(settings.LOG_DIR, exist_ok=True)
 def _drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     """
     Uvicorn логирует сообщение повторно в дополнительной секции
-    `color_message`, но нам это не нужно. Данная функция ("процессор")
-    убирает данный ключ из event dict.
+    `color_message`. Данная функция ("процессор") убирает данный ключ из event dict.
     """
     event_dict.pop("color_message", None)
     return event_dict
 
 
-TIMESTAMPER = structlog.processors.TimeStamper(fmt="iso")
+TIMESTAMPER = structlog.processors.TimeStamper(fmt="iso", utc=False)
 
 PRE_CHAIN: list[Processor] = [
     structlog.contextvars.merge_contextvars,
@@ -31,7 +30,11 @@ PRE_CHAIN: list[Processor] = [
     structlog.stdlib.ExtraAdder(),
     _drop_color_message_key,
     TIMESTAMPER,
-    structlog.processors.StackInfoRenderer(),
+    structlog.processors.dict_tracebacks,  # ! процессор, для обработки исключений (трассировки стека)
+    structlog.processors.StackInfoRenderer(),  # ! процессор, обрабатывающий выходные данные, дб последним в цепочке
+    # structlog.processors.format_exc_info,
+    # structlog.processors.UnicodeDecoder(),
+    # structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
 ]
 
 
@@ -65,6 +68,8 @@ LOGGING_DICTCONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "colored",
         },
+        #  "file": отвечает за вывод логов в отдельный файл
+        #  todo логи выводятся в файл, но не полностью
         "file": {
             "level": settings.LOG_LEVEL,
             "class": "logging.handlers.RotatingFileHandler",
@@ -86,6 +91,7 @@ LOGGING_DICTCONFIG = {
 }
 
 
+# todo печать в файл всех событий log.ainfo(), а не только uvicorn
 def _setup_structlog():
     """Настройки structlog."""
 
@@ -97,7 +103,10 @@ def _setup_structlog():
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
         logger_factory=structlog.stdlib.LoggerFactory(),
+        # logger_factory=structlog.WriteLoggerFactory(file=Path("app2").with_suffix(".log").open("wt")),
         wrapper_class=structlog.stdlib.BoundLogger,
+        # wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, settings.LOG_LEVEL)),
+        # context_class=dict,  # https://habr.com/ru/companies/mvideo/articles/744738/
         cache_logger_on_first_use=True,
     )
 

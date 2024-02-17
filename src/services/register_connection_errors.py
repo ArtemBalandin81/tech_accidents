@@ -14,6 +14,7 @@ from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
 from src.settings import settings
 
+
 log = structlog.get_logger().bind(file_name=__file__)
 
 
@@ -41,21 +42,21 @@ class ConnectionErrorService:
         # если ошибка соединения с базовым сайтом, то тест сайта Яндекс
         # если и сайта Яндекс не доступен - в run_check_connection() вызывается except!
         except requests.exceptions.ConnectionError:
-            log.error("Failed_get_url.", url=CONNECTION_TEST_URL_BASE)
+            await log.aerror("Failed_get_url.", url=CONNECTION_TEST_URL_BASE)
             status_code_url_ya = requests.get(CONNECTION_TEST_URL_YA).status_code
             info_connections = {
                 CONNECTION_TEST_URL_BASE: "ConnectionError",
                 CONNECTION_TEST_URL_YA: status_code_url_ya,
                 "time": datetime.now(TZINFO).isoformat(timespec='seconds')
             }
-            log.info("Info_connections", info_connections=info_connections)
+            await log.ainfo("Info_connections", info_connections=info_connections)
             return info_connections
         info_connections = {
             CONNECTION_TEST_URL_BASE: status_code_base_url,
             CONNECTION_TEST_URL_YA: "Didn't try, suppose OK!",
             "time": datetime.now(TZINFO).isoformat(timespec='seconds')
         }
-        log.info("Info_connections", info_connections=info_connections)
+        await log.ainfo("Info_connections", info_connections=info_connections)
         return info_connections
 
     async def run_create_suspension(self, suspension_object: dict | None) -> None:
@@ -66,7 +67,7 @@ class ConnectionErrorService:
         async with self._sessionmaker() as session:
             suspension_repository = SuspensionRepository(session)
             await suspension_repository.create(suspension)
-            log.info("Suspension_loaded_in_db.", suspension=suspension)
+            await log.ainfo("Suspension_loaded_in_db.", suspension=suspension)
 
     async def run_check_connection(
             self,
@@ -79,7 +80,7 @@ class ConnectionErrorService:
                 await asyncio.sleep(settings.SLEEP_TEST_CONNECTION)
                 await self.check_connection(CONNECTION_TEST_URL_BASE)
                 if time_counter != settings.SLEEP_TEST_CONNECTION:  # Нач. счетчик простоя = интервалу теста соединения
-                    log.info(
+                    await log.ainfo(
                         "Create_suspension.",
                         start=str(suspension_start),
                         finish=datetime.now(TZINFO).isoformat(timespec='seconds'),
@@ -92,15 +93,15 @@ class ConnectionErrorService:
                     time_counter = settings.SLEEP_TEST_CONNECTION  # обнуляем счетчик, если соединение восстановилось
                     suspension_start = None  # обнуляем счетчик времени старта простоя
         except requests.exceptions.ConnectionError:  # если ошибка соединения
-            log.error("Failed_get_url.", url=CONNECTION_TEST_URL_YA)
+            await log.aerror("Failed_get_url.", url=CONNECTION_TEST_URL_YA)
             if suspension_start is not None:  # если не первый старт фиксации простоя
                 time_counter += settings.SLEEP_TEST_CONNECTION
                 suspension_start = suspension_start
-                log.info("Time_counter.", counter=time_counter, err=ConnectionError, url=CONNECTION_TEST_URL_YA)
+                await log.ainfo("Time_counter.", counter=time_counter, err=ConnectionError, url=CONNECTION_TEST_URL_YA)
                 await asyncio.sleep(settings.SLEEP_TEST_CONNECTION)  # задаем задержку проверки соединения
                 await self.run_check_connection(time_counter, suspension_start)  # рекурсивно проверяем соединение
             suspension_start = datetime.now(TZINFO)
             time_counter += settings.SLEEP_TEST_CONNECTION
-            log.info("First_time_counter.", counter=time_counter, suspension_start=str(suspension_start))
+            await log.ainfo("First_time_counter.", counter=time_counter, suspension_start=str(suspension_start))
             await asyncio.sleep(settings.SLEEP_TEST_CONNECTION)
             await self.run_check_connection(time_counter, suspension_start)

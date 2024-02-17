@@ -1,5 +1,6 @@
 """src/application.py"""
 import asyncio
+import structlog
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from datetime import datetime
@@ -8,9 +9,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging.middleware import LoggingMiddleware
 from src.core.logging.setup import setup_logging
+from src.core.logging.utils import logger_decor
 from src.settings import settings
 from src.services.register_connection_errors import ConnectionErrorService
 from src.services.db_backup import DBBackupService
+
+
+log = structlog.get_logger().bind(file_name=__file__)
 
 
 def include_router(app: FastAPI):
@@ -42,15 +47,17 @@ def create_app() -> FastAPI:
     add_middleware(app)  # логгирование
 
     @app.on_event("startup")
+    @logger_decor
     async def startup_event():
         """Действия при запуске сервера."""
-        print("Server started :", datetime.now())  # TODO заменить логированием
+        await log.ainfo("Server_started", time=str(datetime.now()))
         asyncio.create_task(ConnectionErrorService().run_check_connection())
         asyncio.create_task(DBBackupService().run_db_backup()) if settings.DB_BACKUP else None
 
     @app.on_event("shutdown")
+    @logger_decor
     async def shutdown_event():
         """Действия после остановки сервера."""
-        print('Server shutdown :', datetime.now())  # TODO заменить логированием
+        await log.ainfo("Server_shutdown", time=str(datetime.now()))
 
     return app
