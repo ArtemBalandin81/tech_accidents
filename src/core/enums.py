@@ -4,7 +4,29 @@ from src.api.constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
 from fastapi import Depends, Query
 
 
-class RiskAccidentSource(StrEnum):
+# class Executor(IntEnum):  # todo цеплять из БД пользователей как-то
+#     """Класс исполнителей."""
+#
+#     USER = 1
+#     TRUE = 2
+#     TRUE2 = 3
+#     USER5 = 4
+#     TEST_USER_EX = 5
+#     USER54378 = 6
+
+
+class Executor(StrEnum):  # todo цеплять из БД пользователей как-то
+    """Класс исполнителей."""
+
+    USER = "user@example.com"
+    TRUE = "true@example.com"
+    TRUE2 = "true2@example.com"
+    USER5 = "user5@example.com"
+    TEST_USER_EX = "test_user_ex@example.com"
+    USER54378 = "user54378@example.com"
+
+
+class RiskAccidentSource(StrEnum):  # todo занести в константы
     """Класс случаев риска."""
 
     ROUTER = "Риск инцидент: сбой в работе рутера."
@@ -15,7 +37,7 @@ class RiskAccidentSource(StrEnum):
 
 
 
-class TechProcess(IntEnum):
+class TechProcess(IntEnum):  # todo занести в константы
     """Класс тех. процессов."""
 
     DU_25 = 25

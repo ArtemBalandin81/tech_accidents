@@ -20,3 +20,6 @@ class UsersService:
 
     async def get(self, user_id: int) -> User:
         return await self._repository.get(user_id)
+
+    async def get_by_email(self, _email: str) -> User:
+        return await self._repository.get_by_email(_email)

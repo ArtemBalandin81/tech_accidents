@@ -25,7 +25,7 @@ SUSPENSION_ID = "/{suspension_id}"
 
 async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:
     """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""
-    suspension_to_dict = suspension.__dict__
+    suspension_to_dict = suspension.__dict__  # todo криво, поменяй метод, метод дублируется
     suspension_to_dict["user_email"] = user.email
     suspension_to_dict["business_process"] = TechProcess(suspension.tech_process).name
     return AnalyticResponse(**suspension_to_dict)
@@ -64,7 +64,7 @@ async def create_new_suspension_by_form(
 
 
 @suspension_router.post(
-    "/",
+    GET_ALL_ROUTE,
     response_model=SuspensionResponse,
     description="Фиксации случая простоя из json.",
     tags=["Suspensions POST"]
@@ -99,7 +99,7 @@ async def partially_update_suspension(
 
 
 @suspension_router.get(
-    "/",
+    GET_ALL_ROUTE,
     response_model_exclude_none=True,
     description="Список всех случаев простоя.",
     tags=["Suspensions GET"]
@@ -112,7 +112,7 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     ANALYTICS,
     response_model_exclude_none=True,
     description="Список случаев простоя за период.",
-    tags=["Suspensions GET"]
+    tags=["Suspensions ANALYTICS"]
 )
 async def get_all_for_period_time(
     datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
@@ -130,7 +130,7 @@ async def get_all_for_period_time(
             user_id, datetime_start, datetime_finish
         )
     suspensions_list = []
-    for suspension in suspensions:
+    for suspension in suspensions:  # todo это работа сервиса, перенести
         user = await users_service.get(suspension.user_id)  # todo избавиться от дергания базы: загружать за 1 раз
         suspension_to_dict = await change_schema_response(suspension, user)
         suspensions_list.append(suspension_to_dict)
