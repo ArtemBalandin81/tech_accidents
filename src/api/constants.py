@@ -22,6 +22,9 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 
 # endpoints
 GET_ALL_ROUTE = "/"
+GET_OPENED_ROUTE = "/opened"
+ME_TODO = "/my_tasks_todo"
+MY_TASKS = "/my_tasks_ordered"
 TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
 TASKS_POST = "Tasks POST"
@@ -72,3 +75,5 @@ TASK_USER_ID = "Постановщик задачи"
 # tasks_descriptions
 TASK_DELETE = "Удалить задачу (только админ)."
 TASK_LIST = "Список всех задач."
+MY_TASKS_LIST = "ЗАДАЧИ ВЫДАННЫЕ: список задач, выданных пользователем."
+ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, выданных пользователю."

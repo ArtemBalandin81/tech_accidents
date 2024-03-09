@@ -17,10 +17,10 @@ from src.core.enums import RiskAccidentSource, TechProcess
 
 suspension_router = APIRouter()
 
-ANALYTICS = "/analytics"
-MY_SUSPENSIONS = "/my_suspensions"
-ONLY_AUTHOR = "Только автор простоя и админ могут редактировать!"
-SUSPENSION_ID = "/{suspension_id}"
+ANALYTICS = "/analytics"  # todo в константы
+MY_SUSPENSIONS = "/my_suspensions"  # todo в константы
+ONLY_AUTHOR = "Только автор простоя и админ могут редактировать!"  # todo в константы
+SUSPENSION_ID = "/{suspension_id}"  # todo в константы
 
 
 async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:
@@ -32,9 +32,9 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
 
 
 @suspension_router.post(
-    "/form",
-    description="Фиксации случая простоя из формы.",
-    tags=["Suspensions POST"]
+    "/form",  # todo в константы
+    description="Фиксации случая простоя из формы.",  # todo в константы
+    tags=["Suspensions POST"]  # todo в константы
 )
 async def create_new_suspension_by_form(
     *,
@@ -66,8 +66,8 @@ async def create_new_suspension_by_form(
 @suspension_router.post(
     GET_ALL_ROUTE,
     response_model=SuspensionResponse,
-    description="Фиксации случая простоя из json.",
-    tags=["Suspensions POST"]
+    description="Фиксации случая простоя из json.",  # todo в константы
+    tags=["Suspensions POST"]  # todo в константы
 )
 async def create_new_suspension(
     suspension_schemas: SuspensionRequest,
@@ -80,7 +80,7 @@ async def create_new_suspension(
 @suspension_router.patch(
     SUSPENSION_ID,
     dependencies=[Depends(current_user)],
-    tags=["Suspensions POST"]
+    tags=["Suspensions POST"]  # todo в константы
 )
 async def partially_update_suspension(
     suspension_id: int,
@@ -101,8 +101,8 @@ async def partially_update_suspension(
 @suspension_router.get(
     GET_ALL_ROUTE,
     response_model_exclude_none=True,
-    description="Список всех случаев простоя.",
-    tags=["Suspensions GET"]
+    description="Список всех случаев простоя.",  # todo в константы
+    tags=["Suspensions GET"]  # todo в константы
 )
 async def get_all_suspensions(suspension_service: SuspensionService = Depends()) -> list[SuspensionResponse]:
     return await suspension_service.get_all()
@@ -111,8 +111,8 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
 @suspension_router.get(
     ANALYTICS,
     response_model_exclude_none=True,
-    description="Список случаев простоя за период.",
-    tags=["Suspensions ANALYTICS"]
+    description="Список случаев простоя за период.",  # todo в константы
+    tags=["Suspensions ANALYTICS"]  # todo в константы
 )
 async def get_all_for_period_time(
     datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
@@ -154,8 +154,8 @@ async def get_all_for_period_time(
 @suspension_router.get(
     MY_SUSPENSIONS,
     response_model_exclude_none=True,
-    description="Список случаев простоя текущего пользователя.",
-    tags=["Suspensions GET"]
+    description="Список случаев простоя текущего пользователя.",  # todo в константы
+    tags=["Suspensions GET"]  # todo в константы
 )
 async def get_my_suspensions(
     suspension_service: SuspensionService = Depends(),
@@ -166,8 +166,8 @@ async def get_my_suspensions(
 
 @suspension_router.get(
     SUSPENSION_ID,
-    description="Информация о случае простоя по его id.",
-    tags=["Suspensions GET"]
+    description="Информация о случае простоя по его id.",  # todo в константы
+    tags=["Suspensions GET"]  # todo в константы
 )
 async def get_suspension_by_id(
         suspension_id: int,

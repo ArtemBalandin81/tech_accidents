@@ -43,85 +43,89 @@ class TaskService:
         await self.get(task_id)  # проверяем, что объект для правки существует!
         return await self._repository.update(task_id, task)
 
-
     async def get(self, task_id: int) -> Task:
         return await self._repository.get(task_id)
-
 
     async def get_all(self) -> list[any]:
         return await self._repository.get_all()
 
+    async def get_all_opened(self) -> list[any]:
+        return await self._repository.get_all_opened()
 
-    async def get_all_for_period_time(
-            self,
-            task_start: datetime = TO_TIME_PERIOD,
-            deadline: datetime = FROM_TIME_NOW
-    ) -> Sequence[Task]:
-        return await self._repository.get_all_for_period_time(task_start, deadline)  # todo проверь!
-
-
-    async def get_last_task_id(self, user_id: int) -> int:
-        if user_id is None:
-            return await self._repository.get_last_id()
-        else:
-            return await self._repository.get_last_id_for_user(user_id)
+    # async def get_all_for_period_time(
+    #         self,
+    #         task_start: datetime = TO_TIME_PERIOD,
+    #         deadline: datetime = FROM_TIME_NOW
+    # ) -> Sequence[Task]:
+    #     return await self._repository.get_all_for_period_time(task_start, deadline)  # todo проверь!
 
 
-    async def get_last_task_time(self, user_id: int) -> datetime:
-        if user_id is None:
-            last_task = await self._repository.get(await self._repository.get_last_id())
-        else:
-            last_task = await self._repository.get(await self.get_last_task_id(user_id))
-        return last_task.task_start
+    # async def get_last_task_id(self, user_id: int) -> int:
+    #     if user_id is None:
+    #         return await self._repository.get_last_id()
+    #     else:
+    #         return await self._repository.get_last_id_for_user(user_id)
+    #
+    #
+    # async def get_last_task_time(self, user_id: int) -> datetime:
+    #     if user_id is None:
+    #         last_task = await self._repository.get(await self._repository.get_last_id())
+    #     else:
+    #         last_task = await self._repository.get(await self.get_last_task_id(user_id))
+    #     return last_task.task_start
 
 
-    async def get_tasks_for_user(self, user_id: int) -> Sequence[any]:
-        return await self._repository.get_tasks_for_user(user_id)
+    async def get_tasks_ordered(self, user_id: int) -> Sequence[any]:
+        return await self._repository.get_tasks_ordered(user_id)
 
 
-    async def get_taskss_for_period_for_user(
-        self,
-        user_id: int,
-        task_start: datetime = TO_TIME_PERIOD,
-        deadline: datetime = FROM_TIME_NOW
-    ) -> Sequence[any]:
-        return await self._repository.get_tasks_for_period_for_user(user_id, task_start, deadline)
+    async def get_my_tasks_todo(self, user_id: int) -> Sequence[any]:
+        return await self._repository.get_tasks_todo(user_id)
 
 
-    async def sum_tasks_time_for_period(
-            self,
-            user_id: int,
-            task_start: datetime = TO_TIME_PERIOD,
-            deadline: datetime = FROM_TIME_NOW
-    ) -> int:
-        if user_id is None:
-            total_time_tasks = await self._repository.sum_time_for_period(task_start, deadline)
-        else:
-            total_time_tasks = await self._repository.sum_time_for_period_for_user(
-                user_id, task_start, deadline
-            )
-        if total_time_tasks is None:
-            return 0
-        return round(total_time_tasks * DISPLAY_TIME)
-
-
-    async def task_max_time_for_period(
-            self,
-            user_id: int,
-            task_start: datetime = TO_TIME_PERIOD,
-            deadline: datetime = FROM_TIME_NOW
-    ) -> int:
-        if user_id is None:
-            max_time_for_period = await self._repository.task_max_time_for_period(
-                task_start, deadline
-            )
-        else:
-            max_time_for_period = await self._repository.task_max_time_for_period_for_user(
-                user_id, task_start, deadline
-            )
-        if max_time_for_period is None:
-            return 0
-        return round(max_time_for_period * DISPLAY_TIME)
+    # async def get_taskss_for_period_for_user(
+    #     self,
+    #     user_id: int,
+    #     task_start: datetime = TO_TIME_PERIOD,
+    #     deadline: datetime = FROM_TIME_NOW
+    # ) -> Sequence[any]:
+    #     return await self._repository.get_tasks_for_period_for_user(user_id, task_start, deadline)
+    #
+    #
+    # async def sum_tasks_time_for_period(
+    #         self,
+    #         user_id: int,
+    #         task_start: datetime = TO_TIME_PERIOD,
+    #         deadline: datetime = FROM_TIME_NOW
+    # ) -> int:
+    #     if user_id is None:
+    #         total_time_tasks = await self._repository.sum_time_for_period(task_start, deadline)
+    #     else:
+    #         total_time_tasks = await self._repository.sum_time_for_period_for_user(
+    #             user_id, task_start, deadline
+    #         )
+    #     if total_time_tasks is None:
+    #         return 0
+    #     return round(total_time_tasks * DISPLAY_TIME)
+    #
+    #
+    # async def task_max_time_for_period(
+    #         self,
+    #         user_id: int,
+    #         task_start: datetime = TO_TIME_PERIOD,
+    #         deadline: datetime = FROM_TIME_NOW
+    # ) -> int:
+    #     if user_id is None:
+    #         max_time_for_period = await self._repository.task_max_time_for_period(
+    #             task_start, deadline
+    #         )
+    #     else:
+    #         max_time_for_period = await self._repository.task_max_time_for_period_for_user(
+    #             user_id, task_start, deadline
+    #         )
+    #     if max_time_for_period is None:
+    #         return 0
+    #     return round(max_time_for_period * DISPLAY_TIME)
 
 
     async def remove(self, task_id: int) -> None:

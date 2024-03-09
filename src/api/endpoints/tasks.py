@@ -9,7 +9,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.api.constants import *
-from src.api.schema import (  # todo change the name to schemas afterwards
+from src.api.schema import (  # todo change the "schema" to "schemas" after schemas refactoring
     AnalyticTaskResponse,
     TaskResponse,
 )
@@ -71,24 +71,60 @@ async def create_new_task_by_form(
     description=TASK_LIST,
     tags=[TASKS_GET]
 )
-async def get_all_tasks(task_service: TaskService = Depends()) -> list[TaskResponse]:
-# async def get_all_tasks(task_service: TaskService = Depends()):
+async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[TaskResponse]:
     return await task_service.get_all()
 
 
-# @task_router.get(
-#     TASK_ID,
-#     description=TASK_DESCRIPTION,
-#     tags=["Tasks GET"]
-# )
-# async def get_task_by_id(
-#         task_id: int,
-#         task_service: TaskService = Depends(),
-#         users_service: UsersService = Depends(),
-# ) -> TaskResponse:
-#     task = await task_service.get(task_id)
-#     user = await users_service.get(task.user_id)
-#     return await change_schema_response(suspension, user)
+@task_router.get(
+    GET_OPENED_ROUTE,
+    response_model_exclude_none=True,
+    description=TASK_LIST,
+    tags=[TASKS_GET]
+)
+async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[TaskResponse]:
+    return await task_service.get_all_opened()
+
+
+@task_router.get(
+    MY_TASKS,
+    description=MY_TASKS_LIST,
+    response_model_exclude_none=True,
+    tags=[TASKS_GET]
+)
+async def get_my_tasks_ordered(
+    task_service: TaskService = Depends(),
+    user: User = Depends(current_user)
+) -> Sequence[TaskResponse]:    # todo показывать e-mail исполнитяля в схеме
+    return await task_service.get_tasks_ordered(user.id)
+
+
+@task_router.get(
+    ME_TODO,
+    description=ME_TODO_LIST,
+    response_model_exclude_none=True,
+    tags=[TASKS_GET]
+)
+async def get_my_tasks_todo(
+    task_service: TaskService = Depends(),
+    user: User = Depends(current_user)
+) -> Sequence[TaskResponse]:    # todo показывать e-mail исполнитяля в схеме
+    return await task_service.get_my_tasks_todo(user.id)
+
+
+@task_router.get(
+    TASK_ID,
+    description=TASK_DESCRIPTION,
+    tags=[TASKS_GET]
+)
+async def get_task_by_id(
+        task_id: int,
+        task_service: TaskService = Depends(),
+        users_service: UsersService = Depends(),
+) -> AnalyticTaskResponse:
+    task = await task_service.get(task_id)
+    user = await users_service.get(task.user_id)
+    executor = await users_service.get(task.executor)  # todo после правки моделей поменять на executor_id
+    return await change_schema_response(task, user, executor)
 
 
 @task_router.delete(
