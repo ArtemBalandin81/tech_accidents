@@ -4,6 +4,7 @@ from src.settings import settings
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
 DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
+DATE_TODAY_FORMAT = "%Y-%m-%d"
 DISPLAY_TIME = 60 * 24
 CONNECTION_TEST_URL_BASE = "https://www.agidel-am.ru"
 CONNECTION_TEST_URL_YA = "https://www.ya.ru"
@@ -21,10 +22,13 @@ TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minu
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
 
 # endpoints
+ANALYTICS = "/analytics"
 GET_ALL_ROUTE = "/"
 GET_OPENED_ROUTE = "/opened"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
+MY_SUSPENSIONS = "/my_suspensions"
+SUSPENSION_ID = "/{suspension_id}"
 TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
 TASKS_POST = "Tasks POST"
@@ -36,6 +40,7 @@ IMPLEMENTING_MEASURES = "Предпринятые действия"
 MINS_TOTAL = "Минут итого"
 RISK_ACCIDENT = "Риск-инцидент"
 SUSPENSION_DESCRIPTION = "Описание простоя"
+SUSPENSION_DURATION = "Простой (мин)"
 SUSPENSION_FINISH = "Окончание простоя"
 SUSPENSION_LAST_ID = "ID последнего простоя"
 SUSPENSION_LAST_TIME = "Время последнего простоя"
@@ -63,8 +68,10 @@ FILE_SAVED = "Файл успешно скопирован."
 
 
 # tasks_alias
+IS_ARCHIVED = "Задача выполнена"
 TASK = "Задача"
-TASK_CREATE_FORM = "Постановка задачи из формы."
+TASK_CREATE_FORM = "Постановка задачи из формы"
+TASK_DURATION = "Дней на задачу"
 TASK_DESCRIPTION = "Описание задачи"
 TASK_EXECUTOR = "Исполнитель задачи"
 TASK_EXECUTOR_MAIL = "Почта исполнителя"
@@ -77,3 +84,6 @@ TASK_DELETE = "Удалить задачу (только админ)."
 TASK_LIST = "Список всех задач."
 MY_TASKS_LIST = "ЗАДАЧИ ВЫДАННЫЕ: список задач, выданных пользователем."
 ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, выданных пользователю."
+
+# warnings
+ONLY_AUTHOR = "Только автор и админ могут редактировать!"  # todo в константы

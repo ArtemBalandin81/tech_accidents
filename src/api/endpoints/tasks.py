@@ -23,14 +23,6 @@ from src.core.enums import Executor, RiskAccidentSource, TechProcess
 task_router = APIRouter()
 
 
-async def change_schema_response(task: Task, user: User, executor: User) -> AnalyticTaskResponse:
-    """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""
-    task_to_dict = task.__dict__  # todo криво, поменяй метод, метод дублируется
-    task_to_dict["user_email"] = user.email
-    task_to_dict["executor_email"] = executor.email
-    task_to_dict["business_process"] = TechProcess(task.tech_process).name
-    return AnalyticTaskResponse(**task_to_dict)
-
 @task_router.post(
     TASKS_POST_BY_FORM,
     description=TASK_CREATE_FORM,
@@ -62,7 +54,29 @@ async def create_new_task_by_form(
     task = await task_service.actualize_object(None, task_object, user)
     user = await users_service.get(task.user_id)
     executor = await users_service.get(task.executor)  # todo после правки моделей поменять на executor_id
-    return await change_schema_response(task, user, executor)
+    task = await task_service.perform_changed_schema(task)
+    return AnalyticTaskResponse(**task[0])
+
+
+# @task_router.patch(  # todo сделать в форм: пустые поля, значит не меняем!
+#     TASK_ID,
+#     dependencies=[Depends(current_user)],
+#     tags=[TASKS_POST]
+# )
+# async def partially_update_task(
+#     suspension_id: int,
+#     suspension_schemas: SuspensionRequest,
+#     suspension_service: SuspensionService = Depends(),
+#     users_service: UsersService = Depends(),
+#     user: User = Depends(current_user),
+# ) -> AnalyticResponse:
+#     suspension = await suspension_service.get(suspension_id)  # проверяем, что объект для правки существует!
+#     if user.id != suspension.user_id and user.is_superuser is not True:
+#         raise HTTPException(status_code=403, detail=ONLY_AUTHOR)
+#     await suspension_service.actualize_object(suspension_id, suspension_schemas, user)
+#     suspension = await suspension_service.get(suspension_id)
+#     user = await users_service.get(suspension.user_id)
+#     return await change_schema_response(suspension, user)
 
 
 @task_router.get(
@@ -71,8 +85,8 @@ async def create_new_task_by_form(
     description=TASK_LIST,
     tags=[TASKS_GET]
 )
-async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[TaskResponse]:
-    return await task_service.get_all()
+async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
+    return await task_service.perform_changed_schema(await task_service.get_all())  # noqa
 
 
 @task_router.get(
@@ -81,8 +95,8 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[TaskR
     description=TASK_LIST,
     tags=[TASKS_GET]
 )
-async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[TaskResponse]:
-    return await task_service.get_all_opened()
+async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
+    return await task_service.perform_changed_schema(await task_service.get_all_opened())  # noqa
 
 
 @task_router.get(
@@ -94,8 +108,8 @@ async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequenc
 async def get_my_tasks_ordered(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
-) -> Sequence[TaskResponse]:    # todo показывать e-mail исполнитяля в схеме
-    return await task_service.get_tasks_ordered(user.id)
+) -> Sequence[AnalyticTaskResponse]:
+    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id))  # noqa
 
 
 @task_router.get(
@@ -107,8 +121,8 @@ async def get_my_tasks_ordered(
 async def get_my_tasks_todo(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
-) -> Sequence[TaskResponse]:    # todo показывать e-mail исполнитяля в схеме
-    return await task_service.get_my_tasks_todo(user.id)
+) -> Sequence[AnalyticTaskResponse]:    # todo показывать e-mail исполнитяля в схеме
+    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id))  # noqa
 
 
 @task_router.get(
@@ -119,12 +133,9 @@ async def get_my_tasks_todo(
 async def get_task_by_id(
         task_id: int,
         task_service: TaskService = Depends(),
-        users_service: UsersService = Depends(),
 ) -> AnalyticTaskResponse:
-    task = await task_service.get(task_id)
-    user = await users_service.get(task.user_id)
-    executor = await users_service.get(task.executor)  # todo после правки моделей поменять на executor_id
-    return await change_schema_response(task, user, executor)
+    task = await task_service.perform_changed_schema(await task_service.get(task_id))
+    return AnalyticTaskResponse(**task[0])
 
 
 @task_router.delete(

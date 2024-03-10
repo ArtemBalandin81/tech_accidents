@@ -17,11 +17,6 @@ from src.core.enums import RiskAccidentSource, TechProcess
 
 suspension_router = APIRouter()
 
-ANALYTICS = "/analytics"  # todo в константы
-MY_SUSPENSIONS = "/my_suspensions"  # todo в константы
-ONLY_AUTHOR = "Только автор простоя и админ могут редактировать!"  # todo в константы
-SUSPENSION_ID = "/{suspension_id}"  # todo в константы
-
 
 async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:
     """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""

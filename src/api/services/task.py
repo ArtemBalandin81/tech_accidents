@@ -3,12 +3,16 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict
 
+from .users import UsersService
 from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD
 from src.api.schemas import SuspensionRequest
+from src.core.enums import Executor, RiskAccidentSource, TechProcess
 from src.core.db import get_session
 from src.core.db.models import Suspension, Task, User
 from src.core.db.repository.task import TaskRepository
+from src.core.db.repository.users import UsersRepository
 from src.settings import settings
 
 
@@ -18,10 +22,38 @@ class TaskService:
     def __init__(
         self,
         task_repository: TaskRepository = Depends(),
+        users_repository: UsersRepository = Depends(),
         session: AsyncSession = Depends(get_session)
     ) -> None:
         self._repository: TaskRepository = task_repository
+        self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
+
+    async def change_schema_response(
+            self,
+            task: Task,
+    ) -> dict:
+        """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
+        user = await self._users_repository.get(task.user_id)
+        executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id
+        task_to_dict = task.__dict__  # task.model_dump()  todo криво, поменяй метод, метод дублируется
+        task_to_dict["user_email"] = user.email
+        task_to_dict["executor_email"] = executor.email
+        task_to_dict["business_process"] = TechProcess(task.tech_process).name
+        return task_to_dict
+
+    async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
+            self,
+            tasks: Task | Sequence[Task],
+    ) -> Sequence[dict]:
+        """Готовит список словарей для отправки в api."""
+        list_changed_response = []
+        if type(tasks) is not list:
+            list_changed_response.append(await self.change_schema_response(tasks))
+        else:
+            for task in tasks:
+                list_changed_response.append(await self.change_schema_response(task))
+        return list_changed_response
 
     async def actualize_object(
             self,
@@ -46,10 +78,10 @@ class TaskService:
     async def get(self, task_id: int) -> Task:
         return await self._repository.get(task_id)
 
-    async def get_all(self) -> list[any]:
+    async def get_all(self) -> Sequence[any]:
         return await self._repository.get_all()
 
-    async def get_all_opened(self) -> list[any]:
+    async def get_all_opened(self) -> Sequence[any]:
         return await self._repository.get_all_opened()
 
     # async def get_all_for_period_time(

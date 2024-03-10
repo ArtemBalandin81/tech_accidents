@@ -96,7 +96,7 @@ class SuspensionBase(BaseModel):
         example=MEASURES
     )
 
-    @computed_field
+    @computed_field(alias=SUSPENSION_DURATION)
     @property
     def duration(self) -> int | float:
         suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
