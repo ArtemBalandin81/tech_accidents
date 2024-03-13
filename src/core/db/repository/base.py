@@ -52,6 +52,8 @@ class AbstractRepository(abc.ABC):
         """Обновляет существующий объект модели в базе."""
         instance.id = _id
         instance = await self._session.merge(instance)
+        await self._session.commit()
+        await self._session.refresh(instance)
         return instance  # noqa: R504
 
     @auto_commit

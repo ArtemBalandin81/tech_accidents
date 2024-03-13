@@ -76,6 +76,7 @@ TASK_DESCRIPTION = "Описание задачи"
 TASK_EXECUTOR = "Исполнитель задачи"
 TASK_EXECUTOR_MAIL = "Почта исполнителя"
 TASK_FINISH = "Дедлайн по задаче"
+TASK_PATCH_FORM = "Редактирование задачи из формы"
 TASK_START = "Дата постановки задачи"
 TASK_USER_ID = "Постановщик задачи"
 
