@@ -1,6 +1,5 @@
 """src/api/endpoints/suspensions.py"""
 from collections.abc import Sequence
-from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -29,14 +28,16 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
 @suspension_router.post(
     "/form",  # todo в константы
     description="Фиксации случая простоя из формы.",  # todo в константы
+    summary="Фиксации случая простоя из формы.",
     tags=["Suspensions POST"]  # todo в константы
 )
 async def create_new_suspension_by_form(
     *,
     datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
     datetime_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
-    risk_accident: RiskAccidentSource,
-    tech_process: TechProcess,
+    # risk_accident: RiskAccidentSource,
+    risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
+    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
     implementing_measures: str = Query(..., max_length=256, example=MEASURES, alias=IMPLEMENTING_MEASURES),
     suspension_service: SuspensionService = Depends(),
@@ -62,6 +63,7 @@ async def create_new_suspension_by_form(
     GET_ALL_ROUTE,
     response_model=SuspensionResponse,
     description="Фиксации случая простоя из json.",  # todo в константы
+    summary="Фиксации случая простоя из json.",
     tags=["Suspensions POST"]  # todo в константы
 )
 async def create_new_suspension(
@@ -74,6 +76,7 @@ async def create_new_suspension(
 
 @suspension_router.patch(
     SUSPENSION_ID,
+    summary="Редактирование простоя из формы.",
     dependencies=[Depends(current_user)],
     tags=["Suspensions POST"]  # todo в константы
 )
@@ -97,6 +100,7 @@ async def partially_update_suspension(
     GET_ALL_ROUTE,
     response_model_exclude_none=True,
     description="Список всех случаев простоя.",  # todo в константы
+    summary="Список всех случаев простоя.",
     tags=["Suspensions GET"]  # todo в константы
 )
 async def get_all_suspensions(suspension_service: SuspensionService = Depends()) -> list[SuspensionResponse]:
@@ -107,6 +111,7 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     ANALYTICS,
     response_model_exclude_none=True,
     description="Список случаев простоя за период.",  # todo в константы
+    summary="Список случаев простоя за период.",
     tags=["Suspensions ANALYTICS"]  # todo в константы
 )
 async def get_all_for_period_time(
@@ -150,6 +155,7 @@ async def get_all_for_period_time(
     MY_SUSPENSIONS,
     response_model_exclude_none=True,
     description="Список случаев простоя текущего пользователя.",  # todo в константы
+    summary="Список случаев простоя текущего пользователя.",
     tags=["Suspensions GET"]  # todo в константы
 )
 async def get_my_suspensions(
@@ -162,6 +168,7 @@ async def get_my_suspensions(
 @suspension_router.get(
     SUSPENSION_ID,
     description="Информация о случае простоя по его id.",  # todo в константы
+    summary="Информация о случае простоя по его id.",
     tags=["Suspensions GET"]  # todo в константы
 )
 async def get_suspension_by_id(
@@ -177,6 +184,7 @@ async def get_suspension_by_id(
 @suspension_router.delete(
     SUSPENSION_ID,
     dependencies=[Depends(current_superuser)],
+    summary="Удалить простой (только админ).",
     tags=["Suspensions POST"]
 )
 async def remove_suspension(suspension_id: int, suspension_service: SuspensionService = Depends()) -> None:

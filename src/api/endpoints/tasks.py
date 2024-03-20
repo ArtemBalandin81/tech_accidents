@@ -3,10 +3,10 @@ import requests
 import structlog
 
 from collections.abc import Sequence
-from datetime import datetime, date
+from datetime import date
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from pydantic import PositiveInt
 
 from src.api.constants import *
@@ -15,10 +15,10 @@ from src.api.schema import (  # todo change the "schema" to "schemas" after sche
     TaskResponse,
 )
 from src.api.services import TaskService, UsersService
-from src.core.db.models import Task, User
+from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user, unauthorized_user
 
-from src.core.enums import Executor, RiskAccidentSource, TechProcess
+from src.core.enums import Executor, RiskAccidentSource, TechProcess  # todo занеси инструкцию к STAFF в readme
 
 # log = structlog.get_logger()
 task_router = APIRouter()
@@ -27,6 +27,7 @@ task_router = APIRouter()
 @task_router.post(
     TASKS_POST_BY_FORM,
     description=TASK_CREATE_FORM,
+    summary=TASK_CREATE_FORM,
     tags=[TASKS_POST]
 )
 async def create_new_task_by_form(
@@ -34,16 +35,20 @@ async def create_new_task_by_form(
     task_start: str = Query(..., example=CREATE_TASK_START, alias=TASK_START),
     deadline: str = Query(..., example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),
     task: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK),
-    tech_process: TechProcess,
+    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
-    executor_email: Executor,
+    executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
+    another_email: Optional[str] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     task_start: date = datetime.strptime(task_start, DATE_FORMAT)  # обратная конвертация в datetime
     deadline: date = datetime.strptime(deadline, DATE_FORMAT)  # обратная конвертация в datetime
-    executor = await users_service.get_by_email(executor_email)
+    if another_email is not None:
+        executor = await users_service.get_by_email(another_email)
+    else:
+        executor = await users_service.get_by_email(executor_email.value)
     task_object = {
         "task_start": task_start,
         "deadline": deadline,
@@ -61,11 +66,17 @@ async def create_new_task_by_form(
     TASK_ID,
     dependencies=[Depends(current_user)],
     description=TASK_PATCH_FORM,
+    summary=TASK_PATCH_FORM,
     tags=[TASKS_POST]
 )
 async def partially_update_task_by_form(
     task_id: PositiveInt,
-    deadline: Optional[str] = Query(None, example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),  # todo валидировать форму
+    deadline: Optional[str] = Query(
+        None,
+        example=CREATE_TASK_DEADLINE,
+        alias=TASK_FINISH,
+        regex=DATE_PATTERN_FORM
+    ),
     task: Optional[str] = Query(None, max_length=256, alias=TASK),
     description: Optional[str] = Query(None, max_length=256, alias=TASK_DESCRIPTION),
     is_archived: bool = Query(..., alias=IS_ARCHIVED),
@@ -97,6 +108,7 @@ async def partially_update_task_by_form(
     GET_ALL_ROUTE,
     response_model_exclude_none=True,
     description=TASK_LIST,
+    summary=TASK_LIST,
     tags=[TASKS_GET]
 )
 async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
@@ -106,7 +118,8 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
 @task_router.get(
     GET_OPENED_ROUTE,
     response_model_exclude_none=True,
-    description=TASK_LIST,
+    description=TASK_OPENED_LIST,
+    summary=TASK_OPENED_LIST,
     tags=[TASKS_GET]
 )
 async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
@@ -116,6 +129,7 @@ async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequenc
 @task_router.get(
     MY_TASKS,
     description=MY_TASKS_LIST,
+    summary=MY_TASKS_LIST,
     response_model_exclude_none=True,
     tags=[TASKS_GET]
 )
@@ -129,19 +143,21 @@ async def get_my_tasks_ordered(
 @task_router.get(
     ME_TODO,
     description=ME_TODO_LIST,
+    summary=ME_TODO_LIST,
     response_model_exclude_none=True,
     tags=[TASKS_GET]
 )
 async def get_my_tasks_todo(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
-) -> Sequence[AnalyticTaskResponse]:    # todo показывать e-mail исполнитяля в схеме
+) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id))  # noqa
 
 
 @task_router.get(
     TASK_ID,
     description=TASK_DESCRIPTION,
+    summary=TASK_DESCRIPTION,
     tags=[TASKS_GET]
 )
 async def get_task_by_id(
@@ -156,6 +172,7 @@ async def get_task_by_id(
     TASK_ID,
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
+    summary=TASK_DELETE,
     tags=[TASKS_POST]
 )
 async def remove_task(task_id: int, task_service: TaskService = Depends()) -> None:

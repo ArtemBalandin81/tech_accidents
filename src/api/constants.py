@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 from src.settings import settings
 
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
+DATE_PATTERN_FORM = "^([0-2][1-9]|3[0-2])-(0[1-9]|1[0-2])-(202[4-9]|20[3-9][0-9])$"  # 01-01-2024
 DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
@@ -39,6 +40,7 @@ CREATED = "Дата создания"
 IMPLEMENTING_MEASURES = "Предпринятые действия"
 MINS_TOTAL = "Минут итого"
 RISK_ACCIDENT = "Риск-инцидент"
+RISK_ACCIDENT_SOURCE = "Источник угроз"
 SUSPENSION_DESCRIPTION = "Описание простоя"
 SUSPENSION_DURATION = "Простой (мин)"
 SUSPENSION_FINISH = "Окончание простоя"
@@ -70,21 +72,34 @@ FILE_SAVED = "Файл успешно скопирован."
 # tasks_alias
 IS_ARCHIVED = "Задача выполнена"
 TASK = "Задача"
-TASK_CREATE_FORM = "Постановка задачи из формы"
+TASK_CREATE_FORM = "Постановка задачи из формы."
 TASK_DURATION = "Дней на задачу"
-TASK_DESCRIPTION = "Описание задачи"
+TASK_DESCRIPTION = "Описание задачи."
 TASK_EXECUTOR = "Исполнитель задачи"
 TASK_EXECUTOR_MAIL = "Почта исполнителя"
+TASK_EXECUTOR_MAIL_NOT_FROM_ENUM = "Почта исполнителя не из списка"
 TASK_FINISH = "Дедлайн по задаче"
-TASK_PATCH_FORM = "Редактирование задачи из формы"
+TASK_PATCH_FORM = "Редактирование задачи из формы."
 TASK_START = "Дата постановки задачи"
 TASK_USER_ID = "Постановщик задачи"
 
 # tasks_descriptions
 TASK_DELETE = "Удалить задачу (только админ)."
 TASK_LIST = "Список всех задач."
+TASK_OPENED_LIST = "Список невыполненных задач."
 MY_TASKS_LIST = "ЗАДАЧИ ВЫДАННЫЕ: список задач, выданных пользователем."
 ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, выданных пользователю."
 
 # warnings
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"  # todo в константы
+
+# staff todo занести в .env
+EMPLOYEES = {
+    # "1": "another",
+    "2": "user@example.com",
+    "3": "true@example.com",
+    "4": "true2@example.com",
+    "5": "user5@example.com",
+    "6": "test_user_ex@example.com",
+    "7": "user54378@example.com"
+}

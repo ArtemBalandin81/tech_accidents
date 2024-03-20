@@ -1,6 +1,7 @@
 """src/api/services/users.py"""
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Sequence
 
 from src.core.db import get_session
 from src.core.db.models import User
@@ -23,3 +24,6 @@ class UsersService:
 
     async def get_by_email(self, _email: str) -> User:
         return await self._repository.get_by_email(_email)
+
+    async def get_all(self) -> Sequence[User]:
+        return await self._repository.get_all()

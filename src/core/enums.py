@@ -1,32 +1,15 @@
 from datetime import datetime
-from enum import IntEnum, StrEnum
-from src.api.constants import DATE_TIME_FORMAT, FROM_TIME, TO_TIME
+from enum import IntEnum, StrEnum, Enum
+from src.api.constants import DATE_TIME_FORMAT, EMPLOYEES, FROM_TIME, TO_TIME
 from fastapi import Depends, Query
+from typing import Literal
 
 
-# class Executor(IntEnum):  # todo цеплять из БД пользователей как-то
-#     """Класс исполнителей."""
-#
-#     USER = 1
-#     TRUE = 2
-#     TRUE2 = 3
-#     USER5 = 4
-#     TEST_USER_EX = 5
-#     USER54378 = 6
+Executor = Enum('Executor', EMPLOYEES)
+"""Enum-класс для исполнителей задач для подстановки в форму задач в api."""
 
 
-class Executor(StrEnum):  # todo цеплять из БД пользователей как-то
-    """Класс исполнителей."""
-
-    USER = "user@example.com"
-    TRUE = "true@example.com"
-    TRUE2 = "true2@example.com"
-    USER5 = "user5@example.com"
-    TEST_USER_EX = "test_user_ex@example.com"
-    USER54378 = "user54378@example.com"
-
-
-class RiskAccidentSource(StrEnum):  # todo занести в константы
+class RiskAccidentSource(StrEnum):  # todo занести в константы и заменить на литерал
     """Класс случаев риска."""
 
     ROUTER = "Риск инцидент: сбой в работе рутера."
@@ -37,7 +20,7 @@ class RiskAccidentSource(StrEnum):  # todo занести в константы
 
 
 
-class TechProcess(IntEnum):  # todo занести в константы
+class TechProcess(IntEnum):  # todo занести в константы и заменить на литерал
     """Класс тех. процессов."""
 
     DU_25 = 25
