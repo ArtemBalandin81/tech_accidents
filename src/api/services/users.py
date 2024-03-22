@@ -1,4 +1,6 @@
 """src/api/services/users.py"""
+import json
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Sequence
@@ -27,3 +29,10 @@ class UsersService:
 
     async def get_all(self) -> Sequence[User]:
         return await self._repository.get_all()
+
+    async def get_all_active(self) -> str:
+        active_users = await self._repository.get_all_active()
+        users_dict = {}
+        for user in active_users:
+            users_dict[user.id] = user.email
+        return json.dumps(users_dict)

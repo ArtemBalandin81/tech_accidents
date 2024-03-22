@@ -1,15 +1,14 @@
-from datetime import datetime
-from enum import IntEnum, StrEnum, Enum
-from src.api.constants import DATE_TIME_FORMAT, EMPLOYEES, FROM_TIME, TO_TIME
-from fastapi import Depends, Query
-from typing import Literal
+import json
+from enum import Enum, IntEnum, StrEnum
+from src.api.constants import EMPLOYEES
+from src.settings import settings
 
-
-Executor = Enum('Executor', EMPLOYEES)
+# Executor = Enum('Executor', EMPLOYEES)
+Executor = Enum('Executor', json.loads(settings.STAFF))
 """Enum-класс для исполнителей задач для подстановки в форму задач в api."""
 
 
-class RiskAccidentSource(StrEnum):  # todo занести в константы и заменить на литерал
+class RiskAccidentSource(StrEnum):  # todo занести в константы и заменить как Executor
     """Класс случаев риска."""
 
     ROUTER = "Риск инцидент: сбой в работе рутера."
@@ -19,24 +18,9 @@ class RiskAccidentSource(StrEnum):  # todo занести в константы 
     PROVAIDER = "Риск инцидент: сбой на стороне провайдер."
 
 
-
-class TechProcess(IntEnum):  # todo занести в константы и заменить на литерал
+class TechProcess(IntEnum):  # todo занести в константы и заменить как Executor
     """Класс тех. процессов."""
 
     DU_25 = 25
     SPEC_DEP_26 = 26
     CLIENTS_27 = 27
-
-
-class Item():  # TODO Использовать класс в эндпоинте POST Suspension вместо параметров функции
-    "Класс данных для фиксации случая простоя из формы."
-    def __init__(
-            self, datetime_start, datetime_finish, risk_accident, tech_process, description,
-            implementing_measures, suspension_service
-    ):
-        self.datetime_start: datetime = Query(..., example=FROM_TIME)
-        self.datetime_finish: datetime = Query(..., example=TO_TIME)
-        self.risk_accident: RiskAccidentSource
-        self.tech_process: TechProcess
-        self.description: str = Query(..., max_length=256, example="Кратковременный сбой в работе оборудования.")
-        self.implementing_measures: str = Query(..., max_length=256, example="Перезагрузка оборудования.")

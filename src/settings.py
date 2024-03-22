@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # Настройки тестирования доступа к Интернет
     SLEEP_TEST_CONNECTION: int = 20
 
+    # Настройки персонала для постановки задач
+    STAFF: str = (
+        '{"99": "unload_users@please_check.env",'
+        ' "100": "error_of_load_users@please_check.env",'
+    )
+
     @property
     def database_url(self) -> str:
         """Получить ссылку для подключения к DB."""

@@ -1,10 +1,12 @@
 """src/api/endpoints/user.py"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
 #from app.core.user import auth_backend, fastapi_users
-from src.core.db.user import auth_backend, fastapi_users
+from src.core.db.models import User
+from src.core.db.user import auth_backend, fastapi_users, current_superuser
 #from app.schemas.user import UserCreate, UserRead, UserUpdate
 from src.api.schemas import UserCreate, UserRead, UserUpdate
+from src.api.services import UsersService
 
 router = APIRouter()
 
@@ -24,6 +26,19 @@ router.include_router(
     prefix='/users',
     tags=['users'],
 )
+
+@router.get(
+    "/users",
+    dependencies=[Depends(current_superuser)],
+    description="Получить всех активных пользователей (только админ).",  # todo в константы
+    summary="Список всех активных пользователей (только админ).",
+    tags=['users']  # todo в константы
+)
+async def get_all_active(
+    user_service: UsersService = Depends(),
+) -> str:
+    return await user_service.get_all_active()
+
 # В самом конце файла допишите свой эндпоинт.
 @router.delete(
     # Путь и тег полностью копируют параметры эндпоинта по умолчанию.

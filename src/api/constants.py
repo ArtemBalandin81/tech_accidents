@@ -95,7 +95,6 @@ ONLY_AUTHOR = "Только автор и админ могут редактир
 
 # staff todo занести в .env
 EMPLOYEES = {
-    # "1": "another",
     "2": "user@example.com",
     "3": "true@example.com",
     "4": "true2@example.com",

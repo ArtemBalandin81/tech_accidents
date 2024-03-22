@@ -7,7 +7,7 @@ from datetime import date
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
-from pydantic import PositiveInt
+from pydantic import PositiveInt, EmailStr
 
 from src.api.constants import *
 from src.api.schema import (  # todo change the "schema" to "schemas" after schemas refactoring
@@ -38,7 +38,7 @@ async def create_new_task_by_form(
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
     executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
-    another_email: Optional[str] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
+    another_email: Optional[EmailStr] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
