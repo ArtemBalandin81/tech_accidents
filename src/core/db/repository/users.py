@@ -1,4 +1,6 @@
 """src/core/db/repository/user.py"""
+from typing import Sequence
+
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,3 +27,8 @@ class UsersRepository(ContentRepository):
         if db_obj is None:
             raise NotFoundException(object_name=User.__name__, object_id=0)
         return db_obj
+
+    async def get_all_active(self,) -> Sequence[User]:
+        """Возвращает всех активных пользователей из базы данных."""
+        objects = await self._session.scalars(select(User).where(User.is_active == 1))
+        return objects.all()

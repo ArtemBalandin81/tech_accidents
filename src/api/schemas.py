@@ -57,7 +57,7 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
                 "risk_accident": ROUTER_ERROR,  # TODO валидация и отображение ошибки???
                 "datetime_start": FROM_TIME,
                 "datetime_finish": TO_TIME,
-                "tech_process": 25,  # TODO валидация и отображение ошибки???
+                "tech_process": "25",  # TODO валидация и отображение ошибки???
                 "description": INTERNET_ERROR,
                 "implementing_measures": MEASURES,
             }
@@ -96,7 +96,7 @@ class SuspensionBase(BaseModel):
         example=MEASURES
     )
 
-    @computed_field
+    @computed_field(alias=SUSPENSION_DURATION)
     @property
     def duration(self) -> int | float:
         suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)

@@ -58,12 +58,12 @@ class TaskBase(BaseModel):
         example=TASK_DESCRIPTION
     )
 
-    @computed_field
+    @computed_field(alias=TASK_DURATION)
     @property
     def duration(self) -> int | float:
-        suspension_finish = time.strptime(self.deadline.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
-        suspension_start = time.strptime(self.task_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
-        return (time.mktime(suspension_finish) - time.mktime(suspension_start))/(60*60*24)  # in days
+        task_finish = time.strptime(self.deadline.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
+        today = time.strptime(date.today().strftime(DATE_TODAY_FORMAT), DATE_TODAY_FORMAT)
+        return (time.mktime(task_finish) - time.mktime(today))/(60*60*24)  # in days
 
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
@@ -101,7 +101,7 @@ class AnalyticTaskResponse(TaskBase):
     # executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
-    is_archived: bool
+    is_archived: bool = Field(..., serialization_alias=IS_ARCHIVED)
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
