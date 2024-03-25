@@ -57,7 +57,7 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
                 "risk_accident": ROUTER_ERROR,  # TODO валидация и отображение ошибки???
                 "datetime_start": FROM_TIME,
                 "datetime_finish": TO_TIME,
-                "tech_process": 25,  # TODO валидация и отображение ошибки???
+                "tech_process": "25",  # TODO валидация и отображение ошибки???
                 "description": INTERNET_ERROR,
                 "implementing_measures": MEASURES,
             }
