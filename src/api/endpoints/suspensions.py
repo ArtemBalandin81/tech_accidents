@@ -19,9 +19,9 @@ suspension_router = APIRouter()
 
 async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:
     """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""
-    suspension_to_dict = suspension.__dict__  # todo криво, поменяй метод, метод дублируется
+    suspension_to_dict = suspension.__dict__
     suspension_to_dict["user_email"] = user.email
-    suspension_to_dict["business_process"] = TechProcess(suspension.tech_process).name
+    suspension_to_dict["business_process"] = TechProcess(str(suspension.tech_process)).name
     return AnalyticResponse(**suspension_to_dict)
 
 
@@ -49,8 +49,8 @@ async def create_new_suspension_by_form(
     suspension_object = {
         "datetime_start": datetime_start,
         "datetime_finish": datetime_finish,
-        "risk_accident": risk_accident,
-        "tech_process": tech_process,
+        "risk_accident": risk_accident.value,
+        "tech_process": tech_process.value,
         "description": description,
         "implementing_measures": implementing_measures,
     }

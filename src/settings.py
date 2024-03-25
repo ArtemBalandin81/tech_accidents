@@ -57,10 +57,22 @@ class Settings(BaseSettings):
     # Настройки тестирования доступа к Интернет
     SLEEP_TEST_CONNECTION: int = 20
 
-    # Настройки персонала для постановки задач
+    # Настройки ENUM-класса персонала для постановки задач
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
         ' "100": "error_of_load_users@please_check.env",'
+    )
+    # Настройки ENUM-класса тех.процессов для фиксации простоев
+    TECH_PROCESS: str = (
+        '{"DU_25": "25",'
+        ' "SPEC_DEP_26": "26",'
+        ' "CLIENTS_27": "27",'
+    )
+    # Настройки ENUM-класса угроз для фиксации простоев
+    RISK_SOURCE: str = (
+        '{"99": "unload_risk_source_please_check.env.",'
+        ' "100": "error_of_load_risk_accident_source@please_check.env",'
+        ' "ROUTER": "Риск инцидент: сбой в работе рутера.",'
     )
 
     @property

@@ -1,5 +1,4 @@
 """src/api/endpoints/tasks.py"""
-import requests
 import structlog
 
 from collections.abc import Sequence
@@ -18,9 +17,9 @@ from src.api.services import TaskService, UsersService
 from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user, unauthorized_user
 
-from src.core.enums import Executor, RiskAccidentSource, TechProcess  # todo занеси инструкцию к STAFF в readme
+from src.core.enums import Executor, TechProcess  # todo занеси инструкцию к STAFF в readme
 
-# log = structlog.get_logger()
+log = structlog.get_logger()
 task_router = APIRouter()
 
 
@@ -53,7 +52,7 @@ async def create_new_task_by_form(
         "task_start": task_start,
         "deadline": deadline,
         "task": task,
-        "tech_process": tech_process,
+        "tech_process": tech_process.value,
         "description": description,
         "executor": executor.id,
     }
