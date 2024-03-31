@@ -257,10 +257,11 @@ poetry run <script_name>.py
 ### Регистрация
 <details>
   <summary><h3></h3></summary>
-  1. Запустить приложение: 
-  <a href="#">http://127.0.0.1:8001/docs#/auth/register_register_api_auth_register_post</a>
+  1. Выбрать эндпоинт регистрации: 
+  <a href="#">http://localhost:8001/docs#/auth/register_register_api_auth_register_post</a>
+
   ![Изображение](media/registration.jpg)
-  ![](registration.jpg)
+
 
 </details>
 
