@@ -12,6 +12,9 @@
     </li>
     <li>
     <a href="#запуск-приложения-локально">Запуск приложения локально</a>
+    <ul>
+       <li><a href="#заполнить-env">Создать и заполнить файл .env</a></li>
+    </ul>
     </li>
     <li>
       <a href="#для-разработки">Для разработки</a>
@@ -87,7 +90,10 @@
 
 ## Запуск приложения локально
 <details>
- <summary><h3></h3></summary>
+  <summary><h3></h3></summary>
+  Запуск приложения локально в доккер-контейнере.
+
+<summary><h3>Создать и заполнить файл .env</h3></summary>
 
 1. Создайте и заполните файл `.env`:
 
@@ -152,56 +158,72 @@
     ```
 </details>
 
+
 ## Для разработки
 
 <summary><h3>Установка и настройка приложения</h3></summary>
 <details>
   <summary><h3></h3></summary>
+  Запуск приложения в режиме для разработки.
 
   1. Клонировать репозиторий.
 
-    ```shell
-    git clone https://github.com/ArtemBalandin81/tech_accidents.git
+    ```shell    
+    git clone git@github.com:ArtemBalandin81/tech_accidents.git
     cd tech_accidents
 
   2. Установить зависимости и активировать виртуальное окружение.
 
     ```shell
     poetry env use python3.11
-    poetry install
+        или указать путь до требуемой версии Python311, например:
+    poetry env use /C/Users/79129/AppData/Local/Programs/Python/Python311/python.exe
+
     poetry shell
+    poetry install
 
-    > **Note**
-   > [Документация по установке Poetry](https://python-poetry.org/docs/#installation)
+  > **Note**
+  > 
+  > [Документация по установке Poetry](https://python-poetry.org/docs/#installation)
 
-  3. Создайте и заполните файл `.env`:
-    > **Note**
-    > [Полный пример переменных окружения](env.example).
+  > **Note**
+  > 
+  > You can get the path to your Python version by running
+  > - `which python3.11` on Linux 
+  > - or `py -0p` on Windows.
+  
+> **Note**
+  > 
+  > Посмотреть установленные зависимости: `poetry show` 
+
+  3. <a href="#заполнить-env">Создать и заполнить файл .env</a>
+
+  > **Note**
+  > [Полный пример переменных окружения](env.example).
 </details>
 
 
 <summary><h3>Запуск</h3></summary>
 <details>
   <summary><h3></h3></summary>
-  1. Запустить Docker с БД.
-   
-    ```shell
-    sudo docker compose -f infra/docker-pg.yml up -d
-       
-  2. Применить миграции базы данных.
+
+  1. Применить миграции базы данных.
 
     ```shell
+    alembic revision --autogenerate -m "First migration"
     alembic upgrade head
-   
-  3. Выполнить скрипт наполнения тестовой базы.
 
-    ```shell
-    python3 fill_db.py
-
-  4. Запустить сервер приложения.
+  2. Запустить сервер приложения.
 
     ```shell
     uvicorn src:app --port 8001 --reload
+   
+  3. Зарегистрировать первого пользователя-админа в БД.
+  4. Создать `пользователя-бота` в БД для автоматической фиксации простоев:
+
+    ```
+    - auto@example.com
+    - id=2
 </details>
 
 
@@ -557,6 +579,7 @@
 
 ### Разработчики
   <summary><h3></h3></summary>
+  
   [Артем Баландин](https://github.com/ArtemBalandin81)
 
 
