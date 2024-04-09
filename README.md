@@ -158,12 +158,12 @@
 </details>
 
 
-## Для разработки
-
-<summary><h3>Установка и настройка приложения</h3></summary>
 <details>
-  <summary><h3></h3></summary>
+  <summary><h2>Для разработки</h2></summary>
+
   Запуск приложения в режиме для разработки.
+
+  <summary><h3>Установка и настройка приложения</h3></summary>
 
   1. Клонировать репозиторий.
 
@@ -202,9 +202,9 @@
 </details>
 
 
-<summary><h3>Запуск</h3></summary>
+
 <details>
-  <summary><h3></h3></summary>
+  <summary><h3>Запуск</h3></summary>
 
   1. Применить миграции базы данных.
 
@@ -226,9 +226,9 @@
 </details>
 
 
-<summary><h3>Работа с Poetry</h3></summary>
+
 <details>
-   <summary><h3></h3></summary>
+   <summary><h3>Работа с Poetry</h3></summary>
    В этом разделе представлены наиболее часто используемые команды.
 
    Подробнее: https://python-poetry.org/docs/cli/
