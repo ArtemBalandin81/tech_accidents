@@ -158,7 +158,7 @@
 </details>
 
 
-<details>
+
   <summary><h2>Для разработки</h2></summary>
 
   Запуск приложения в режиме для разработки.
@@ -264,7 +264,7 @@
    poetry run <script_name>.py
    ```
 </details>
-</details>
+
 
 ## Использование
 
