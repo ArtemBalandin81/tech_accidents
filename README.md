@@ -88,9 +88,8 @@
 [![SQLite][SQLite-badge]][SQLite-url]
 [![Docker][Docker-badge]][Docker-url]
 
-## Запуск приложения локально
 <details>
-  <summary><h3></h3></summary>
+  <summary><h2>Запуск приложения локально</h2></summary>
   Запуск приложения локально в доккер-контейнере.
 
 <summary><h3>Создать и заполнить файл .env</h3></summary>
