@@ -13,14 +13,16 @@
     <li>
     <a href="#запуск-приложения-локально">Запуск приложения локально</a>
     <ul>
-       <li><a href="#заполнить-env">Создать и заполнить файл .env</a></li>
+      <li><a href="#заполнить-env">Создать и заполнить файл .env</a></li>
+      <li><a href="#развернуть-контейнеры">Развернуть контейнеры</a></li>
+      <li><a href="#работа-в-сети">Работа в локальной сети</a></li>
     </ul>
     </li>
     <li>
       <a href="#для-разработки">Для разработки</a>
       <ul>
         <li><a href="#установка-и-настройка-приложения">Установка и настройка приложения</a></li>
-        <li><a href="#запуск">Запуск</a></li>
+        <li><a href="#запуск">ЗАПУСК</a></li>
         <li><a href="#работа-с-poetry">Работа с Poetry</a></li>
       </ul>
     </li>
@@ -94,9 +96,9 @@
 
 <summary><h3>Создать и заполнить файл .env</h3></summary>
 
-1. Создайте и заполните файл `.env`:
+1. Создать и заполнить файл `.env`:
 
-    ```dotenv
+   ```dotenv
    # Переменные приложения
    SLEEP_TEST_CONNECTION=20  # Интервал доступа к Интернет (сек.)
    SECRET_KEY=  # Cекретный ключ для генерации jwt-токенов
@@ -142,19 +144,53 @@
    > - Скопировать строковое представление пользователей и вставить его в переменную `STAFF` в файле `.env`:
    > >`STAFF="{\"1\": \"user@example.com\", \"2\": \"auto@example.com\", \"3\": \"true2@example.com\"}"` 
 
-2. Собрать и запустить контейнеры из файла infra/docker-compose.local.yml.
+<summary><h3>Развернуть контейнеры</h3></summary>
+
+2. Перед запуском контейнеров убедиться, что в проекте `"рабочие миграции"`:
+   > **Note**
+   > 
+   > - Если возникает ошибка миграций, необходимо удостовериться, что директория с миграциями пуста!!!;
+   >   `C:\...\tech_accidents\src\core\db\migrations\versions` 
+   > - Если миграции в ней есть - очистить директорию от миграций.
+   > - Если миграций нет, необходимо запустить `автогенерацию миграций`:
+   >  `alembic revision --autogenerate -m "first_migration"`
+
+3. При наличии "рабочих миграций" - можно собрать и запустить контейнеры из файла `infra/docker-compose.local.yml`. 
+Эта команда создаст и запустит контейнер бэкэнда.
+   > **Note**
+   > 
+   > Перед запуском контейнеров необходимо убедиться, что нет ранее запущенного контейнера
+   > `tech_accidents_backend`. 
+   > 
+   > Если же он имеется - необходимо перед запуском сборки контейнера
+   > удалить прежний контейнер `tech_accidents_backend` и его образ!
 
     ```shell
     docker compose -f infra/docker-compose.local.yml up
     ```
-    Эта команда создаст и запустит контейнер бэкэнда.
+   > **Note**
+   > 
+   > После успешного запуска контейнера, можно проверить работу приложения на тестовом эндпоинте:
+   > 1. Выбрать тестовый эндпоинт проверки доступа к сети интернет: 
+   [GET/api/test_get_url](http://localhost:8001/docs#/services/test_get_url_api_test_get_url_get)
+   > ![Изображение](media/test_get_url.png)
+   > 2. Нажать кнопку `Try it out`.
+   > 3. Нажать кнопку `Execute`.
+   > 4. Убедиться, что получен ответ `200` в теле ответа `Response body`.
 
-
-4. После успешного запуска контейнеров, выполните следующую команду, которая войдет в контейнер, выполнит миграции и наполнит тестовую базу данных:
-
+4. После успешного запуска контейнеров, выполните следующую команду, которая войдет в контейнер и выполнит миграции:
+   > **Note**
+   > 
+   > Перед выполнением следующей команды необходимо убедиться, что контейнер запущен.
+   > Остановить работу контейнеров в терминале можно сочетанием клавиш `CTRL + C`
+   > Команду необходимо выполнять либо в новом терминале, либо запускать контейнер в "десктопной версии" Доккер.
+   
     ```shell
-    docker exec -it procharity_bot_backend sh -c "alembic upgrade head && python3 fill_db.py"
+    docker exec -it tech_accidents_backend sh -c "alembic upgrade head"
     ```
+5. <a href="#запуск">ЗАПУСК</a></li>
+
+
 </details>
 
 
@@ -167,19 +203,23 @@
 
   1. Клонировать репозиторий.
 
-    ```shell    
-    git clone git@github.com:ArtemBalandin81/tech_accidents.git
-    cd tech_accidents
+        ```shell    
+        git clone git@github.com:ArtemBalandin81/tech_accidents.git
+        cd tech_accidents
 
   2. Установить зависимости и активировать виртуальное окружение.
 
-    ```shell
-    poetry env use python3.11
-        или указать путь до требуемой версии Python311, например:
-    poetry env use /C/Users/79129/AppData/Local/Programs/Python/Python311/python.exe
+        ```shell
+        poetry env use python3.11
+        poetry shell
+        poetry install     
 
-    poetry shell
-    poetry install
+  3. или указать путь до требуемой версии Python311, например:
+
+        ```shell
+        poetry env use /C/Users/79129/AppData/Local/Programs/Python/Python311/python.exe     
+        poetry shell
+        poetry install
 
   > **Note**
   > 
@@ -195,7 +235,7 @@
   > 
   > Посмотреть установленные зависимости: `poetry show` 
 
-  3. <a href="#заполнить-env">Создать и заполнить файл .env</a>
+  4. <a href="#заполнить-env">Создать и заполнить файл .env</a>
 
   > **Note**
   > [Полный пример переменных окружения](env.example).
@@ -204,25 +244,60 @@
 
 
 <details>
-  <summary><h3>Запуск</h3></summary>
+  <summary><h3>ЗАПУСК</h3></summary>
+
+  > **Note**
+  > 
+  > - Удостовериться, что директория с миграциями пуста!!!;
+  >   `C:\...\tech_accidents\src\core\db\migrations\versions` 
+  > - Если миграции в ней есть - очистить директорию от миграций.
 
   1. Применить миграции базы данных.
 
-    ```shell
-    alembic revision --autogenerate -m "First migration"
-    alembic upgrade head
+      ```shell
+      alembic revision --autogenerate -m "first_migration"
+      alembic upgrade head
 
   2. Запустить сервер приложения.
 
-    ```shell
-    uvicorn src:app --port 8001 --reload
+      ```shell
+      uvicorn src:app --port 8001 --reload
    
-  3. Зарегистрировать первого пользователя-админа в БД.
-  4. Создать `пользователя-бота` в БД для автоматической фиксации простоев:
+  3. Зарегистрировать первого пользователя, например:
+      ```shell
+      email: user@example.com
+      password: string_string
 
-    ```
-    - auto@example.com
-    - id=2
+  > **Note**
+  > 
+  > 1. Выбрать эндпоинт регистрации: 
+  [POST/api/auth/register](http://localhost:8001/docs#/users/users_patch_current_user_api_users_me_patch)
+  ![Изображение](media/registration.jpg)
+  > 2. Нажать кнопку `Try it out`.
+  > 3. Заполнить `"email"` и `"password"`.
+  > 4. Нажать кнопку `Execute`.
+  > 5. Удостовериться что получен ответ 200: `"Успешная регистрация"`.
+
+  4. Создать `пользователя-бота` с `id=2` в БД для автоматической фиксации простоев:
+
+      ```shell
+      - email: auto@example.com
+      - password: string_string
+      - id=2
+  > **Note**
+  > 
+  > При отсутствии пользователя-бота `auto@example.com` с `id=2` в БД 
+  > возможны ошибки в работе приложения при автоматической фиксации простоев!!!
+
+  5. Удостовериться, что зарегистрированные пользователи появились в БД (например с помощью `dbeaver`).
+
+  ![Изображение](media/registered_users.png)
+
+  6. Установить права администратора одному из пользователей в столбце таблицы `is_superuser`
+  и применить изменения, нажав кнопку `обновить` в `dbeaver`.
+
+  7. Далее можно работать с приложением, изучив примеры: <a href="#использование">Использование</a>
+
 </details>
 
 
