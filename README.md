@@ -90,10 +90,11 @@
 [![SQLite][SQLite-badge]][SQLite-url]
 [![Docker][Docker-badge]][Docker-url]
 
-<details>
-  <summary><h2>Запуск приложения локально</h2></summary>
-  Запуск приложения локально в доккер-контейнере.
 
+<summary><h2>Запуск приложения локально</h2></summary>
+Запуск приложения локально в доккер-контейнере.
+
+<details>
 <summary><h3>Создать и заполнить файл .env</h3></summary>
 
 1. Создать и заполнить файл `.env`:
