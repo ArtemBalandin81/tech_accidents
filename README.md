@@ -95,7 +95,7 @@
 Запуск приложения локально в доккер-контейнере.
 
 <details>
-<summary><h3>Создать и заполнить файл .env</h3></summary>
+  <summary><h3>Создать и заполнить файл .env</h3></summary>
 
 1. Создать и заполнить файл `.env`:
 
@@ -144,8 +144,10 @@
    > ![Изображение](media/get_api_users.png)
    > - Скопировать строковое представление пользователей и вставить его в переменную `STAFF` в файле `.env`:
    > >`STAFF="{\"1\": \"user@example.com\", \"2\": \"auto@example.com\", \"3\": \"true2@example.com\"}"` 
+</details>
 
-<summary><h3>Развернуть контейнеры</h3></summary>
+<details>
+  <summary><h3>Развернуть контейнеры</h3></summary>
 
 2. Перед запуском контейнеров убедиться, что в проекте `"рабочие миграции"`:
    > **Note**
@@ -190,7 +192,10 @@
     docker exec -it tech_accidents_backend sh -c "alembic upgrade head"
     ```
 5. <a href="#запуск">ЗАПУСК</a></li>
+</details>
 
+<details>
+  <summary><h3>Работа в локальной сети</h3></summary>
 
 </details>
 
