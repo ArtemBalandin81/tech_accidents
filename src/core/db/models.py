@@ -1,7 +1,7 @@
 """src/core/db/models.py"""
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, String
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func, expression
 from sqlalchemy.sql.sqltypes import TIMESTAMP
@@ -13,30 +13,12 @@ class Base(DeclarativeBase):  # todo без применения миграци�
     """Основа для базового класса."""
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    # created_at = Column(DateTime, server_default=func.current_timestamp())
-    # updated_at = Column(DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.current_timestamp())
-    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=func.current_timestamp(), onupdate=func.now())
-
-
-    # created_at: Mapped[datetime] = mapped_column(  # todo [SQL: ALTER TABLE suspensions ALTER COLUMN created_at TYPE DATETIME]
-    #     TIMESTAMP(timezone=True),  # error: ALTER COLUMN created_at TYPE TIMESTAMP
-    #     # DateTime(timezone=True),  # error: ALTER COLUMN created_at TYPE DATETIME
-    #     # nullable=True,  # error: ALTER COLUMN created_at DROP NOT NULL
-    #     default=func.current_timestamp(),  # table_with_timestamp_from_python
-    #     # server_default=func.current_timestamp()  # todo: if table_with_timestamp_from_db, or:
-    #     # server_default=func.utc_thing(func.current_timestamp()),
-    # )
-    # updated_at: Mapped[datetime] = mapped_column(
-    #     TIMESTAMP(timezone=True),  # error: ALTER COLUMN created_at TYPE TIMESTAMP
-    #     # DateTime(timezone=True),  # error: ALTER COLUMN created_at TYPE DATETIME
-    #     # nullable=True,  # так было в cat_charity_fund
-    #     default=func.current_timestamp(),  # table_with_timestamp_from_python
-    #     onupdate=func.now(),
-    #     # server_default=func.current_timestamp(),  # todo: if table_with_timestamp_from_db
-    #     # server_default=func.utc_thing(func.current_timestamp()),
-    #     # server_default=func.now()+timedelta(hours=5),
-    # )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP,
+        server_default=func.current_timestamp(),
+        onupdate=func.now()
+    )
     __name__: Mapped[str]
 
 
