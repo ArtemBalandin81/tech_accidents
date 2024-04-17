@@ -2,11 +2,9 @@
 import time
 
 from fastapi_users import schemas
-from pydantic import BaseModel, EmailStr, Extra, Field, field_serializer, computed_field, root_validator, validator
-
-from src.core.enums import RiskAccidentSource, TechProcess
-from typing_extensions import TypedDict
+from pydantic import BaseModel, Extra, Field, computed_field, field_serializer
 from src.api.constants import *
+from src.core.enums import RiskAccidentSource, TechProcess
 from src.settings import settings
 
 
@@ -67,7 +65,6 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
 class SuspensionBase(BaseModel):
     """Базовая схема."""
     id: int
-    # duration: int
     datetime_start: datetime = Field(
         ...,
         title=SUSPENSION_START,
@@ -80,7 +77,6 @@ class SuspensionBase(BaseModel):
         serialization_alias=SUSPENSION_FINISH,
         example=TO_TIME
     )
-
     description: str = Field(
         ...,
         max_length=256,
@@ -101,7 +97,7 @@ class SuspensionBase(BaseModel):
     def duration(self) -> int | float:
         suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
         suspension_start = time.strptime(self.datetime_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
-        return (time.mktime(suspension_finish) - time.mktime(suspension_start))/60  # in minutes
+        return (time.mktime(suspension_finish) - time.mktime(suspension_start)) / 60  # in minutes
 
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
@@ -117,11 +113,6 @@ class SuspensionResponse(SuspensionBase):
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
-    @field_serializer("datetime_start", "datetime_finish", "created_at", "updated_at")
-    def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
-        """Отображает сохраненное время сервера с требуемым сдвигом."""
-        return server_time.strftime(DATE_TIME_FORMAT)
-
     @field_serializer("created_at", "updated_at")
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
         """Отображает сохраненное время сервера с требуемым сдвигом."""
@@ -134,12 +125,16 @@ class SuspensionResponse(SuspensionBase):
 class AnalyticResponse(SuspensionBase):
     """Схема ответа для аналитики."""
     risk_accident: str = Field(..., serialization_alias=RISK_ACCIDENT)
-    # tech_process: int
     business_process: str = Field(..., serialization_alias=TECH_PROCESS)
     user_email: str = Field(..., serialization_alias=USER_MAIL)
     user_id: int = Field(..., serialization_alias=USER_ID)
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
+        """Отображает сохраненное время сервера с требуемым сдвигом."""
+        return (server_time + timedelta(hours=settings.TIMEZONE_OFFSET)).strftime(DATE_TIME_FORMAT)
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
@@ -153,7 +148,6 @@ class SuspensionAnalytics(BaseModel):
     suspension_max_time_for_period: int = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
     last_time_suspension: datetime = Field(..., serialization_alias=SUSPENSION_LAST_TIME)
     last_time_suspension_id: int = Field(..., serialization_alias=SUSPENSION_LAST_ID)
-    # suspensions: list[SuspensionResponse] = {}
     suspensions_detailed: list[AnalyticResponse] = {}
 
     class Config:

@@ -1,23 +1,17 @@
 """src/api/endpoints/tasks.py"""
-import structlog
-
 from collections.abc import Sequence
 from datetime import date
 from typing import Optional
 
+import structlog
 from fastapi import APIRouter, Depends, Query
-from pydantic import PositiveInt, EmailStr
-
+from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import (  # todo change the "schema" to "schemas" after schemas refactoring
-    AnalyticTaskResponse,
-    TaskResponse,
-)
+from src.api.schema import AnalyticTaskResponse  # todo change the "schema" to "schemas" after schemas refactoring
 from src.api.services import TaskService, UsersService
 from src.core.db.models import User
-from src.core.db.user import current_superuser, current_user, unauthorized_user
-
-from src.core.enums import Executor, TechProcess  # todo занеси инструкцию к STAFF в readme
+from src.core.db.user import current_superuser, current_user
+from src.core.enums import Executor, TechProcess
 
 log = structlog.get_logger()
 task_router = APIRouter()

@@ -3,15 +3,11 @@ from collections.abc import Sequence
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-
 from src.api.constants import *
-from src.api.schemas import (
-    AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
-)
+from src.api.schemas import AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 from src.api.services import SuspensionService, UsersService
 from src.core.db.models import Suspension, User
-from src.core.db.user import current_superuser, current_user, unauthorized_user
-
+from src.core.db.user import current_superuser, current_user
 from src.core.enums import RiskAccidentSource, TechProcess
 
 suspension_router = APIRouter()
@@ -64,7 +60,7 @@ async def create_new_suspension_by_form(
     response_model=SuspensionResponse,
     description="Фиксации случая простоя из json.",  # todo в константы
     summary="Фиксации случая простоя из json.",
-    tags=["Suspensions POST"]  # todo в константы
+    tags=["Suspensions POST"]
 )
 async def create_new_suspension(
     suspension_schemas: SuspensionRequest,

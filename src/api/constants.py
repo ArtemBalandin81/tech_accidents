@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+
 from src.settings import settings
 
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
@@ -61,7 +62,7 @@ INTERNET_ERROR = "Сбой подключения к интернет."
 MEASURES = "Перезагрузка оборудования."
 
 # db_backups
-COPY_FILE_ERROR ="Ошибка при копировании файла."
+COPY_FILE_ERROR = "Ошибка при копировании файла."
 DELETED_OK = " успешно удален."
 DIR_CREATED = "Создан каталог."
 DIR_CREATED_ERROR = "Ошибка создания каталога."

@@ -1,9 +1,9 @@
 """src/api/services/suspension.py"""
 from collections.abc import Sequence
 from datetime import datetime, timedelta
+
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD
 from src.api.schemas import SuspensionRequest
 from src.core.db import get_session
@@ -29,7 +29,7 @@ class SuspensionService:
             in_object: SuspensionRequest | dict,  # todo сервис не должен принимать pydantic: ждет схему или словарь
             user: User | int
     ):
-        if type(in_object) != dict:
+        if not isinstance(in_object, dict):
             in_object = in_object.dict()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
             raise HTTPException(status_code=422, detail="Check start_time >= finish_time")

@@ -1,5 +1,4 @@
 from fastapi import APIRouter
-
 from src.api.endpoints import suspension_router, task_router, test_router, user_router
 from src.settings import settings
 

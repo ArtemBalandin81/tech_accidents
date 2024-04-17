@@ -1,10 +1,9 @@
 """src/api/services/users.py"""
 import json
+from typing import Sequence
 
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Sequence
-
 from src.core.db import get_session
 from src.core.db.models import User
 from src.core.db.repository.users import UsersRepository

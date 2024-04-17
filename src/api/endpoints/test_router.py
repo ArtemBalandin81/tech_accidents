@@ -1,9 +1,7 @@
 """src/api/endpoints/test_router.py"""
 import requests
 import structlog
-
-from fastapi import APIRouter, Query, Depends
-
+from fastapi import APIRouter, Depends, Query
 from src.api.constants import ANALYTIC_TO_TIME, DIR_CREATED_ERROR
 from src.api.schemas import DBBackupResponse
 from src.core.db.user import current_superuser
@@ -11,6 +9,7 @@ from src.services.db_backup import DBBackupService
 
 log = structlog.get_logger()
 test_router = APIRouter()
+
 
 @test_router.get("/test_get_url", description="Проверка доступа к сайту.")
 def test_get_url(
