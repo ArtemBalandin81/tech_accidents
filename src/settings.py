@@ -28,9 +28,11 @@ class Settings(BaseSettings):
     APP_TITLE: str = "Учет фактов простоя ИС"
     APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
-    SECRET_KEY: str = "secret_key"
-    ROOT_PATH: str = "/api"
     DEBUG: bool = False
+    ROOT_PATH: str = "/api"
+    SECRET_KEY: str = "secret_key"
+    TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
+
     # USE_NGROK: bool = False
 
     # Параметры подключения к БД

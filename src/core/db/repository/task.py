@@ -1,9 +1,9 @@
 """src/core/db/repository/task.py"""
 from collections.abc import Sequence
+
 from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.db.db import get_session
 from src.core.db.models import Task
 from src.core.db.repository.base import ContentRepository

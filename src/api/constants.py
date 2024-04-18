@@ -27,6 +27,7 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 ANALYTICS = "/analytics"
 GET_ALL_ROUTE = "/"
 GET_OPENED_ROUTE = "/opened"
+LOGIN = "api/auth/jwt/login"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
 MY_SUSPENSIONS = "/my_suspensions"
@@ -35,6 +36,10 @@ TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
 TASKS_POST = "Tasks POST"
 TASKS_POST_BY_FORM = "/form"
+
+# auth
+IS_REGISTERED = " is registered."
+
 
 # suspensions_alias
 CREATED = "Дата создания"
@@ -92,4 +97,9 @@ MY_TASKS_LIST = "ЗАДАЧИ ВЫДАННЫЕ: список задач, выд�
 ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, выданных пользователю."
 
 # warnings
+ALREADY_EXISTS = " уже существует"
+NOT_FOUND = " - hasn't found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
+PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
+PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
+WITH_ID = " with id - "
