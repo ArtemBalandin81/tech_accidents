@@ -1,3 +1,4 @@
+"""src/api/constants.py"""
 from datetime import datetime, timedelta, timezone
 
 from src.settings import settings
@@ -8,8 +9,6 @@ DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
 DISPLAY_TIME = 60 * 24
-CONNECTION_TEST_URL_BASE = "https://www.agidel-am.ru"
-CONNECTION_TEST_URL_YA = "https://www.ya.ru"
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
 ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
@@ -98,8 +97,21 @@ ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, вы
 
 # warnings
 ALREADY_EXISTS = " уже существует"
+FUNCTION_STARTS = "Запущенна функция: "
+MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
 NOT_FOUND = " - hasn't found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
 PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
 PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
+
+# register_connection_errors: check Internet access info
+FAILED_GET_URL = "Failed_get_url."
+FIRST_COUNTER = "First_time_counter."
+INFO_CONNECTIONS = "Info_connections"
+SUPPOSE_OK = "Didn't try, suppose OK!"
+SUSPENSION_CREATED = "Suspension_created."
+SUSPENSION_DB_LOADED = "Suspension_loaded_in_db."
+TIME_COUNTER = "Time_counter."
+TIME_INFO = "time"
+URL_CONNECTION_ERROR = "ConnectionError"
 WITH_ID = " with id - "

@@ -1,12 +1,12 @@
+"""src/core/logging/setup.py"""
 import logging
 import logging.config
 import os
 import sys
 
 import structlog
-from structlog.types import EventDict, Processor
-
 from src.settings import settings
+from structlog.types import EventDict, Processor
 
 os.makedirs(settings.LOG_DIR, exist_ok=True)
 

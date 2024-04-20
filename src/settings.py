@@ -1,12 +1,8 @@
 """src/settings.py"""
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import urljoin
 
-# from pydantic import BaseSettings, validator  # УСТАРЕЛО!
-from pydantic import validator
 from pydantic_settings import BaseSettings
-# from pydantic.tools import lru_cache  # УСТАРЕЛО!
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -33,8 +29,6 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "secret_key"
     TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
 
-    # USE_NGROK: bool = False
-
     # Параметры подключения к БД
     DATABASE_URL: str = "sqlite+aiosqlite:///./tech_accident_db_local.db"
     DATABASE_NAME: str = "tech_accident_db_local.db"
@@ -57,14 +51,18 @@ class Settings(BaseSettings):
     LOG_FILES_TO_KEEP: int = 5
 
     # Настройки тестирования доступа к Интернет
+    CONNECTION_TEST_URL_BASE: str = "https://www.agidel-am.ru"
+    CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
 
     # Настройки ENUM-класса персонала для постановки задач
+    BOT_USER: int = 2
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
         ' "100": "error_of_load_users@please_check.env",'
     )
     # Настройки ENUM-класса тех.процессов для фиксации простоев
+    INTERNET_ACCESS_TECH_PROCESS: int = 25  # Наиболее критический к отсутствию доступа в Интернет ТП в Организации
     TECH_PROCESS: str = (
         '{"DU_25": "25",'
         ' "SPEC_DEP_26": "26",'
@@ -87,18 +85,9 @@ class Settings(BaseSettings):
         # )
         return Settings.DATABASE_URL  # "sqlite+aiosqlite:///./tech_accident_db_local.db"
 
-    # class Config:  # Устарело TODO убрать
-    #     #env_file = get_env_path()
-    #     env_file = '.env'
-
-    # Настройки бота
-    #BOT_TOKEN: str
-    #BOT_WEBHOOK_MODE: bool = False
-
 
 @lru_cache()
 def get_settings():
-    # return Settings()  # Устарело
     return Settings(_env_file=get_env_path())  # type: ignore
 
 

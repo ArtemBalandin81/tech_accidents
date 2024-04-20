@@ -1,19 +1,18 @@
 """src/application.py"""
 import asyncio
-import structlog
-
-from asgi_correlation_id import CorrelationIdMiddleware
 from datetime import datetime
+
+import structlog
+from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging.middleware import LoggingMiddleware
 from src.core.logging.setup import setup_logging
 from src.core.logging.utils import logger_decor
-from src.settings import settings
-from src.services.register_connection_errors import ConnectionErrorService
 from src.services.db_backup import DBBackupService
-
+from src.services.register_connection_errors import ConnectionErrorService
+from src.settings import settings
 
 log = structlog.get_logger().bind(file_name=__file__)
 
@@ -24,7 +23,7 @@ def include_router(app: FastAPI):
     app.include_router(api_router)
 
 
-def add_middleware(app: FastAPI):  #todo логгируется только сервер, но не мои инфо - разобраться как так-то!!!
+def add_middleware(app: FastAPI):  # todo логгируется только сервер, но не мои инфо - разобраться как так-то!!!
     origins = ["*"]
     app.add_middleware(
         CORSMiddleware,
