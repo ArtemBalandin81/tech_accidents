@@ -1,13 +1,13 @@
 """src/api/services/task.py"""
 from collections.abc import Sequence
+
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.core.enums import TechProcess
 from src.core.db import get_session
 from src.core.db.models import Task, User
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
+from src.core.enums import TechProcess
 
 
 class TaskService:
@@ -33,8 +33,7 @@ class TaskService:
         task_to_dict = task.__dict__
         task_to_dict["user_email"] = user.email
         task_to_dict["executor_email"] = executor.email
-        # task_to_dict["business_process"] = TechProcess(task.tech_process).name
-        task_to_dict["business_process"] = TechProcess(str(task.tech_process)).name
+        task_to_dict["business_process"] = TechProcess(str(task.tech_process)).name  # str требуется enum-классу
         return task_to_dict
 
     async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base

@@ -2,7 +2,6 @@
 import abc
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.db.repository import ContentRepository
 
 

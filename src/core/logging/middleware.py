@@ -1,3 +1,4 @@
+"""src/core/logging/middleware.py"""
 import time
 
 import structlog

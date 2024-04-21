@@ -3,10 +3,9 @@ import abc
 from datetime import datetime
 from typing import Sequence, TypeVar
 
-from sqlalchemy import false, func, select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.exceptions import AlreadyExistsException, NotFoundException
 from src.core.utils import auto_commit
 

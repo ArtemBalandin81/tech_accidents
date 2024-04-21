@@ -1,18 +1,13 @@
 """src/api/endpoints/user.py"""
-from fastapi import APIRouter, HTTPException, Depends
-
-#from app.core.user import auth_backend, fastapi_users
-from src.core.db.models import User
-from src.core.db.user import auth_backend, fastapi_users, current_superuser
-#from app.schemas.user import UserCreate, UserRead, UserUpdate
+from fastapi import APIRouter, Depends, HTTPException
 from src.api.schemas import UserCreate, UserRead, UserUpdate
 from src.api.services import UsersService
+from src.core.db.user import auth_backend, current_superuser, fastapi_users
 
 router = APIRouter()
 
 router.include_router(
-    # В роутер аутентификации передается объект бэкенда аутентификации.
-    fastapi_users.get_auth_router(auth_backend),
+    fastapi_users.get_auth_router(auth_backend),  # В роутер аутентификации передается объект бэкенда аутентификации.
     prefix='/auth/jwt',
     tags=['auth'],
 )
@@ -27,6 +22,7 @@ router.include_router(
     tags=['users'],
 )
 
+
 @router.get(
     "/users",
     dependencies=[Depends(current_superuser)],
@@ -39,18 +35,15 @@ async def get_all_active(
 ) -> str:
     return await user_service.get_all_active()
 
-# В самом конце файла допишите свой эндпоинт.
+
 @router.delete(
-    # Путь и тег полностью копируют параметры эндпоинта по умолчанию.
-    '/users/{id}',
+    '/users/{id}',  # todo в константы
     tags=['users'],
-    # Параметр, который показывает, что метод устарел.
-    deprecated=True
+    deprecated=True  # Параметр, который показывает, что метод устарел.
 )
 def delete_user(id: str):
     """Не используйте удаление, деактивируйте пользователей."""
     raise HTTPException(
-        # 405 ошибка - метод не разрешен.
-        status_code=405,
+        status_code=405,  # 405 ошибка - метод не разрешен.
         detail="Удаление пользователей запрещено!"
     )

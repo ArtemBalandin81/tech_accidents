@@ -1,12 +1,12 @@
 """src/core/db/repository/suspension.py"""
 from collections.abc import Sequence
 from datetime import datetime
+
 from fastapi import Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.core.db.db import get_session
-from src.core.db.models import Suspension, User
+from src.core.db.models import Suspension
 from src.core.db.repository.base import ContentRepository
 
 

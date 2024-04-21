@@ -1,12 +1,11 @@
 """src/core/db/models.py"""
 from datetime import date, datetime
 
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-from sqlalchemy.sql import func, expression
+from sqlalchemy.sql import expression, func
 from sqlalchemy.sql.sqltypes import TIMESTAMP
-
-from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 
 
 class Base(DeclarativeBase):  # todo без применения миграций не работают изменения

@@ -1,9 +1,4 @@
-import sys
 from functools import wraps
-
-from src.settings import settings
-
-TASK_DEADLINE_FORMAT = "%d.%m.%y"
 
 
 def auto_commit(func):

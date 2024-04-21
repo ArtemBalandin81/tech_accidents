@@ -1,4 +1,6 @@
+"""src/api/constants.py"""
 from datetime import datetime, timedelta, timezone
+
 from src.settings import settings
 
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
@@ -7,8 +9,6 @@ DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
 DISPLAY_TIME = 60 * 24
-CONNECTION_TEST_URL_BASE = "https://www.agidel-am.ru"
-CONNECTION_TEST_URL_YA = "https://www.ya.ru"
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
 ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
@@ -26,6 +26,7 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 ANALYTICS = "/analytics"
 GET_ALL_ROUTE = "/"
 GET_OPENED_ROUTE = "/opened"
+LOGIN = "api/auth/jwt/login"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
 MY_SUSPENSIONS = "/my_suspensions"
@@ -34,6 +35,10 @@ TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
 TASKS_POST = "Tasks POST"
 TASKS_POST_BY_FORM = "/form"
+
+# auth
+IS_REGISTERED = " is registered."
+
 
 # suspensions_alias
 CREATED = "Дата создания"
@@ -61,7 +66,7 @@ INTERNET_ERROR = "Сбой подключения к интернет."
 MEASURES = "Перезагрузка оборудования."
 
 # db_backups
-COPY_FILE_ERROR ="Ошибка при копировании файла."
+COPY_FILE_ERROR = "Ошибка при копировании файла."
 DELETED_OK = " успешно удален."
 DIR_CREATED = "Создан каталог."
 DIR_CREATED_ERROR = "Ошибка создания каталога."
@@ -91,4 +96,22 @@ MY_TASKS_LIST = "ЗАДАЧИ ВЫДАННЫЕ: список задач, выд�
 ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, выданных пользователю."
 
 # warnings
+ALREADY_EXISTS = " уже существует"
+FUNCTION_STARTS = "Запущенна функция: "
+MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
+NOT_FOUND = " - hasn't found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
+PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
+PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
+
+# register_connection_errors: check Internet access info
+FAILED_GET_URL = "Failed_get_url."
+FIRST_COUNTER = "First_time_counter."
+INFO_CONNECTIONS = "Info_connections"
+SUPPOSE_OK = "Didn't try, suppose OK!"
+SUSPENSION_CREATED = "Suspension_created."
+SUSPENSION_DB_LOADED = "Suspension_loaded_in_db."
+TIME_COUNTER = "Time_counter."
+TIME_INFO = "time"
+URL_CONNECTION_ERROR = "ConnectionError"
+WITH_ID = " with id - "
