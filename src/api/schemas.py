@@ -148,7 +148,7 @@ class SuspensionAnalytics(BaseModel):
     suspension_max_time_for_period: int = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
     last_time_suspension: datetime = Field(..., serialization_alias=SUSPENSION_LAST_TIME)
     last_time_suspension_id: int = Field(..., serialization_alias=SUSPENSION_LAST_ID)
-    suspensions_detailed: list[AnalyticResponse] = {}
+    suspensions_detailed: list[AnalyticResponse] = {}  # todo = Field(..., serialization_alias=???) мн без = {}
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'

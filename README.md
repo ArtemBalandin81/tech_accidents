@@ -171,6 +171,7 @@
     SECRET_KEY=  # Cекретный ключ для генерации jwt-токенов
 
     # Переменные базы данных
+    DB_BACKUP=False  # Включение(True) | Выключение(False) режим авто архивирования БД
     MAX_DB_BACKUP_FILES=50  # Максимальное количество файлов бэкапа БД
     SLEEP_DB_BACKUP=43200  # Интервал архивирования БД в сек (12 ч.)
     DATABASE_NAME=tech_accident_db_local.db  # Имя БД

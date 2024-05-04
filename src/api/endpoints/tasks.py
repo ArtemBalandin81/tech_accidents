@@ -1,20 +1,26 @@
 """src/api/endpoints/tasks.py"""
 from collections.abc import Sequence
-from datetime import date
+from datetime import date, datetime
+from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi.responses import FileResponse
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import AnalyticTaskResponse  # todo change the "schema" to "schemas" after schemas refactoring
-from src.api.services import TaskService, UsersService
+from src.api.schema import AnalyticTaskResponse  # todo subst to "schemas" after schemas refactoring
+from src.api.services import FileService, TaskService, UsersService
 from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import Executor, TechProcess
 
 log = structlog.get_logger()
 task_router = APIRouter()
+file_router = APIRouter()
+
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
+FILES_DIR = SERVICES_DIR.joinpath("uploaded_files")  # todo в settings & .env!
 
 
 @task_router.post(
@@ -32,10 +38,16 @@ async def create_new_task_by_form(
     description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
     executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
     another_email: Optional[EmailStr] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
+    some_file: UploadFile = File(...),  # todo upload file
+    several_files: list[UploadFile] = File(...),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
+    print(f'SOME_FILE.file: {some_file.file.read()}')
+    # print(f'SOME_FILE.file: {some_file.file.write(s: AnyStr)}')
+    print(f'FILES: {[file.filename for file in several_files]}')
+
     task_start: date = datetime.strptime(task_start, DATE_FORMAT)  # обратная конвертация в datetime
     deadline: date = datetime.strptime(deadline, DATE_FORMAT)  # обратная конвертация в datetime
     if another_email is not None:

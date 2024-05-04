@@ -9,6 +9,7 @@ DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
 DISPLAY_TIME = 60 * 24
+FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
 ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
@@ -17,10 +18,12 @@ CREATE_SUSPENSION_FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).strf
 CREATE_SUSPENSION_TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).strftime(DATE_TIME_FORMAT)
 CREATE_TASK_START = (datetime.now(TZINFO)).strftime(DATE_FORMAT)
 CREATE_TASK_DEADLINE = (datetime.now(TZINFO) + timedelta(days=7)).strftime(DATE_FORMAT)
+FILE_NAME_SAVE_FORMAT = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)
 FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).isoformat(timespec='minutes')
 FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='minutes')
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
+
 
 # endpoints
 ANALYTICS = "/analytics"

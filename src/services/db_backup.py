@@ -14,6 +14,7 @@ log = structlog.get_logger()
 
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent
 BACKUP_DIR = SERVICES_DIR.joinpath(settings.DB_BACKUP_DIR)
+FILES_DIR = SERVICES_DIR.joinpath("uploaded_files")  # todo в settings & .env
 
 
 class DBBackupService:
@@ -24,7 +25,7 @@ class DBBackupService:
     def __init__(self,) -> None:
         self.db_path = BACKUP_DIR.joinpath(settings.DATABASE_NAME)
 
-    def check_backup_dir_exists(self, folder=BACKUP_DIR) -> None:  # Path - не мб асинхронным?
+    def check_folder_exists(self, folder=BACKUP_DIR) -> None:  # Path - не мб асинхронным?
         """ Проверяет наличие каталога, и создает его если нет."""
         if not Path(folder).exists():
             folder.mkdir(parents=True, exist_ok=True)
@@ -36,15 +37,16 @@ class DBBackupService:
 
     def get_list_of_names_in_dir(self, folder=BACKUP_DIR) -> list | Generator:  # Path - не мб асинхронным?
         """ Возвращает список файлов в каталоге, соответсвующих регулярному выражению файла-даты."""
-        self.check_backup_dir_exists(folder)
+        self.check_folder_exists(folder)
         return [re.findall(DATE_PATTERN, str(file)) for file in folder.glob("*.db")]
         # return folder.glob("*.db")  # если нужно вернуть итератор
 
     def make_copy_db(self, folder=BACKUP_DIR) -> None:
         """ Проверяет есть ли каталог для архивов БД и копирует архив в этот каталог."""
         try:
-            self.check_backup_dir_exists()
+            self.check_folder_exists()
             db_to_backup = SERVICES_DIR.joinpath(settings.DATABASE_NAME)
+            print(f'PRINT: {db_to_backup}')  # PRINT: C:\Dev\tech_accidents\tech_accident_db_local.db todo delete!!!
             copy2(db_to_backup, BACKUP_DIR)
             new_backup_db = self.db_path.rename(BACKUP_DIR.joinpath("{}{}".format(date.today(), ".db")))
             log.info("{}".format(FILE_SAVED), file=new_backup_db)

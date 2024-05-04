@@ -42,14 +42,14 @@ class TaskService:
     ) -> Sequence[dict]:
         """Готовит список словарей для отправки в api."""
         list_changed_response = []
-        if type(tasks) is not list:
+        if type(tasks) is not list:  # todo use isinstance() instead of type()
             list_changed_response.append(await self.change_schema_response(tasks))
         else:
             for task in tasks:
                 list_changed_response.append(await self.change_schema_response(task))
         return list_changed_response
 
-    async def actualize_object(
+    async def actualize_object(  # todo перенести в универсальные сервисы
             self,
             task_id: int | None,
             in_object: dict,
