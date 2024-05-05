@@ -11,6 +11,9 @@ DATE_TODAY_FORMAT = "%Y-%m-%d"
 DISPLAY_TIME = 60 * 24
 FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 
+# Таблица перевода
+TRANSLATION_TABLE = str.maketrans("абвгдеёжзийклмнопрстуфхцчшщъыьэюя", "abvgdeezzijklmnoprstufhccss!y!eui")
+
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
 ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
 ANALYTIC_TO_TIME = (datetime.now(TZINFO)).strftime(DATE_TIME_FORMAT)

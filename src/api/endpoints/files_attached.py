@@ -24,11 +24,12 @@ file_router = APIRouter()
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
 FILES_DIR = SERVICES_DIR.joinpath("uploaded_files")  # todo в settings & .env!
 
-
+# todo этот эндпоинт более не нужен, т.к. загружать теперь можно как один, так и несколько файлов - УДАЛИТЬ!!!
 @file_router.post(
-    "/files",
-    description="Загрузка файлов из формы.",
-    summary="Загрузка файлов из формы.",
+    "/download_file",
+    # response_model=,  # todo response_model upload file
+    description="Загрузка файла из формы.",
+    summary="Загрузка файла из формы.",
     tags=["Files"]
 )
 async def upload_new_file_by_form(
@@ -41,10 +42,12 @@ async def upload_new_file_by_form(
     user: User = Depends(current_user),
 # ) -> AnalyticTaskResponse:
 ):
+    # todo проверять тип загружаемого файла: только (".doc", ".docx", ".xls", ".xlsx", ".img", ".png", ".txt", ".pdf", ".jpeg")
+    # todo проверять размер загружаемого файла: не более 10 МБ
     file_name = FILE_NAME_SAVE_FORMAT + "_" + file_attached.filename  # todo переводить кирилицу в латиницу
     # file_name = file_attached.filename
     try:  # todo сделать функцию и вынести в сервис + возможность обработки нескольких файлов
-        with open(FILES_DIR.joinpath(file_name), "wb") as f:
+        with open(FILES_DIR.joinpath(file_name), "wb") as f:  # todo проверять что есть, иначе - создавать директорию
             f.write(file_attached.file.read())
     except Exception as e:
         return {"message": e.args}
@@ -55,7 +58,25 @@ async def upload_new_file_by_form(
         "file": bytes(file_name, 'utf-8'),
         # "file": bytes(file_attached.content_type, 'utf-8'),
     }
-    new_file = await file_service.actualize_object(None, file_object, user)
+    new_file_db = await file_service.actualize_object(None, file_object, user)
+
+
+@file_router.post(
+    "/download_files",
+    # response_model=,  # todo response_model upload file
+    description="Загрузка файлов из формы.",
+    summary="Загрузка файлов из формы.",
+    tags=["Files"]
+)
+async def upload_files_by_form(
+    *,
+    files_to_upload: list[UploadFile] = File(...),
+    file_service: FileService = Depends(),
+    user: User = Depends(current_user),
+# ) -> AnalyticTaskResponse:
+):
+    await file_service.download_files(files_to_upload, FILES_DIR)
+    await file_service.write_files_in_db(files_to_upload, user)
 
 
 @file_router.get(

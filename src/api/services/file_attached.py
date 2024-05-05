@@ -1,7 +1,7 @@
 """src/api/services/file_attached.py"""
 from collections.abc import Sequence
 
-from fastapi import Depends, HTTPException, Response
+from fastapi import Depends, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
 from src.core.db.models import FileAttached, User
@@ -10,7 +10,7 @@ from src.core.db.repository.users import UsersRepository
 from pathlib import Path
 import zipfile
 import io
-from src.api.constants import FILE_NAME_SAVE_FORMAT
+from src.api.constants import FILE_NAME_SAVE_FORMAT, TRANSLATION_TABLE
 import os
 
 
@@ -27,7 +27,19 @@ class FileService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-    async def zip_files(self, files_to_zip: list[str | Path]) -> Response:
+    # todo проверять тип загружаемого файла: только (".doc", ".docx", ".xls", ".xlsx", ".img", ".png", ".txt", ".pdf", ".jpeg")
+    # todo проверять размер загружаемого файла: не более 10 МБ
+    async def download_files(self, files: list[UploadFile], saved_files_folder: Path) -> None | dict:
+        """Загружает файлы в указанный каталог на сервере."""
+        for file in files:
+            file_name = FILE_NAME_SAVE_FORMAT + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            try:
+                with open(saved_files_folder.joinpath(file_name), "wb") as f:  # todo проверять что есть, иначе - создавать директорию
+                    f.write(file.file.read())
+            except Exception as e:
+                return {"message": e.args}
+
+    async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
         virtual_binary_file = io.BytesIO()  # Open to grab in-memory ZIP contents: virtual binary data file for r & w
         zip_file = zipfile.ZipFile(virtual_binary_file, "w")
@@ -41,6 +53,15 @@ class FileService:
             headers={'Content-Disposition': f'attachment;filename={FILE_NAME_SAVE_FORMAT + "_archive.zip"}'}
         )
 
+    async def write_files_in_db(self, files_to_write: list[UploadFile], user: User) -> None:
+        """Записывает в БД переданные файлы."""
+        for file in files_to_write:
+            file_name = FILE_NAME_SAVE_FORMAT + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_object = {
+                "name": file_name,
+                "file": bytes(file.filename + "---" + str(round(file.size/1000000, 2)), 'utf-8'),  # todo сделай красиво
+            }
+            await self.actualize_object(None, file_object, user)
 
     # async def change_schema_response(
     #         self,
