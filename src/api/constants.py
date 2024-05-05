@@ -46,6 +46,10 @@ TASKS_POST_BY_FORM = "/form"
 IS_REGISTERED = " is registered."
 
 
+# files_alias
+FILES_UPLOADED = "Загруженные файлы"
+FILES_WRITTEN_DB = "Файлы записанные в базу данных"
+
 # suspensions_alias
 CREATED = "Дата создания"
 IMPLEMENTING_MEASURES = "Предпринятые действия"
@@ -103,6 +107,7 @@ ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, вы
 
 # warnings
 ALREADY_EXISTS = " уже существует"
+FILES_DOWNLOAD_ERROR = "Ошибка загрузки файлов и записи их в БД: "
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
 NOT_FOUND = " - hasn't found!"

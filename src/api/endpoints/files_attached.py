@@ -8,11 +8,11 @@ import zipfile
 import io
 
 import structlog
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import FileBase, FileAttachedResponse  # todo subst to "schemas" after schemas refactoring
+from src.api.schema import FileBase, FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after schemas refactoring
 from src.api.services import FileService, TaskService, UsersService
 from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user
@@ -22,61 +22,35 @@ log = structlog.get_logger()
 file_router = APIRouter()
 
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath("uploaded_files")  # todo в settings & .env!
+FILES_DIR = SERVICES_DIR.joinpath("uploaded_files2")  # todo в settings & .env!
 
-# todo этот эндпоинт более не нужен, т.к. загружать теперь можно как один, так и несколько файлов - УДАЛИТЬ!!!
+# todo проверить схемы ответа в схемах апи 200, 401, 404 и т.п.
 @file_router.post(
-    "/download_file",
-    # response_model=,  # todo response_model upload file
-    description="Загрузка файла из формы.",
-    summary="Загрузка файла из формы.",
-    tags=["Files"]
-)
-async def upload_new_file_by_form(
-    *,
-    file_attached: UploadFile = File(...),  # todo upload file
-    # file_name: str = Query(..., max_length=256, example="Some_file_name", alias="Имя файла"),
-    # several_files: list[UploadFile] = File(...),
-    file_service: FileService = Depends(),
-    users_service: UsersService = Depends(),
-    user: User = Depends(current_user),
-# ) -> AnalyticTaskResponse:
-):
-    # todo проверять тип загружаемого файла: только (".doc", ".docx", ".xls", ".xlsx", ".img", ".png", ".txt", ".pdf", ".jpeg")
-    # todo проверять размер загружаемого файла: не более 10 МБ
-    file_name = FILE_NAME_SAVE_FORMAT + "_" + file_attached.filename  # todo переводить кирилицу в латиницу
-    # file_name = file_attached.filename
-    try:  # todo сделать функцию и вынести в сервис + возможность обработки нескольких файлов
-        with open(FILES_DIR.joinpath(file_name), "wb") as f:  # todo проверять что есть, иначе - создавать директорию
-            f.write(file_attached.file.read())
-    except Exception as e:
-        return {"message": e.args}
-
-    file_object = {
-        "name": file_name,
-        # "file": file_attached.file.read(),
-        "file": bytes(file_name, 'utf-8'),
-        # "file": bytes(file_attached.content_type, 'utf-8'),
-    }
-    new_file_db = await file_service.actualize_object(None, file_object, user)
-
-
-@file_router.post(
-    "/download_files",
-    # response_model=,  # todo response_model upload file
-    description="Загрузка файлов из формы.",
-    summary="Загрузка файлов из формы.",
-    tags=["Files"]
+    "/download_files",  # todo в константы
+    description="Загрузка файлов из формы.",  # todo в константы
+    summary="Загрузка файлов из формы.",  # todo в константы
+    tags=["Files"]  # todo в константы
 )
 async def upload_files_by_form(
     *,
     files_to_upload: list[UploadFile] = File(...),
     file_service: FileService = Depends(),
-    user: User = Depends(current_user),
-# ) -> AnalyticTaskResponse:
-):
-    await file_service.download_files(files_to_upload, FILES_DIR)
-    await file_service.write_files_in_db(files_to_upload, user)
+    user: User = Depends(current_user),  # todo убрать, ну нужен и из сервисов тоже
+) -> FileUploadedResponse:
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # for equal file_name in db & upload folder
+    download_file_names = await file_service.download_files(files_to_upload, FILES_DIR, file_timestamp)
+    file_names_written_in_db = await file_service.write_files_in_db(
+        download_file_names, files_to_upload, user, file_timestamp
+    )
+    if download_file_names != file_names_written_in_db:
+        raise HTTPException(
+            status_code=409,
+            detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db)
+        )
+    return FileUploadedResponse(
+        download_file_names=download_file_names,
+        file_names_written_in_db=file_names_written_in_db,
+    )
 
 
 @file_router.get(
@@ -94,6 +68,7 @@ async def get_files(
     for file_id in files_wanted:
         file_db = await file_service.get(file_id)
         files_to_zip.append(FILES_DIR.joinpath(file_db.name))
+    print((datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT))
     return await file_service.zip_files(files_to_zip)
 
 

@@ -1,4 +1,5 @@
 """src/api/services/file_attached.py"""
+from datetime import datetime
 from collections.abc import Sequence
 
 from fastapi import Depends, HTTPException, Response, UploadFile
@@ -9,9 +10,12 @@ from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.users import UsersRepository
 from pathlib import Path
 import zipfile
+import structlog
 import io
-from src.api.constants import FILE_NAME_SAVE_FORMAT, TRANSLATION_TABLE
+from src.api.constants import *
 import os
+
+log = structlog.get_logger()
 
 
 class FileService:
@@ -27,17 +31,64 @@ class FileService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
+
+    def check_folder_exists(self, folder) -> None:  # Path - не мб асинхронным?
+        """ Проверяет наличие каталога, и создает его если нет."""
+        if not Path(folder).exists():
+            folder.mkdir(parents=True, exist_ok=True)
+            log.info("{}".format(DIR_CREATED), folder=folder)
+
+
     # todo проверять тип загружаемого файла: только (".doc", ".docx", ".xls", ".xlsx", ".img", ".png", ".txt", ".pdf", ".jpeg")
     # todo проверять размер загружаемого файла: не более 10 МБ
-    async def download_files(self, files: list[UploadFile], saved_files_folder: Path) -> None | dict:
+    async def download_files(
+            self,
+            files: list[UploadFile],
+            saved_files_folder: Path,
+            file_timestamp: str = FILE_NAME_SAVE_FORMAT
+    ) -> list[str] | dict:
         """Загружает файлы в указанный каталог на сервере."""
+        download_files_names = []
+        self.check_folder_exists(saved_files_folder)
         for file in files:
-            file_name = FILE_NAME_SAVE_FORMAT + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
             try:
-                with open(saved_files_folder.joinpath(file_name), "wb") as f:  # todo проверять что есть, иначе - создавать директорию
+                with open(saved_files_folder.joinpath(file_name), "wb") as f:
                     f.write(file.file.read())
+                download_files_names.append(file_name)
             except Exception as e:
                 return {"message": e.args}
+        return download_files_names
+
+
+    async def write_files_in_db(
+            self,
+            download_file_names: list[str],
+            files_to_write: list[UploadFile],
+            user: User,
+            file_timestamp: str = FILE_NAME_SAVE_FORMAT
+    ) -> list[str]:
+        """Записывает в БД переданные файлы."""
+        file_names_written_in_db = []
+        for file in files_to_write:  # Доп.проверка, что файлы загруженные соответствуют тем, что записываем в БД
+            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_names_written_in_db.append(file_name)
+        if download_file_names != file_names_written_in_db:
+            raise HTTPException(
+                status_code=409,
+                detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db)
+            )
+        file_names_written_in_db = []
+        for file in files_to_write:
+            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_object = {
+                "name": file_name,
+                "file": bytes(str(round(file.size/1000000, 2)), 'utf-8'),  # todo более красиво
+            }
+            await self.actualize_object(None, file_object, user)
+            file_names_written_in_db.append(file_name)
+        return file_names_written_in_db
+
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
@@ -53,41 +104,6 @@ class FileService:
             headers={'Content-Disposition': f'attachment;filename={FILE_NAME_SAVE_FORMAT + "_archive.zip"}'}
         )
 
-    async def write_files_in_db(self, files_to_write: list[UploadFile], user: User) -> None:
-        """Записывает в БД переданные файлы."""
-        for file in files_to_write:
-            file_name = FILE_NAME_SAVE_FORMAT + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
-            file_object = {
-                "name": file_name,
-                "file": bytes(file.filename + "---" + str(round(file.size/1000000, 2)), 'utf-8'),  # todo сделай красиво
-            }
-            await self.actualize_object(None, file_object, user)
-
-    # async def change_schema_response(
-    #         self,
-    #         file_attached: FileAttached,
-    # ) -> dict:
-    #     """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
-    #     user = await self._users_repository.get(task.user_id)
-    #     executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id
-    #     task_to_dict = task.__dict__
-    #     task_to_dict["user_email"] = user.email
-    #     task_to_dict["executor_email"] = executor.email
-    #     task_to_dict["business_process"] = TechProcess(str(task.tech_process)).name  # str требуется enum-классу
-    #     return task_to_dict
-
-    # async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
-    #         self,
-    #         tasks: Task | Sequence[Task],
-    # ) -> Sequence[dict]:
-    #     """Готовит список словарей для отправки в api."""
-    #     list_changed_response = []
-    #     if type(tasks) is not list:  # todo use isinstance() instead of type()
-    #         list_changed_response.append(await self.change_schema_response(tasks))
-    #     else:
-    #         for task in tasks:
-    #             list_changed_response.append(await self.change_schema_response(task))
-    #     return list_changed_response
 
     async def actualize_object(  # todo перенести в универсальные сервисы
             self,

@@ -25,10 +25,6 @@ class FileBase(BaseModel):
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
-    # file: Base64Bytes  # StrictBytes Base64Bytes Base64Str Base64UrlBytes Base64UrlStr Base64Encoder EncodedBytes
-    # file: Base64Bytes  # todo нужна валидация
-    # file: FileResponse(path='data.xlsx', filename='Статистика покупок.xlsx', media_type='multipart/form-data')
-    # file: FileResponse
     @field_serializer("created_at", "updated_at")
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
         """Отображает сохраненное время сервера с требуемым сдвигом."""
@@ -52,3 +48,9 @@ class FileAttachedResponse(BaseModel):
         Переводит datetime из БД в формат str для удобства отображения."""
         json_encoders = {date: lambda db_date_time: (db_date_time + timedelta(hours=0)).strftime(DATE_FORMAT)}
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+
+
+class FileUploadedResponse(BaseModel):
+    """Схема ответа после загрузки файлов."""
+    download_file_names: list[str] = Field(..., serialization_alias=FILES_UPLOADED)
+    file_names_written_in_db: list[str] = Field(..., serialization_alias=FILES_WRITTEN_DB)
