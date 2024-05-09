@@ -47,8 +47,13 @@ IS_REGISTERED = " is registered."
 
 
 # files_alias
+FILE_SIZE_ENCODE = "utf-8"
+FILE_SIZE_IN = 1000  # in kb
+FILE_SIZE_VOLUME = " kb."
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
+ROUND_FILE_SIZE = 1
+
 
 # suspensions_alias
 CREATED = "Дата создания"
@@ -107,7 +112,11 @@ ME_TODO_LIST = "ЗАДАЧИ ПОЛУЧЕННЫЕ: список задач, вы
 
 # warnings
 ALREADY_EXISTS = " уже существует"
+ALLOWED_FILE_SIZE_DOWNLOAD = ", допустимый размер: "
+ALLOWED_FILE_TYPE_DOWNLOAD = " Допустимые типы: "
 FILES_DOWNLOAD_ERROR = "Ошибка загрузки файлов и записи их в БД: "
+FIlE_SIZE_EXCEEDED = " Превышен допустимый размер файла к загрузке - "
+FILE_TYPE_DOWNLOAD_ALLOWED = " - данный тип файла не допустим для закгрузки!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
 NOT_FOUND = " - hasn't found!"

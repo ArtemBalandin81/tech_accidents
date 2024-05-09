@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
     DEBUG: bool = False
+    FILE_TYPE_DOWNLOAD: str | list = ("doc", "docx", "xls", "xlsx", "img", "png", "txt", "pdf", "jpeg")
+    MAX_FILE_SIZE_DOWNLOAD: int = 10000  # Максимальный допустимый к загрузке размер файла в кб
     ROOT_PATH: str = "/api"
     SECRET_KEY: str = "secret_key"
     TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
@@ -59,20 +61,20 @@ class Settings(BaseSettings):
     BOT_USER: int = 2
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
-        ' "100": "error_of_load_users@please_check.env",'
+        ' "100": "error_of_load_users@please_check.env"}'
     )
     # Настройки ENUM-класса тех.процессов для фиксации простоев
     INTERNET_ACCESS_TECH_PROCESS: int = 25  # Наиболее критический к отсутствию доступа в Интернет ТП в Организации
     TECH_PROCESS: str = (
         '{"DU_25": "25",'
         ' "SPEC_DEP_26": "26",'
-        ' "CLIENTS_27": "27",'
+        ' "CLIENTS_27": "27"}'
     )
     # Настройки ENUM-класса угроз для фиксации простоев
     RISK_SOURCE: str = (
         '{"99": "unload_risk_source_please_check.env.",'
         ' "100": "error_of_load_risk_accident_source@please_check.env",'
-        ' "ROUTER": "Риск инцидент: сбой в работе рутера.",'
+        ' "ROUTER": "Риск инцидент: сбой в работе рутера."}'
     )
 
     @property

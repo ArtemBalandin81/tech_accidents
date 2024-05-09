@@ -161,11 +161,14 @@
     # Общие настройки приложения
     APP_TITLE=Учет фактов простоя ИС
     APP_DESCRIPTION=Журнал учета фактов простоя информационной системы УК ПИФ
+    CONNECTION_TEST_URL_BASE=https://www.agidel-am.ru  # Базовый url теста доступа в интернет
+    CONNECTION_TEST_URL_2=https://www.ya.ru  # Дополнительный url теста доступа в интернет
+    FILE_TYPE_DOWNLOAD=("doc", "docx", "xls", "xlsx", "img", "png", "txt", "pdf", "jpeg")
+    MAX_FILE_SIZE_DOWNLOAD=10000  # Максимальный допустимый к загрузке размер файла в кб
     SLEEP_TEST_CONNECTION=20  # Интервал тестирования доступа к Интернет в секундах
     TIMEZONE_OFFSET=5
     TOKEN_AUTH_LIFETIME_SEC=432000  # Срок жизни токена авторизации в секундах (60*60*24*5)
-    CONNECTION_TEST_URL_BASE=https://www.agidel-am.ru  # Базовый url теста доступа в интернет
-    CONNECTION_TEST_URL_2=https://www.ya.ru  # Дополнительный url теста доступа в интернет
+
 
     # Переменные приложения
     SECRET_KEY=  # Cекретный ключ для генерации jwt-токенов

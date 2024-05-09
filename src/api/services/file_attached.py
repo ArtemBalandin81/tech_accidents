@@ -1,5 +1,4 @@
 """src/api/services/file_attached.py"""
-from datetime import datetime
 from collections.abc import Sequence
 
 from fastapi import Depends, HTTPException, Response, UploadFile
@@ -14,6 +13,9 @@ import structlog
 import io
 from src.api.constants import *
 import os
+
+from src.settings import settings
+
 
 log = structlog.get_logger()
 
@@ -31,16 +33,40 @@ class FileService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-
-    def check_folder_exists(self, folder) -> None:  # Path - не мб асинхронным?
-        """ Проверяет наличие каталога, и создает его если нет."""
+    def check_folder_exists(self, folder: Path) -> None:  # Path - не мб асинхронным?
+        """Проверяет наличие каталога, и создает его если нет."""
         if not Path(folder).exists():
             folder.mkdir(parents=True, exist_ok=True)
             log.info("{}".format(DIR_CREATED), folder=folder)
 
+    def rename_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
+        """Переименовывает загружаемый файл под требуемый формат и валидирует его размер и тип."""
+        file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+        file_size = round(file.size / FILE_SIZE_IN, ROUND_FILE_SIZE)
+        file_type = file.filename.split(".")[-1]
+        if file_type not in settings.FILE_TYPE_DOWNLOAD:
+            raise HTTPException(
+                status_code=403,
+                detail="{}{}{}{}".format(
+                    file_name,
+                    FILE_TYPE_DOWNLOAD_ALLOWED,
+                    ALLOWED_FILE_TYPE_DOWNLOAD,
+                    settings.FILE_TYPE_DOWNLOAD
+                )
+            )
+        if file_size > settings.MAX_FILE_SIZE_DOWNLOAD:
+            raise HTTPException(
+                status_code=403,
+                detail="{}{}{}{}{}".format(
+                    file_name,
+                    FIlE_SIZE_EXCEEDED,
+                    file_size,
+                    ALLOWED_FILE_SIZE_DOWNLOAD,
+                    settings.MAX_FILE_SIZE_DOWNLOAD
+                )
+            )
+        return file_name, file_size
 
-    # todo проверять тип загружаемого файла: только (".doc", ".docx", ".xls", ".xlsx", ".img", ".png", ".txt", ".pdf", ".jpeg")
-    # todo проверять размер загружаемого файла: не более 10 МБ
     async def download_files(
             self,
             files: list[UploadFile],
@@ -51,15 +77,14 @@ class FileService:
         download_files_names = []
         self.check_folder_exists(saved_files_folder)
         for file in files:
-            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_name_size = self.rename_validate_file(file_timestamp, file)
             try:
-                with open(saved_files_folder.joinpath(file_name), "wb") as f:
+                with open(saved_files_folder.joinpath(file_name_size[0]), "wb") as f:
                     f.write(file.file.read())
-                download_files_names.append(file_name)
+                download_files_names.append(file_name_size[0])
             except Exception as e:
                 return {"message": e.args}
         return download_files_names
-
 
     async def write_files_in_db(
             self,
@@ -71,7 +96,8 @@ class FileService:
         """Записывает в БД переданные файлы."""
         file_names_written_in_db = []
         for file in files_to_write:  # Доп.проверка, что файлы загруженные соответствуют тем, что записываем в БД
-            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_name_size = self.rename_validate_file(file_timestamp, file)
+            file_name = file_name_size[0]
             file_names_written_in_db.append(file_name)
         if download_file_names != file_names_written_in_db:
             raise HTTPException(
@@ -80,15 +106,16 @@ class FileService:
             )
         file_names_written_in_db = []
         for file in files_to_write:
-            file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
+            file_name_size = self.rename_validate_file(file_timestamp, file)
+            file_name = file_name_size[0]
+            file_size = file_name_size[1]
             file_object = {
                 "name": file_name,
-                "file": bytes(str(round(file.size/1000000, 2)), 'utf-8'),  # todo более красиво
+                "file": bytes("{}{}".format(file_size, FILE_SIZE_VOLUME), FILE_SIZE_ENCODE),
             }
             await self.actualize_object(None, file_object, user)
             file_names_written_in_db.append(file_name)
         return file_names_written_in_db
-
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
@@ -103,7 +130,6 @@ class FileService:
             media_type="application/x-zip-compressed",
             headers={'Content-Disposition': f'attachment;filename={FILE_NAME_SAVE_FORMAT + "_archive.zip"}'}
         )
-
 
     async def actualize_object(  # todo перенести в универсальные сервисы
             self,
