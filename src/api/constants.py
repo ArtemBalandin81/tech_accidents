@@ -30,8 +30,12 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 
 # endpoints
 ANALYTICS = "/analytics"
+DOWNLOAD_FILES = "/download_files"
 GET_ALL_ROUTE = "/"
+GET_FILES = "/get_files"
 GET_OPENED_ROUTE = "/opened"
+FILES = "Files"
+FILE_ID = "/{file_id}"
 LOGIN = "api/auth/jwt/login"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
@@ -47,12 +51,21 @@ IS_REGISTERED = " is registered."
 
 
 # files_alias
+GET_FILE_BY_ID = "Получить файл по id."
 FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 ROUND_FILE_SIZE = 1
+SOME_ID = 1
+SOME_NAME = "some_name"
+SEARCH_FILES_BY_NAME = "Поиск файлов по имени"
+SEARCH_FILES_BY_ID = "Поиск файлов по id файлов"
+
+# files_descriptions
+GET_SEVERAL_FILES = "Получить несколько файлов."
+UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы."
 
 
 # suspensions_alias
@@ -117,9 +130,10 @@ ALLOWED_FILE_TYPE_DOWNLOAD = " Допустимые типы: "
 FILES_DOWNLOAD_ERROR = "Ошибка загрузки файлов и записи их в БД: "
 FIlE_SIZE_EXCEEDED = " Превышен допустимый размер файла к загрузке - "
 FILE_TYPE_DOWNLOAD_ALLOWED = " - данный тип файла не допустим для закгрузки!"
+FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id или имени файла (не одновременно)!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
-NOT_FOUND = " - hasn't found!"
+NOT_FOUND = " - not found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
 PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
 PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"

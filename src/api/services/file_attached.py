@@ -157,6 +157,9 @@ class FileService:
     async def get_all(self) -> Sequence[any]:
         return await self._repository.get_all()
 
+    async def get_all_for_search_word(self, search_word: str) -> Sequence[any]:
+        return await self._repository.get_all_for_search_word(search_word)
+
     async def remove(self, file_id: int) -> None:
         file = await self._repository.get(file_id)
         return await self._repository.remove(file)

@@ -26,10 +26,10 @@ FILES_DIR = SERVICES_DIR.joinpath("uploaded_files2")  # todo в settings & .env!
 
 # todo проверить схемы ответа в схемах апи 200, 401, 404 и т.п.
 @file_router.post(
-    "/download_files",  # todo в константы
-    description="Загрузка файлов из формы.",  # todo в константы
-    summary="Загрузка файлов из формы.",  # todo в константы
-    tags=["Files"]  # todo в константы
+    DOWNLOAD_FILES,
+    description=UPLOAD_FILES_BY_FORM,
+    summary=UPLOAD_FILES_BY_FORM,
+    tags=[FILES]
 )
 async def upload_files_by_form(
     *,
@@ -43,6 +43,7 @@ async def upload_files_by_form(
         download_file_names, files_to_upload, user, file_timestamp
     )
     if download_file_names != file_names_written_in_db:
+        await log.aerror("{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db))
         raise HTTPException(
             status_code=409,
             detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db)
@@ -54,32 +55,51 @@ async def upload_files_by_form(
 
 
 @file_router.get(
-    "/get_files",  # todo в константы
-    # response_model= ???,  # todo
-    description="Получить несколько файлов.",  # todo в константы
-    summary="Получить несколько файлов.",  # todo в константы
-    tags=["Files"],  # todo в константы
+    GET_FILES,
+    description=GET_SEVERAL_FILES,
+    summary=GET_SEVERAL_FILES,
+    tags=[FILES],
 )
 async def get_files(
-        files_wanted: list[int] = Query(None, example=23, alias="Список файлов"),  # todo в константы
+        search_name: str = Query(None, example=SOME_NAME, alias=SEARCH_FILES_BY_NAME),
+        files_wanted: list[int] = Query(None, alias=SEARCH_FILES_BY_ID),
         file_service: FileService = Depends(),
-):
+) -> Response:
+    await log.ainfo("{}{}".format("search_name: ", search_name))
+    await log.ainfo("{}{}".format("files_wanted: ", files_wanted))
     files_to_zip = []
-    for file_id in files_wanted:
-        file_db = await file_service.get(file_id)
-        files_to_zip.append(FILES_DIR.joinpath(file_db.name))
-    print((datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT))
+    if (search_name is not None and search_name != SOME_NAME) and files_wanted is not None:
+        await log.aerror(FILE_SEARCH_DOWNLOAD_OPTION)
+        raise HTTPException(  # для удобства SOME_NAME допустимо в поиске по id
+            status_code=403,
+            detail="{}".format(FILE_SEARCH_DOWNLOAD_OPTION)
+        )
+    if files_wanted is not None:
+        for file_id in files_wanted:
+            file_db = await file_service.get(file_id)
+            files_to_zip.append(FILES_DIR.joinpath(file_db.name))
+    else:
+        files_db = await file_service.get_all_for_search_word(search_name)  # noqa
+        await log.ainfo("{}{}".format("files_received: ", files_db))
+        if len(files_db) == 0:
+            await log.aerror(NOT_FOUND)
+            raise HTTPException(
+                status_code=403,
+                detail="{}".format(NOT_FOUND)
+            )
+        for searched_result in files_db:
+            files_to_zip.append(FILES_DIR.joinpath(searched_result.name))
     return await file_service.zip_files(files_to_zip)
 
 
 @file_router.get(
-    "/{file_id}",  # todo в константы
+    FILE_ID,
     # response_model=FileBase,  # todo
     # response_model=FileAttachedResponse,
     # response_class=FileResponse,
-    description="Получить файл по id.",  # todo в константы
-    summary="Получить файл по id.",  # todo в константы
-    tags=["Files"],  # todo в константы
+    description=GET_FILE_BY_ID,
+    summary=GET_FILE_BY_ID,
+    tags=[FILES],
 )
 async def get_file_by_id(
         file_id: int,
