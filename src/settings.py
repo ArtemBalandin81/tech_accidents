@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
     DEBUG: bool = False
+    FILES_DOWNLOAD_DIR: str = "uploaded_files"
     FILE_TYPE_DOWNLOAD: str | list = ("doc", "docx", "xls", "xlsx", "img", "png", "txt", "pdf", "jpeg")
     MAX_FILE_SIZE_DOWNLOAD: int = 10000  # Максимальный допустимый к загрузке размер файла в кб
     ROOT_PATH: str = "/api"
@@ -56,6 +57,9 @@ class Settings(BaseSettings):
     CONNECTION_TEST_URL_BASE: str = "https://www.agidel-am.ru"
     CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
+
+    # Настройки ENUM-класса в форме выбора загрузки файлов
+    CHOICE_DOWNLOAD_FILES: str = '{"JSON": "json", "FILES": "files"}'
 
     # Настройки ENUM-класса персонала для постановки задач
     BOT_USER: int = 2

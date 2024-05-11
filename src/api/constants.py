@@ -52,6 +52,7 @@ IS_REGISTERED = " is registered."
 
 # files_alias
 GET_FILE_BY_ID = "Получить файл по id."
+CHOICE_FORMAT = "Формат представления"
 FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."

@@ -1,28 +1,23 @@
 """src/api/endpoints/files_attached.py"""
-from collections.abc import Sequence
-from datetime import date, datetime
+
 from pathlib import Path
-from typing import Optional
-import os
-import zipfile
-import io
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
-from fastapi.responses import FileResponse, HTMLResponse
-from pydantic import EmailStr, PositiveInt
+from fastapi.responses import FileResponse
 from src.api.constants import *
-from src.api.schema import FileBase, FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after schemas refactoring
-from src.api.services import FileService, TaskService, UsersService
+from src.api.schema import FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after refactoring
+from src.api.services import FileService
 from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user
-
+from src.core.enums import ChoiceDownloadFiles
+from src.settings import settings
 
 log = structlog.get_logger()
 file_router = APIRouter()
 
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath("uploaded_files2")  # todo в settings & .env!
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
 # todo проверить схемы ответа в схемах апи 200, 401, 404 и т.п.
 @file_router.post(
@@ -94,18 +89,15 @@ async def get_files(
 
 @file_router.get(
     FILE_ID,
-    # response_model=FileBase,  # todo
-    # response_model=FileAttachedResponse,
-    # response_class=FileResponse,
+    response_model=FileAttachedResponse,
     description=GET_FILE_BY_ID,
     summary=GET_FILE_BY_ID,
     tags=[FILES],
 )
 async def get_file_by_id(
         file_id: int,
-        img: bool | None = None,  # todo enum переключатель
+        choice_download_files: ChoiceDownloadFiles = Query(..., alias=CHOICE_FORMAT),
         file_service: FileService = Depends(),
-# ) -> FileAttachedResponse | FileResponse:  # todo валидировать ответ все равно как-то нужно
 ):
     file_db = await file_service.get(file_id)
     file_name = file_db.name
@@ -115,11 +107,11 @@ async def get_file_by_id(
         FILES_DIR.joinpath(file_db.name),
         headers=headers,
     )
-    if img:  # сочетает в ответе и FileResponse и схему пайдентик
+    files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
+    if choice_download_files == files_download_true:  # сочетает в ответе и FileResponse и схему пайдентик
         return response
     else:
         return FileAttachedResponse(
             file_info=file_db,
-            # file_path=FILES_DIR.joinpath(file_db.name),
             files_attached=file_name
         )
