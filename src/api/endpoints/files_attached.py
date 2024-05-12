@@ -23,6 +23,7 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 @file_router.post(
     DOWNLOAD_FILES,
     description=UPLOAD_FILES_BY_FORM,
+    dependencies=[Depends(current_superuser)],
     summary=UPLOAD_FILES_BY_FORM,
     tags=[FILES]
 )
@@ -52,6 +53,7 @@ async def upload_files_by_form(
 @file_router.get(
     GET_FILES,
     description=GET_SEVERAL_FILES,
+    dependencies=[Depends(current_user)],
     summary=GET_SEVERAL_FILES,
     tags=[FILES],
 )
@@ -90,6 +92,7 @@ async def get_files(
 @file_router.get(
     FILE_ID,
     response_model=FileAttachedResponse,
+    dependencies=[Depends(current_user)],
     description=GET_FILE_BY_ID,
     summary=GET_FILE_BY_ID,
     tags=[FILES],

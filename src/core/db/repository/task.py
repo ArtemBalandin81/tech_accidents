@@ -2,10 +2,10 @@
 from collections.abc import Sequence
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db.db import get_session
-from src.core.db.models import Task
+from src.core.db.models import Task, TasksFiles
 from src.core.db.repository.base import ContentRepository
 
 
@@ -55,3 +55,15 @@ class TaskRepository(ContentRepository):
             .order_by(Task.deadline.asc())
         )
         return tasks_todo.all()
+
+    async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
+        """Присваивает задаче список файлов."""
+        await self._session.commit()
+        async with self._session.begin():
+            await self._session.execute(delete(TasksFiles).where(TasksFiles.task_id == task_id))
+            if files_ids:
+                await self._session.execute(
+                    insert(TasksFiles).values(
+                        [{"task_id": task_id, "file_id": file_id} for file_id in files_ids]
+                    )
+                )

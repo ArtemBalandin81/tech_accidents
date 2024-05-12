@@ -29,6 +29,7 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 
 
 # endpoints
+ADD_FILES_TO_TASK = "/add_files_to_task"
 ANALYTICS = "/analytics"
 DOWNLOAD_FILES = "/download_files"
 GET_ALL_ROUTE = "/"
@@ -65,6 +66,7 @@ SEARCH_FILES_BY_NAME = "Поиск файлов по имени"
 SEARCH_FILES_BY_ID = "Поиск файлов по id файлов"
 
 # files_descriptions
+FILES_ATTACHED_TO_TASK = ". К задаче добавлены следующие файлы: "
 GET_SEVERAL_FILES = "Получить несколько файлов."
 UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы."
 
@@ -105,7 +107,7 @@ FILE_SAVED = "Файл успешно скопирован."
 
 # tasks_alias
 IS_ARCHIVED = "Задача выполнена"
-TASK = "Задача"
+TASK = "Задача: "
 TASK_CREATE_FORM = "Постановка задачи из формы."
 TASK_DURATION = "Дней на задачу"
 TASK_DESCRIPTION = "Описание задачи."
@@ -118,6 +120,7 @@ TASK_START = "Дата постановки задачи"
 TASK_USER_ID = "Постановщик задачи"
 
 # tasks_descriptions
+SET_FILES_LIST_TO_TASK = "Присваивает задаче список файлов."
 TASK_DELETE = "Удалить задачу (только админ)."
 TASK_LIST = "Список всех задач."
 TASK_OPENED_LIST = "Список невыполненных задач."

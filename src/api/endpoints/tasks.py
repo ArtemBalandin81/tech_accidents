@@ -9,18 +9,36 @@ from fastapi import APIRouter, Depends, File, Query, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import AnalyticTaskResponse  # todo subst to "schemas" after schemas refactoring
+from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse  # todo subst to "schemas" after schemas refactoring
 from src.api.services import FileService, TaskService, UsersService
 from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import Executor, TechProcess
+from src.settings import settings
 
 log = structlog.get_logger()
 task_router = APIRouter()
 file_router = APIRouter()
 
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath("uploaded_files")  # todo в settings & .env!
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+
+@task_router.post(
+    ADD_FILES_TO_TASK,
+    description=SET_FILES_LIST_TO_TASK,
+    summary=SET_FILES_LIST_TO_TASK,
+    dependencies=[Depends(current_superuser)],
+    tags=[TASKS_POST]
+)
+async def add_files_to_task(
+    *,
+    task_id: PositiveInt,
+    files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_TASK),
+    task_service: TaskService = Depends(),
+) -> AddTaskFileResponse:
+    await task_service.set_files_to_task(task_id, files_ids)
+    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
+    return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
 
 
 @task_router.post(
@@ -166,7 +184,7 @@ async def get_my_tasks_todo(
     tags=[TASKS_GET]
 )
 async def get_task_by_id(
-        task_id: int,
+        task_id: PositiveInt,
         task_service: TaskService = Depends(),
 ) -> AnalyticTaskResponse:
     task = await task_service.perform_changed_schema(await task_service.get(task_id))
@@ -180,5 +198,5 @@ async def get_task_by_id(
     summary=TASK_DELETE,
     tags=[TASKS_POST]
 )
-async def remove_task(task_id: int, task_service: TaskService = Depends()) -> None:
+async def remove_task(task_id: PositiveInt, task_service: TaskService = Depends()) -> None:
     return await task_service.remove(task_id)

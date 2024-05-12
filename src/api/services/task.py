@@ -87,3 +87,7 @@ class TaskService:
     async def remove(self, task_id: int) -> None:
         task = await self._repository.get(task_id)
         return await self._repository.remove(task)
+
+    async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
+        """Присваивает задаче список файлов."""
+        await self._repository.set_files_to_task(task_id, files_ids)

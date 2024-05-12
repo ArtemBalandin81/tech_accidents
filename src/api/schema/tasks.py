@@ -74,3 +74,9 @@ class AnalyticTaskResponse(TaskBase):
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+
+
+class AddTaskFileResponse(BaseModel):
+    """Схема ответа после добавления файлов к задачам."""
+    task_id: int = Field(..., serialization_alias=TASK)
+    files_ids: list[int] = Field(..., serialization_alias=FILES_WRITTEN_DB)
