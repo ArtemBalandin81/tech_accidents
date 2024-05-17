@@ -33,13 +33,13 @@ class FileService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-    def check_folder_exists(self, folder: Path) -> None:  # Path - не мб асинхронным?
+    async def check_folder_exists(self, folder: Path) -> None:  # Path - не мб асинхронным?
         """Проверяет наличие каталога, и создает его если нет."""
         if not Path(folder).exists():
             folder.mkdir(parents=True, exist_ok=True)
-            log.info("{}".format(DIR_CREATED), folder=folder)
+            await log.ainfo("{}".format(DIR_CREATED), folder=folder)
 
-    def rename_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
+    async def rename_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
         """Переименовывает загружаемый файл под требуемый формат и валидирует его размер и тип."""
         file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
         file_size = round(file.size / FILE_SIZE_IN, ROUND_FILE_SIZE)
@@ -74,48 +74,71 @@ class FileService:
             file_timestamp: str = FILE_NAME_SAVE_FORMAT
     ) -> list[str] | dict:
         """Загружает файлы в указанный каталог на сервере."""
-        download_files_names = []
-        self.check_folder_exists(saved_files_folder)
+        file_names_downloaded = []
+        await self.check_folder_exists(saved_files_folder)
         for file in files:
-            file_name_size = self.rename_validate_file(file_timestamp, file)
+            file_name_size = await self.rename_validate_file(file_timestamp, file)
             try:
                 with open(saved_files_folder.joinpath(file_name_size[0]), "wb") as f:
                     f.write(file.file.read())
-                download_files_names.append(file_name_size[0])
+                file_names_downloaded.append(file_name_size[0])
             except Exception as e:
                 return {"message": e.args}
-        return download_files_names
+        await log.ainfo("{}".format(FILES_UPLOADED), files=file_names_downloaded)
+        return file_names_downloaded
 
     async def write_files_in_db(
             self,
-            download_file_names: list[str],
+            file_names_downloaded: list[str],
             files_to_write: list[UploadFile],
-            user: User,
             file_timestamp: str = FILE_NAME_SAVE_FORMAT
-    ) -> list[str]:
-        """Записывает в БД переданные файлы."""
-        file_names_written_in_db = []
-        for file in files_to_write:  # Доп.проверка, что файлы загруженные соответствуют тем, что записываем в БД
-            file_name_size = self.rename_validate_file(file_timestamp, file)
-            file_name = file_name_size[0]
-            file_names_written_in_db.append(file_name)
-        if download_file_names != file_names_written_in_db:
-            raise HTTPException(
-                status_code=409,
-                detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db)
-            )
+    ) -> tuple[list[str], list[id]]:
+        """Пишет файлы в БД и проверяет, что загруженные файлы соответствуют тем, что записываются в БД."""
         file_names_written_in_db = []
         for file in files_to_write:
-            file_name_size = self.rename_validate_file(file_timestamp, file)
+            file_name_size = await self.rename_validate_file(file_timestamp, file)
             file_name = file_name_size[0]
-            file_size = file_name_size[1]
+            file_names_written_in_db.append(file_name)
+        if file_names_downloaded != file_names_written_in_db:  # todo доп. проверять кол-во файлов до загрузки и после
+            raise HTTPException(
+                status_code=409,
+                detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, file_names_downloaded, file_names_written_in_db)
+            )
+        file_names_written_in_db = []
+        to_create = []
+        for file in files_to_write:
+            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
+            file_name = file_name_and_size[0]
+            file_size = file_name_and_size[1]
             file_object = {
                 "name": file_name,
                 "file": bytes("{}{}".format(file_size, FILE_SIZE_VOLUME), FILE_SIZE_ENCODE),
             }
-            await self.actualize_object(None, file_object, user)
             file_names_written_in_db.append(file_name)
-        return file_names_written_in_db
+            to_create.append(FileAttached(**file_object))  # todo лучше схему пайдентик
+        await self._repository.create_all(to_create)
+        await log.ainfo("{}".format(FILES_WRITTEN_DB), files=to_create)
+        return file_names_written_in_db, [obj.id for obj in to_create]  # todo file_names_written_in_db - лишнее
+
+    async def download_and_write_files_in_db(
+            self,
+            files_to_upload: list[UploadFile],
+            saved_files_folder: Path,
+            file_timestamp: str = FILE_NAME_SAVE_FORMAT
+
+    ) -> tuple[list[str], list[int]]:
+        """Сохраняет файлы, записывает их в БД и отдает их имена и ids."""
+        file_names_downloaded = await self.download_files(files_to_upload, saved_files_folder, file_timestamp)
+        file_names_and_ids_written_in_db = await self.write_files_in_db(
+            file_names_downloaded, files_to_upload, file_timestamp
+        )
+        await log.ainfo(
+            "{}".format(FILES_IDS_WRITTEN_DB),
+            names=file_names_and_ids_written_in_db[0],
+            ids=file_names_and_ids_written_in_db[1]
+        )
+        return file_names_and_ids_written_in_db
+
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""

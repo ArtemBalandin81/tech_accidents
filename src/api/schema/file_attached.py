@@ -3,7 +3,7 @@ import time
 from datetime import date
 from typing import Type
 
-from pydantic import BaseModel, FilePath, Field, computed_field, field_serializer, StrictBytes, Base64Bytes, Base64Str
+from pydantic import BaseModel, FilePath, Field, computed_field, field_serializer, PositiveInt
 # from sqlalchemy import BLOB
 from sqlalchemy.sql.sqltypes import BLOB
 from fastapi.responses import FileResponse
@@ -14,7 +14,7 @@ from src.settings import settings
 
 class FileBase(BaseModel):
     """Базовая схема для работы с моделью файлов."""
-    id: int
+    id: PositiveInt
     name: str = Field(
         ...,
         max_length=256,
@@ -52,5 +52,5 @@ class FileAttachedResponse(BaseModel):
 
 class FileUploadedResponse(BaseModel):
     """Схема ответа после загрузки файлов."""
-    download_file_names: list[str] = Field(..., serialization_alias=FILES_UPLOADED)
     file_names_written_in_db: list[str] = Field(..., serialization_alias=FILES_WRITTEN_DB)
+    file_ids_written_in_db: list[PositiveInt] = Field(..., serialization_alias=FILES_IDS_WRITTEN_DB)

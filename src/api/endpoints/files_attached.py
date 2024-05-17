@@ -31,24 +31,17 @@ async def upload_files_by_form(
     *,
     files_to_upload: list[UploadFile] = File(...),
     file_service: FileService = Depends(),
-    user: User = Depends(current_user),  # todo убрать, ну нужен и из сервисов тоже
 ) -> FileUploadedResponse:
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # for equal file_name in db & upload folder
-    download_file_names = await file_service.download_files(files_to_upload, FILES_DIR, file_timestamp)
-    file_names_written_in_db = await file_service.write_files_in_db(
-        download_file_names, files_to_upload, user, file_timestamp
+    file_names_and_ids_written_in_db = await file_service.download_and_write_files_in_db(
+        files_to_upload, FILES_DIR, file_timestamp
     )
-    if download_file_names != file_names_written_in_db:
-        await log.aerror("{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db))
-        raise HTTPException(
-            status_code=409,
-            detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, download_file_names, file_names_written_in_db)
-        )
+    file_names_in_db = file_names_and_ids_written_in_db[0]
+    file_ids_in_db = file_names_and_ids_written_in_db[1]  # todo айдихи для таблицы м-т-м
     return FileUploadedResponse(
-        download_file_names=download_file_names,
-        file_names_written_in_db=file_names_written_in_db,
+        file_names_written_in_db=file_names_in_db,
+        file_ids_written_in_db=file_ids_in_db
     )
-
 
 @file_router.get(
     GET_FILES,
@@ -116,5 +109,5 @@ async def get_file_by_id(
     else:
         return FileAttachedResponse(
             file_info=file_db,
-            files_attached=file_name
+            files_attached=file_name,
         )

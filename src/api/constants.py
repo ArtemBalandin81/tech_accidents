@@ -44,8 +44,9 @@ MY_SUSPENSIONS = "/my_suspensions"
 SUSPENSION_ID = "/{suspension_id}"
 TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
+TASK_POST_BY_FORM = "/form"
 TASKS_POST = "Tasks POST"
-TASKS_POST_BY_FORM = "/form"
+
 
 # auth
 IS_REGISTERED = " is registered."
@@ -57,6 +58,7 @@ CHOICE_FORMAT = "Формат представления"
 FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."
+FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 ROUND_FILE_SIZE = 1

@@ -23,6 +23,55 @@ file_router = APIRouter()
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
 FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
+
+@task_router.post(
+    TASK_POST_BY_FORM,
+    description=TASK_CREATE_FORM,
+    summary=TASK_CREATE_FORM,
+    tags=[TASKS_POST]
+)
+async def create_new_task_by_form(
+    *,
+    task_start: str = Query(..., example=CREATE_TASK_START, alias=TASK_START),
+    deadline: str = Query(..., example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),
+    task: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK),
+    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
+    description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
+    executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
+    another_email: Optional[EmailStr] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
+    files_to_upload: list[UploadFile] = File(...),
+    file_service: FileService = Depends(),
+    task_service: TaskService = Depends(),
+    users_service: UsersService = Depends(),
+    user: User = Depends(current_user),
+) -> AnalyticTaskResponse:
+    task_start: date = datetime.strptime(task_start, DATE_FORMAT)  # обратная конвертация в datetime
+    deadline: date = datetime.strptime(deadline, DATE_FORMAT)  # обратная конвертация в datetime
+    if another_email is not None:
+        executor = await users_service.get_by_email(another_email)
+    else:
+        executor = await users_service.get_by_email(executor_email.value)
+    task_object = {
+        "task_start": task_start,
+        "deadline": deadline,
+        "task": task,
+        "tech_process": tech_process.value,
+        "description": description,
+        "executor": executor.id,
+    }
+    # 1. Сохраняем в БД файлы и делаем запись в таблицу м-т-м
+    # нужен сервис который возвращает id по имени, или сразу при записи в БД список id-к - DONE
+    # в начале опишем дублирующий сервис, но потом todo лучше сделать единый для этого и file_attached
+
+
+
+
+    # 2. Записываем таску в БД
+    new_task = await task_service.actualize_object(None, task_object, user)
+    task = await task_service.perform_changed_schema(new_task)
+    return AnalyticTaskResponse(**task[0])
+
+
 @task_router.post(
     ADD_FILES_TO_TASK,
     description=SET_FILES_LIST_TO_TASK,
@@ -41,51 +90,7 @@ async def add_files_to_task(
     return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
 
 
-@task_router.post(
-    TASKS_POST_BY_FORM,
-    description=TASK_CREATE_FORM,
-    summary=TASK_CREATE_FORM,
-    tags=[TASKS_POST]
-)
-async def create_new_task_by_form(
-    *,
-    task_start: str = Query(..., example=CREATE_TASK_START, alias=TASK_START),
-    deadline: str = Query(..., example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),
-    task: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK),
-    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
-    description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
-    executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
-    another_email: Optional[EmailStr] = Query(None, alias=TASK_EXECUTOR_MAIL_NOT_FROM_ENUM),
-    some_file: UploadFile = File(...),  # todo upload file
-    several_files: list[UploadFile] = File(...),
-    task_service: TaskService = Depends(),
-    users_service: UsersService = Depends(),
-    user: User = Depends(current_user),
-) -> AnalyticTaskResponse:
-    print(f'SOME_FILE.file: {some_file.file.read()}')
-    # print(f'SOME_FILE.file: {some_file.file.write(s: AnyStr)}')
-    print(f'FILES: {[file.filename for file in several_files]}')
-
-    task_start: date = datetime.strptime(task_start, DATE_FORMAT)  # обратная конвертация в datetime
-    deadline: date = datetime.strptime(deadline, DATE_FORMAT)  # обратная конвертация в datetime
-    if another_email is not None:
-        executor = await users_service.get_by_email(another_email)
-    else:
-        executor = await users_service.get_by_email(executor_email.value)
-    task_object = {
-        "task_start": task_start,
-        "deadline": deadline,
-        "task": task,
-        "tech_process": tech_process.value,
-        "description": description,
-        "executor": executor.id,
-    }
-    new_task = await task_service.actualize_object(None, task_object, user)
-    task = await task_service.perform_changed_schema(new_task)
-    return AnalyticTaskResponse(**task[0])
-
-
-@task_router.patch(
+@task_router.patch(  #todo здесь также нужно предусмотреть добавление файлов - опять сервис единый, чтобы не дублиров
     TASK_ID,
     dependencies=[Depends(current_user)],
     description=TASK_PATCH_FORM,
