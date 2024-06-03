@@ -1,6 +1,7 @@
 """src/api/schemas/tasks.py"""
 import time
 from datetime import date
+from typing import Optional
 
 from pydantic import BaseModel, Field, computed_field, field_serializer
 from src.api.constants import *
@@ -45,13 +46,13 @@ class TaskBase(BaseModel):
 
 class TaskResponse(TaskBase):
     """Схема ответа для задач."""
-    task: str = Field(..., serialization_alias=TASK)
+    task: str = Field(..., serialization_alias=TASK)  # todo перенести в TaskBase
     tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
     user_id: int = Field(..., serialization_alias=TASK_USER_ID)
     executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
-    created_at: datetime = Field(..., serialization_alias=CREATED)
-    updated_at: datetime = Field(..., serialization_alias=UPDATED)
-    is_archived: bool
+    created_at: datetime = Field(..., serialization_alias=CREATED)  # todo перенести в TaskBase
+    updated_at: datetime = Field(..., serialization_alias=UPDATED)  # todo перенести в TaskBase
+    is_archived: bool  # todo перенести в TaskBase
 
     @field_serializer("created_at", "updated_at")
     def serialize_server_time_to_time_shift(self, server_time: datetime, _info):
@@ -64,13 +65,14 @@ class TaskResponse(TaskBase):
 
 class AnalyticTaskResponse(TaskBase):
     """Схема ответа для аналитики."""
-    task: str = Field(..., serialization_alias=TASK)
+    task: str = Field(..., serialization_alias=TASK)  # todo перенести в TaskBase
     business_process: str = Field(..., serialization_alias=TECH_PROCESS)
     user_email: str = Field(..., serialization_alias=USER_MAIL)
     executor_email: str = Field(..., serialization_alias=TASK_EXECUTOR_MAIL)
-    created_at: datetime = Field(..., serialization_alias=CREATED)
-    updated_at: datetime = Field(..., serialization_alias=UPDATED)
-    is_archived: bool = Field(..., serialization_alias=IS_ARCHIVED)
+    created_at: datetime = Field(..., serialization_alias=CREATED)  # todo перенести в TaskBase
+    updated_at: datetime = Field(..., serialization_alias=UPDATED)  # todo перенести в TaskBase
+    is_archived: bool = Field(..., serialization_alias=IS_ARCHIVED)  # todo перенести в TaskBase
+    extra_files: list = Field(..., serialization_alias="Доп.файлы")
 
     class Config:
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'

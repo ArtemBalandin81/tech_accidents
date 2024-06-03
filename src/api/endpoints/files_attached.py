@@ -5,10 +5,10 @@ from pathlib import Path
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
+
 from src.api.constants import *
 from src.api.schema import FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after refactoring
 from src.api.services import FileService
-from src.core.db.models import User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import ChoiceDownloadFiles
 from src.settings import settings
@@ -19,7 +19,11 @@ file_router = APIRouter()
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
 FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
-# todo проверить схемы ответа в схемах апи 200, 401, 404 и т.п.
+async def file_uploader(files: list[UploadFile]):
+    await log.ainfo("{}{}".format(UPLOAD_FILES_BY_FORM, files))
+    return files
+
+# todo проверить наличие схем ответа в схемах апи 200, 401, 404 и т.п.
 @file_router.post(
     DOWNLOAD_FILES,
     description=UPLOAD_FILES_BY_FORM,
@@ -29,7 +33,7 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 )
 async def upload_files_by_form(
     *,
-    files_to_upload: list[UploadFile] = File(...),
+    files_to_upload: list[UploadFile] = Depends(file_uploader),  # эксперементально
     file_service: FileService = Depends(),
 ) -> FileUploadedResponse:
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # for equal file_name in db & upload folder
@@ -37,7 +41,7 @@ async def upload_files_by_form(
         files_to_upload, FILES_DIR, file_timestamp
     )
     file_names_in_db = file_names_and_ids_written_in_db[0]
-    file_ids_in_db = file_names_and_ids_written_in_db[1]  # todo айдихи для таблицы м-т-м
+    file_ids_in_db = file_names_and_ids_written_in_db[1]
     return FileUploadedResponse(
         file_names_written_in_db=file_names_in_db,
         file_ids_written_in_db=file_ids_in_db
@@ -59,13 +63,13 @@ async def get_files(
     await log.ainfo("{}{}".format("files_wanted: ", files_wanted))
     files_to_zip = []
     if (search_name is not None and search_name != SOME_NAME) and files_wanted is not None:
-        await log.aerror(FILE_SEARCH_DOWNLOAD_OPTION)
-        raise HTTPException(  # для удобства SOME_NAME допустимо в поиске по id
+        await log.aerror(FILE_SEARCH_DOWNLOAD_OPTION)  # SOME_NAME допустимо в поиске по id
+        raise HTTPException(
             status_code=403,
             detail="{}".format(FILE_SEARCH_DOWNLOAD_OPTION)
         )
     if files_wanted is not None:
-        for file_id in files_wanted:
+        for file_id in files_wanted:  # todo нужна своя сервис-функция, чтобы можно было в разных эндпоинт использовать
             file_db = await file_service.get(file_id)
             files_to_zip.append(FILES_DIR.joinpath(file_db.name))
     else:
@@ -80,7 +84,6 @@ async def get_files(
         for searched_result in files_db:
             files_to_zip.append(FILES_DIR.joinpath(searched_result.name))
     return await file_service.zip_files(files_to_zip)
-
 
 @file_router.get(
     FILE_ID,

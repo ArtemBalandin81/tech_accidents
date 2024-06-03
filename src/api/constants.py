@@ -35,17 +35,21 @@ DOWNLOAD_FILES = "/download_files"
 GET_ALL_ROUTE = "/"
 GET_FILES = "/get_files"
 GET_OPENED_ROUTE = "/opened"
-FILES = "Files"
 FILE_ID = "/{file_id}"
 LOGIN = "api/auth/jwt/login"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
 MY_SUSPENSIONS = "/my_suspensions"
+POST_TASK_FORM = "/post_task_form"
+POST_TASKS_FORM = "/post_tasks_form"
 SUSPENSION_ID = "/{suspension_id}"
-TASKS_GET = "Tasks GET"
 TASK_ID = "/{task_id}"
-TASK_POST_BY_FORM = "/form"
-TASKS_POST = "Tasks POST"
+
+
+# endpoints TAGS
+FILES = "Загрузка и получение файлов"
+TASKS_GET = "Задачи: посмотреть задачи"
+TASKS_POST = "Задачи: назначить задачу"
 
 
 # auth
@@ -63,14 +67,14 @@ FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 ROUND_FILE_SIZE = 1
 SOME_ID = 1
-SOME_NAME = "some_name"
+SOME_NAME = "could_find_names_and_digits_eng"
 SEARCH_FILES_BY_NAME = "Поиск файлов по имени"
 SEARCH_FILES_BY_ID = "Поиск файлов по id файлов"
 
 # files_descriptions
 FILES_ATTACHED_TO_TASK = ". К задаче добавлены следующие файлы: "
 GET_SEVERAL_FILES = "Получить несколько файлов."
-UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы."
+UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы: "
 
 
 # suspensions_alias
@@ -100,7 +104,7 @@ MEASURES = "Перезагрузка оборудования."
 
 # db_backups
 COPY_FILE_ERROR = "Ошибка при копировании файла."
-DELETED_OK = " успешно удален."
+DELETED_OK = " успешно удален(а)."
 DIR_CREATED = "Создан каталог."
 DIR_CREATED_ERROR = "Ошибка создания каталога."
 FILE_EXISTS_ERROR = "Файл уже существует."
@@ -110,7 +114,8 @@ FILE_SAVED = "Файл успешно скопирован."
 # tasks_alias
 IS_ARCHIVED = "Задача выполнена"
 TASK = "Задача: "
-TASK_CREATE_FORM = "Постановка задачи из формы."
+TASK_CREATE_FORM = "Постановка задачи из формы с возможностью загрузки 1 файла."
+TASKS_CREATE_FORM = "Постановка задачи из формы с обязательной загрузкой нескольких файлов."
 TASK_DURATION = "Дней на задачу"
 TASK_DESCRIPTION = "Описание задачи."
 TASK_EXECUTOR = "Исполнитель задачи"
@@ -137,10 +142,12 @@ FILES_DOWNLOAD_ERROR = "Ошибка загрузки файлов и запис
 FIlE_SIZE_EXCEEDED = " Превышен допустимый размер файла к загрузке - "
 FILE_TYPE_DOWNLOAD_ALLOWED = " - данный тип файла не допустим для закгрузки!"
 FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id или имени файла (не одновременно)!"
+FILE_TASK_DOWNLOAD_NOT_CHOSEN = "Не активирован выбор файлов для загрузки в эндпоинте!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
 NOT_FOUND = " - not found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
+TASKS_FILES_MISMATCH = ". Несоответствие в таблицах TasksFiles и Files: "
 PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
 PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
 

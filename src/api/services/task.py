@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
-from src.core.db.models import Task, User
+from src.core.db.models import Task, TasksFiles, User, FileAttached
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
 from src.core.enums import TechProcess
@@ -54,7 +54,7 @@ class TaskService:
             task_id: int | None,
             in_object: dict,
             user: User | int
-    ):
+    ) -> Task:
         if in_object["task_start"] > in_object["deadline"]:
             raise HTTPException(status_code=422, detail="Check start_time > finish_time")
         if user is None:
@@ -91,3 +91,13 @@ class TaskService:
     async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
         """Присваивает задаче список файлов."""
         await self._repository.set_files_to_task(task_id, files_ids)
+
+    async def get_file_ids_from_task(self, task_id: int) -> Sequence[int]:  # todo это не файлы а связи!!!
+        """Получить список id файлов, привязанных к задаче."""
+        task_files_relations: Sequence[TasksFiles] = await self._repository.get_task_files_relations(task_id)
+        return [relation.file_id for relation in task_files_relations]
+
+    async def get_file_names_from_task(self, task_id: int) -> Sequence[str]:  # todo вытаскивать файлы
+        """Получить список файлов, привязанных к задаче."""
+        files: Sequence[FileAttached] = await self._repository.get_files_from_task(task_id)
+        return [file.name for file in files]

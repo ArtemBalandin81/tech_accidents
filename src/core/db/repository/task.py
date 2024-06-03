@@ -5,7 +5,7 @@ from fastapi import Depends
 from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db.db import get_session
-from src.core.db.models import Task, TasksFiles
+from src.core.db.models import FileAttached, Task, TasksFiles
 from src.core.db.repository.base import ContentRepository
 
 
@@ -67,3 +67,21 @@ class TaskRepository(ContentRepository):
                         [{"task_id": task_id, "file_id": file_id} for file_id in files_ids]
                     )
                 )
+
+    async def get_task_files_relations(self, task_id: int) -> Sequence[TasksFiles]:  # todo это не файлы а связи!!!
+        """Получить список отношений задача-файл."""
+        task_files_relations = await self._session.scalars(
+            select(TasksFiles)
+            .where(TasksFiles.task_id == task_id)
+            .order_by(TasksFiles.file_id.asc())
+        )
+        return task_files_relations.all()
+
+
+    async def get_files_from_task(self, task_id: int) -> Sequence[FileAttached]:
+        """Получить список файлов, прикрепленных к задаче."""
+        files = await self._session.scalars(
+            select(FileAttached)
+            .join(Task.files)
+            .where(Task.id == task_id))
+        return files.all()
