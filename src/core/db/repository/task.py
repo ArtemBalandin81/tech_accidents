@@ -23,6 +23,14 @@ class TaskRepository(ContentRepository):
         )
         return objects.all()
 
+    async def get_all_id_ordered(self) -> Sequence[Task]:
+        """Возвращает все задачи из базы данных, отсортированные по id."""
+        objects = await self._session.scalars(
+            select(Task)
+            .order_by(Task.id.desc())
+        )
+        return objects.all()
+
     async def get_all_opened(self) -> Sequence[Task]:
         """Возвращает активные задачи из базы данных, отсортированные по времени."""
         objects = await self._session.scalars(

@@ -139,6 +139,13 @@ class FileService:
         )
         return file_names_and_ids_written_in_db
 
+    async def prepare_files_to_work_with(self, file_ids: Sequence[int], files_dir: Path) -> list[Path]:
+        """Готовит список файлов для обработки."""
+        files_to_work_with: list[Path] = []
+        for file_id in file_ids:
+            file_db = await self.get(file_id)
+            files_to_work_with.append(files_dir.joinpath(file_db.name))
+        return files_to_work_with
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""

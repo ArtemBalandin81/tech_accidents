@@ -1,4 +1,4 @@
-from .tasks import AddTaskFileResponse, AnalyticTaskResponse, TaskResponse
+from .tasks import AddTaskFileResponse, AnalyticTaskResponse, TaskResponse, TaskBase
 from .file_attached import FileBase, FileAttachedResponse, FileUploadedResponse
 
 __all__ = (
@@ -7,6 +7,7 @@ __all__ = (
     "FileAttachedResponse",
     "FileBase",
     "FileUploadedResponse",
+    "TaskBase",
     "TaskResponse",
     # "TasksRequest",
     # "TokenCheckResponse",

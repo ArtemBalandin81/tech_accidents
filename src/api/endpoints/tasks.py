@@ -2,15 +2,14 @@
 from collections.abc import Sequence
 from datetime import date
 from pathlib import Path
-from typing import Optional, List, Union, Annotated
+from typing import Optional
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
-from fastapi.responses import FileResponse
 from pydantic import EmailStr, PositiveInt
 
 from src.api.constants import *
-from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse  # todo subst to "schemas" after schemas refactoring
+from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse, TaskBase  # todo subst to "schemas" refactoring
 from src.api.services import FileService, TaskService, UsersService
 from src.core.db.models import Task, User
 from src.core.db.user import current_superuser, current_user
@@ -60,20 +59,20 @@ async def create_new_task_by_form(
     }
     # 1. Записываем задачу в БД, чтобы к ней прикрепить файл впоследствии:
     new_task: Task = await task_service.actualize_object(None, task_object, user)
-    task: dict = await task_service.change_schema_response(new_task)
-    if file_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
-        file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
-        file_names_and_ids: tuple[list[str], list[int]] = await file_service.download_and_write_files_in_db(
-            [file_to_upload], FILES_DIR, file_timestamp
-        )
-        task_id = new_task.id
-        file_id = file_names_and_ids[1]
-        file_name = file_names_and_ids[0]
-        await task_service.set_files_to_task(task_id, file_id)
-        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_id))
-        task["extra_files"]: list[str] = file_name  # дополняем словарь для ответа AnalyticTaskResponse
-    task["extra_files"]: list[str] = []
-    return AnalyticTaskResponse(**task)
+    task_response: dict = await task_service.change_schema_response(new_task)
+    if file_to_upload is None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
+        return AnalyticTaskResponse(**task_response)
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
+    file_names_and_ids: tuple[list[str], list[int]] = await file_service.download_and_write_files_in_db(
+        [file_to_upload], FILES_DIR, file_timestamp
+    )
+    task_id = new_task.id
+    file_id = file_names_and_ids[1]
+    file_name = file_names_and_ids[0]
+    await task_service.set_files_to_task(task_id, file_id)
+    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_id))
+    task_response["extra_files"]: list[str] = file_name  # дополняем словарь для ответа AnalyticTaskResponse
+    return AnalyticTaskResponse(**task_response)
 
 
 @task_router.post(
@@ -112,19 +111,17 @@ async def create_new_task_by_form_with_files(
     }
     # 1. Записываем задачу в БД, чтобы к ней прикрепить файл впоследствии:
     new_task: Task = await task_service.actualize_object(None, task_object, user)
-    task: dict = await task_service.change_schema_response(new_task)
-    # if files_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
     file_names_and_ids: tuple[list[str], list[int]] = await file_service.download_and_write_files_in_db(
         files_to_upload, FILES_DIR, file_timestamp
     )
     task_id = new_task.id
     files_ids = file_names_and_ids[1]
-    files_names = file_names_and_ids[0]
     await task_service.set_files_to_task(task_id, files_ids)
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
-    task["extra_files"]: list[str] = files_names  # дополняем словарь для ответа AnalyticTaskResponse
-    return AnalyticTaskResponse(**task)
+    task_response: dict = await task_service.change_schema_response(new_task)
+    task_response["extra_files"]: list[str] = file_names_and_ids[0]
+    return AnalyticTaskResponse(**task_response)
 
 
 @task_router.post(
@@ -134,18 +131,19 @@ async def create_new_task_by_form_with_files(
     dependencies=[Depends(current_superuser)],
     tags=[TASKS_POST]
 )
-async def add_files_to_task(
+async def set_files_to_task(
     *,
     task_id: PositiveInt,
     files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_TASK),
     task_service: TaskService = Depends(),
 ) -> AddTaskFileResponse:
+    """Прикрепление файлов к задаче (только админ)."""
     await task_service.set_files_to_task(task_id, files_ids)
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
     return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
 
 
-@task_router.patch(  #todo здесь также нужно предусмотреть добавление файлов - опять сервис единый, чтобы не дублиров
+@task_router.patch(  #todo здесь также нужно предусмотреть добавление файлов - опять сервис единый, чтобы не дублировал
     TASK_ID,
     dependencies=[Depends(current_user)],
     description=TASK_PATCH_FORM,
@@ -187,7 +185,7 @@ async def partially_update_task_by_form(
     return AnalyticTaskResponse(**edited_task_list[0])
 
 
-@task_router.get(  # todo сейчас ошибка. связанная со схемой AnalyticTaskResponse (требуются файлы)
+@task_router.get(
     GET_ALL_ROUTE,
     response_model_exclude_none=True,
     description=TASK_LIST,
@@ -198,7 +196,7 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
     return await task_service.perform_changed_schema(await task_service.get_all())  # noqa
 
 
-@task_router.get(  # todo сейчас ошибка. связанная со схемой AnalyticTaskResponse (требуются файлы)
+@task_router.get(
     GET_OPENED_ROUTE,
     response_model_exclude_none=True,
     description=TASK_OPENED_LIST,
@@ -209,21 +207,21 @@ async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequenc
     return await task_service.perform_changed_schema(await task_service.get_all_opened())  # noqa
 
 
-@task_router.get(  # todo сейчас ошибка. связанная со схемой AnalyticTaskResponse (требуются файлы)
+@task_router.get(
     MY_TASKS,
     description=MY_TASKS_LIST,
     summary=MY_TASKS_LIST,
     response_model_exclude_none=True,
     tags=[TASKS_GET]
 )
-async def get_my_tasks_ordered(  # todo сейчас ошибка. связанная со схемой AnalyticTaskResponse (требуются файлы)
+async def get_my_tasks_ordered(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id))  # noqa
 
 
-@task_router.get(  # todo сейчас ошибка. связанная со схемой AnalyticTaskResponse (требуются файлы)
+@task_router.get(
     ME_TODO,
     description=ME_TODO_LIST,
     summary=ME_TODO_LIST,
@@ -251,39 +249,29 @@ async def get_task_by_id(
     task_service: TaskService = Depends(),
     file_service: FileService = Depends()
 ) -> AnalyticTaskResponse | Response:  # Invalid args for response field -> response_model=None
-    task: dict = await task_service.change_schema_response(await task_service.get(task_id))
-    files_ids = await task_service.get_file_ids_from_task(task_id)
+    file_ids: Sequence[int] = await task_service.get_file_ids_from_task(task_id)
     files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
     if choice_download_files == files_download_true:
-        files_to_zip = []
-        if len(files_ids) == 0:
+        if len(file_ids) == 0:
             await log.aerror(NOT_FOUND)
             raise HTTPException(status_code=403, detail="{}".format(NOT_FOUND))
         else:
-            for file_id in files_ids:  # todo перенести в сервисы файлов - лишняя нагрузка на эндпоинт
-                file_db = await file_service.get(file_id)
-                files_to_zip.append(FILES_DIR.joinpath(file_db.name))
-        return await file_service.zip_files(files_to_zip)
+            return await file_service.zip_files(await file_service.prepare_files_to_work_with(file_ids, FILES_DIR))
     else:
-        files_names = await task_service.get_file_names_from_task(task_id)
-        if len(files_ids) != len(files_names):
-            tasks_files_mismatch = "{}{}{}{}{}".format(TASK, task_id, TASKS_FILES_MISMATCH, files_ids, files_names)
-            await log.aerror(tasks_files_mismatch)
-            raise HTTPException(status_code=206, detail=tasks_files_mismatch)
-        await log.ainfo("{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids, files_names))
-        task["extra_files"] = files_names
-        return AnalyticTaskResponse(**task)
+        task: Sequence[dict] = await task_service.perform_changed_schema(await task_service.get(task_id))
+        return AnalyticTaskResponse(**task[0])
 
 
-@task_router.delete(  # todo выводить список всех задач в качестве response - сначала поправить отображение файлов
+@task_router.delete(
     TASK_ID,
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=TASK_DELETE,
     tags=[TASKS_POST]
 )
-async def remove_task(task_id: PositiveInt, task_service: TaskService = Depends()) -> None:
-    await task_service.remove(task_id)
+async def remove_task(task_id: PositiveInt, task_service: TaskService = Depends()) -> Sequence[TaskBase]:
+    tasks = await task_service.remove(task_id)
     await task_service.set_files_to_task(task_id, [])
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
+    return tasks  # noqa
