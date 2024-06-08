@@ -63,7 +63,7 @@ async def create_new_task_by_form(
     if file_to_upload is None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
         return AnalyticTaskResponse(**task_response)
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
-    file_names_and_ids: tuple[list[str], list[int]] = await file_service.download_and_write_files_in_db(
+    file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         [file_to_upload], FILES_DIR, file_timestamp
     )
     task_id = new_task.id
@@ -112,7 +112,7 @@ async def create_new_task_by_form_with_files(
     # 1. Записываем задачу в БД, чтобы к ней прикрепить файл впоследствии:
     new_task: Task = await task_service.actualize_object(None, task_object, user)
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
-    file_names_and_ids: tuple[list[str], list[int]] = await file_service.download_and_write_files_in_db(
+    file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         files_to_upload, FILES_DIR, file_timestamp
     )
     task_id = new_task.id
@@ -131,13 +131,13 @@ async def create_new_task_by_form_with_files(
     dependencies=[Depends(current_superuser)],
     tags=[TASKS_POST]
 )
-async def set_files_to_task(
+async def set_files_to_task(  # todo хорошо бы еще админский сервис очищения неиспользованных файлов
     *,
     task_id: PositiveInt,
     files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_TASK),
     task_service: TaskService = Depends(),
 ) -> AddTaskFileResponse:
-    """Прикрепление файлов к задаче (только админ)."""
+    """Прикрепление файлов к задаче (запись отношения в БД) (только админ)."""
     await task_service.set_files_to_task(task_id, files_ids)
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
     return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
@@ -160,8 +160,13 @@ async def partially_update_task_by_form(
     ),
     task: Optional[str] = Query(None, max_length=256, alias=TASK),
     description: Optional[str] = Query(None, max_length=256, alias=TASK_DESCRIPTION),
-    is_archived: bool = Query(..., alias=IS_ARCHIVED),
+    is_archived: bool = Query(None, alias=IS_ARCHIVED),
+    tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
+    executor_email: Executor = Query(None, alias=TASK_EXECUTOR_MAIL),
+    file_to_upload: UploadFile = None,  # todo реализовать опциональную полную очистку прикрепленных файлов
     task_service: TaskService = Depends(),
+    users_service: UsersService = Depends(),
+    file_service: FileService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     task_from_db = await task_service.get(task_id)  # получаем объект из БД и заполняем недостающие поля
@@ -171,17 +176,40 @@ async def partially_update_task_by_form(
         else datetime.strptime(task_from_db.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
     )  # Из БД получаем date -> конвертируем в str -> записываем обратно в БД в datetime для сопоставимости форматов
     task_start: date = datetime.strptime(task_from_db.task_start.strftime(DATE_FORMAT), DATE_FORMAT)
+    executor = await users_service.get_by_email(executor_email.value) if executor_email is not None else None
     task_object = {
         "task_start": task_start,
         "deadline": deadline,
         "task": task_from_db.task if task is None else task,
-        "tech_process": task_from_db.tech_process,
+        "tech_process": task_from_db.tech_process if tech_process is None else tech_process,
         "description": task_from_db.description if description is None else description,
-        "executor": task_from_db.executor,
-        "is_archived": is_archived
+        "executor": task_from_db.executor if executor_email is None else executor.id,  # noqa
+        "is_archived": task_from_db.is_archived if is_archived is None else is_archived
     }
     edited_task = await task_service.actualize_object(task_id, task_object, user)
-    edited_task_list = await task_service.perform_changed_schema(edited_task)
+    edited_task_list: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
+    if file_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
+        file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
+        file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
+            [file_to_upload], FILES_DIR, file_timestamp
+        )
+        new_file_id = file_names_and_ids[1]
+        new_file_name = file_names_and_ids[0]
+        file_ids_set_to_task = await task_service.get_file_ids_from_task(task_id)
+        file_names_set_to_task = await task_service.get_file_names_from_task(task_id)
+        new_file_ids = new_file_id + file_ids_set_to_task
+        new_file_names = new_file_name + file_names_set_to_task
+        print(f'file_ids: {new_file_ids} file_id: {new_file_id}')  # todo в log.ainfo
+        await task_service.set_files_to_task(task_id, new_file_ids)
+        # await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_id))
+        edited_task_list[0]["extra_files"]: list[str] = new_file_names  # дополняем словарь AnalyticTaskResponse
+        # todo полное логгирование с добавленными файлами и новыми
+        return AnalyticTaskResponse(**edited_task_list[0])
+    await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
+        TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED, SPACE,
+        is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
+        executor_email)
+    )
     return AnalyticTaskResponse(**edited_task_list[0])
 
 
@@ -249,7 +277,7 @@ async def get_task_by_id(
     task_service: TaskService = Depends(),
     file_service: FileService = Depends()
 ) -> AnalyticTaskResponse | Response:  # Invalid args for response field -> response_model=None
-    file_ids: Sequence[int] = await task_service.get_file_ids_from_task(task_id)
+    file_ids: Sequence[PositiveInt] = await task_service.get_file_ids_from_task(task_id)
     files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
     if choice_download_files == files_download_true:
         if len(file_ids) == 0:
@@ -262,7 +290,7 @@ async def get_task_by_id(
         return AnalyticTaskResponse(**task[0])
 
 
-@task_router.delete(
+@task_router.delete(  # todo Поскольку все имена файлов уникальны, их также можно удалять при удалении задачи
     TASK_ID,
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
