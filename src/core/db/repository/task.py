@@ -23,7 +23,7 @@ class TaskRepository(ContentRepository):
         )
         return objects.all()
 
-    async def get_all_id_ordered(self) -> Sequence[Task]:
+    async def get_all_id_sorted(self) -> Sequence[Task]:
         """Возвращает все задачи из базы данных, отсортированные по id."""
         objects = await self._session.scalars(
             select(Task)
@@ -85,11 +85,18 @@ class TaskRepository(ContentRepository):
         )
         return task_files_relations.all()
 
-
     async def get_files_from_task(self, task_id: int) -> Sequence[FileAttached]:
         """Получить список файлов, прикрепленных к задаче."""
         files = await self._session.scalars(
             select(FileAttached)
             .join(Task.files)
-            .where(Task.id == task_id))
+            .where(Task.id == task_id)
+        )
+        return files.all()
+
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
+        """Получить список файлов, прикрепленных ко всем задачам."""
+        files = await self._session.scalars(
+            select(FileAttached)
+        )
         return files.all()

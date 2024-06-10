@@ -27,34 +27,35 @@ FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='m
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
 
-
-# endpoints
-ADD_FILES_TO_TASK = "/add_files_to_task"
-ANALYTICS = "/analytics"
+# endpoints files & services & users
 DOWNLOAD_FILES = "/download_files"
-GET_ALL_ROUTE = "/"
-GET_FILES = "/get_files"
-GET_OPENED_ROUTE = "/opened"
 FILE_ID = "/{file_id}"
+GET_FILES = "/get_files"
+
 LOGIN = "api/auth/jwt/login"
+
+# endpoints suspensions
+ANALYTICS = "/analytics"
+MY_SUSPENSIONS = "/my_suspensions"
+SUSPENSION_ID = "/{suspension_id}"
+
+# endpoints tasks
+ADD_FILES_TO_TASK = "/add_files_to_task"
+GET_ALL_ROUTE = "/"
+GET_OPENED_ROUTE = "/opened"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
-MY_SUSPENSIONS = "/my_suspensions"
 POST_TASK_FORM = "/post_task_form"
 POST_TASKS_FORM = "/post_tasks_form"
-SUSPENSION_ID = "/{suspension_id}"
 TASK_ID = "/{task_id}"
-
 
 # endpoints TAGS
 FILES = "Загрузка и получение файлов"
 TASKS_GET = "Задачи: посмотреть задачи"
 TASKS_POST = "Задачи: назначить задачу"
 
-
 # auth
 IS_REGISTERED = " is registered."
-
 
 # files_alias
 GET_FILE_BY_ID = "Получить файл по id."
@@ -63,6 +64,7 @@ FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
+FILES_SET_TO = "Привязанные файлы: "
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 ROUND_FILE_SIZE = 1
@@ -73,6 +75,7 @@ SEARCH_FILES_BY_ID = "Поиск файлов по id файлов"
 
 # files_descriptions
 FILES_ATTACHED_TO_TASK = ". К задаче добавлены следующие файлы: "
+FILE_DELETE = "Удалить файл (только админ)."
 GET_SEVERAL_FILES = "Получить несколько файлов."
 UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы: "
 
@@ -110,7 +113,6 @@ DIR_CREATED_ERROR = "Ошибка создания каталога."
 FILE_EXISTS_ERROR = "Файл уже существует."
 FILE_SAVED = "Файл успешно скопирован."
 
-
 # tasks_alias
 IS_ARCHIVED = "Задача выполнена"
 TASK = "Задача: "
@@ -140,6 +142,7 @@ ALREADY_EXISTS = " уже существует"
 ALLOWED_FILE_SIZE_DOWNLOAD = ", допустимый размер: "
 ALLOWED_FILE_TYPE_DOWNLOAD = " Допустимые типы: "
 FILES_DOWNLOAD_ERROR = "Ошибка загрузки файлов и записи их в БД: "
+FILES_REMOVE_FORBIDDEN = "Запрещено удалять привязанные файлы: "
 FIlE_SIZE_EXCEEDED = " Превышен допустимый размер файла к загрузке - "
 FILE_TYPE_DOWNLOAD_ALLOWED = " - данный тип файла не допустим для закгрузки!"
 FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id или имени файла (не одновременно)!"

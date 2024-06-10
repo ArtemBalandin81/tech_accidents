@@ -26,3 +26,10 @@ class FileRepository(ContentRepository):
             .order_by(self._model.id.desc())
         )
         return objects.all()
+
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
+        """Получить список файлов, прикрепленных ко всем задачам."""
+        objects = await self._session.scalars(
+            select(self._model)
+        )
+        return objects.all()

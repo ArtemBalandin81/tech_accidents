@@ -3,7 +3,7 @@ import abc
 from datetime import datetime
 from typing import Sequence, TypeVar
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import AlreadyExistsException, NotFoundException
@@ -45,6 +45,11 @@ class AbstractRepository(abc.ABC):
         """Удаляет объект модели из базы данных."""
         await self._session.delete(instance)
         await self._session.commit()
+
+    @auto_commit
+    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:
+        """Удаляет объекты модели из базы данных."""
+        await self._session.execute(delete(instance).where(instance.id.in_(instances)))
 
     @auto_commit
     async def update(self, _id: int, instance: DatabaseModel) -> DatabaseModel:

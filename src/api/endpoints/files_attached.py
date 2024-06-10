@@ -1,10 +1,12 @@
 """src/api/endpoints/files_attached.py"""
 
 from pathlib import Path
+from typing import Sequence
 
 import structlog
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 from fastapi.responses import FileResponse
+from pydantic import PositiveInt
 
 from src.api.constants import *
 from src.api.schema import FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after refactoring
@@ -56,7 +58,7 @@ async def upload_files_by_form(
 )
 async def get_files(
         search_name: str = Query(None, example=SOME_NAME, alias=SEARCH_FILES_BY_NAME),
-        files_wanted: list[int] = Query(None, alias=SEARCH_FILES_BY_ID),
+        files_wanted: list[PositiveInt] = Query(None, alias=SEARCH_FILES_BY_ID),
         file_service: FileService = Depends(),
 ) -> Response:
     await log.ainfo("{}{}".format("search_name: ", search_name))
@@ -69,7 +71,7 @@ async def get_files(
             detail="{}".format(FILE_SEARCH_DOWNLOAD_OPTION)
         )
     if files_wanted is not None:
-        for file_id in files_wanted:  # todo нужна своя сервис-функция, чтобы можно было в разных эндпоинт использовать
+        for file_id in files_wanted:  # todo сервис-функция, для разных эндпоинтов - prepare_files_to_work_with ???
             file_db = await file_service.get(file_id)
             files_to_zip.append(FILES_DIR.joinpath(file_db.name))
     else:
@@ -94,7 +96,7 @@ async def get_files(
     tags=[FILES],
 )
 async def get_file_by_id(
-        file_id: int,
+        file_id: PositiveInt,
         choice_download_files: ChoiceDownloadFiles = Query(..., alias=CHOICE_FORMAT),
         file_service: FileService = Depends(),
 ):
@@ -114,3 +116,21 @@ async def get_file_by_id(
             file_info=file_db,
             files_attached=file_name,
         )
+
+@file_router.delete(
+    FILE_ID,
+    description=FILE_DELETE,
+    dependencies=[Depends(current_superuser)],
+    summary=FILE_DELETE,
+    tags=[FILES],
+)
+async def remove_files(
+        search_name: str = Query(None, example=SOME_NAME, alias=SEARCH_FILES_BY_NAME),
+        files_wanted: list[PositiveInt] = Query(None, alias=SEARCH_FILES_BY_ID),
+        file_service: FileService = Depends(),
+) -> Sequence[Path]:
+    files_to_remove = await file_service.remove_files(files_wanted, FILES_DIR)
+    await log.ainfo("{}{}".format(files_to_remove, DELETED_OK))
+    return files_to_remove
+
+

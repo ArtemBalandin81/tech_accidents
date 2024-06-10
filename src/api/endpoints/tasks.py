@@ -187,30 +187,35 @@ async def partially_update_task_by_form(
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
     }
     edited_task = await task_service.actualize_object(task_id, task_object, user)
-    edited_task_list: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
+    edited_task_response: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
     if file_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
         file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
-        file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
-            [file_to_upload], FILES_DIR, file_timestamp
+        file_names_and_ids_attached: tuple[list[str], list[PositiveInt]] = (
+            await file_service.download_and_write_files_in_db(
+                [file_to_upload], FILES_DIR, file_timestamp)
         )
-        new_file_id = file_names_and_ids[1]
-        new_file_name = file_names_and_ids[0]
-        file_ids_set_to_task = await task_service.get_file_ids_from_task(task_id)
-        file_names_set_to_task = await task_service.get_file_names_from_task(task_id)
-        new_file_ids = new_file_id + file_ids_set_to_task
-        new_file_names = new_file_name + file_names_set_to_task
-        print(f'file_ids: {new_file_ids} file_id: {new_file_id}')  # todo в log.ainfo
+        new_file_id = file_names_and_ids_attached[1]
+        new_file_name = file_names_and_ids_attached[0]
+        file_names_and_ids_set_to_task: tuple[list[str], list[PositiveInt]] = (
+            await task_service.get_file_names_and_ids_from_task(task_id)
+        )
+        new_file_ids = new_file_id + file_names_and_ids_set_to_task[1]
+        new_file_names = new_file_name + file_names_and_ids_set_to_task[0]
         await task_service.set_files_to_task(task_id, new_file_ids)
-        # await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_id))
-        edited_task_list[0]["extra_files"]: list[str] = new_file_names  # дополняем словарь AnalyticTaskResponse
-        # todo полное логгирование с добавленными файлами и новыми
-        return AnalyticTaskResponse(**edited_task_list[0])
+        edited_task_response[0]["extra_files"]: list[str] = new_file_names  # дополняем словарь AnalyticTaskResponse
+        await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
+            TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED,
+            SPACE, is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
+            executor_email, SPACE, FILES_ATTACHED_TO_TASK, new_file_id, SPACE, new_file_name, SPACE, FILES_SET_TO,
+            new_file_ids, new_file_names)
+        )
+        return AnalyticTaskResponse(**edited_task_response[0])
     await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
         TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED, SPACE,
         is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
         executor_email)
     )
-    return AnalyticTaskResponse(**edited_task_list[0])
+    return AnalyticTaskResponse(**edited_task_response[0])
 
 
 @task_router.get(
@@ -290,7 +295,7 @@ async def get_task_by_id(
         return AnalyticTaskResponse(**task[0])
 
 
-@task_router.delete(  # todo Поскольку все имена файлов уникальны, их также можно удалять при удалении задачи
+@task_router.delete(  # todo удалять также и сами файлы физически из папки
     TASK_ID,
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
@@ -298,8 +303,8 @@ async def get_task_by_id(
     tags=[TASKS_POST]
 )
 async def remove_task(task_id: PositiveInt, task_service: TaskService = Depends()) -> Sequence[TaskBase]:
-    tasks = await task_service.remove(task_id)
+    actual_tasks = await task_service.remove(task_id)
     await task_service.set_files_to_task(task_id, [])
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
-    return tasks  # noqa
+    return actual_tasks  # noqa
