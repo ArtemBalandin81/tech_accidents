@@ -94,7 +94,7 @@ class TaskRepository(ContentRepository):
         )
         return files.all()
 
-    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:  # todo требует донастройки - фигачит все айди
         """Получить список файлов, прикрепленных ко всем задачам."""
         files = await self._session.scalars(
             select(FileAttached)

@@ -1,12 +1,12 @@
 """src/api/services/file_attached.py"""
-# import numpy as np
+import numpy as np
 
 from collections.abc import Sequence
 
 from fastapi import Depends, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
-from src.core.db.models import FileAttached, User
+from src.core.db.models import FileAttached, User, TasksFiles
 from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.users import UsersRepository
 from pathlib import Path
@@ -186,33 +186,28 @@ class FileService:
     async def get(self, file_id: int) -> FileAttached:
         return await self._repository.get(file_id)
 
-    async def get_all(self) -> Sequence[any]:
+    async def get_all(self) -> Sequence[FileAttached]:
         return await self._repository.get_all()
 
-    async def get_all_for_search_word(self, search_word: str) -> Sequence[any]:
+    async def get_all_for_search_word(self, search_word: str) -> Sequence[FileAttached]:
         return await self._repository.get_all_for_search_word(search_word)
 
-    async def get_all_file_names_and_ids_from_tasks(self) -> tuple[list[str], list[int]]:
-        """Отдает кортеж из списка имен и id файлов, привязанных ко всем задачам."""
-        files: Sequence[FileAttached] = await self._repository.get_all_files_from_tasks()
-        return [file.name for file in files], [file.id for file in files]
+    async def get_all_file_ids_from_tasks(self) -> Sequence[int]:
+        """Отдает ids файлов, привязанных ко всем задачам."""
+        relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
+        return [relation.file_id for relation in relations]
 
     async def remove(self, file_id: int) -> None:
         file = await self._repository.get(file_id)
         return await self._repository.remove(file)
 
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
-        """Удаляет из каталога список переданных файлов."""  # todo проверять привязку файлов к задачам и простоям
-        all_file_names_and_ids_from_tasks = await self.get_all_file_names_and_ids_from_tasks()
-        # if files in all_file_names_and_ids_from_tasks[1]:  # todo доп. проверять кол-во файлов до загрузки и после
-        # list1 = np.array(files)
-        # list2 = np.array(all_file_names_and_ids_from_tasks[1])
-        # if np.any(list1 != list2):
-        #     raise HTTPException(
-        #         status_code=403,
-        #         detail="{}{}{}".format(FILES_REMOVE_FORBIDDEN, files, all_file_names_and_ids_from_tasks[1])
-        #     )
-        # print(f'all_file_names_and_ids_from_tasks: {all_file_names_and_ids_from_tasks}')
+        """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
+        files_to_remove: Sequence[int] = np.array(files)
+        all_file_ids_from_tasks: Sequence[int] = np.array(await self.get_all_file_ids_from_tasks())
+        intersection = np.intersect1d(files_to_remove, all_file_ids_from_tasks)
+        if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
+            raise HTTPException(status_code=403, detail="{}{}".format(FILES_REMOVE_FORBIDDEN, intersection))
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
         for file in files_to_remove:
             file.unlink()

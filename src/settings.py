@@ -58,8 +58,14 @@ class Settings(BaseSettings):
     CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
 
-    # Настройки ENUM-класса в форме выбора загрузки файлов
+    # Настройки ENUM-класса в форме выбора загрузки и удаления файлов
     CHOICE_DOWNLOAD_FILES: str = '{"JSON": "json", "FILES": "files"}'
+    CHOICE_REMOVE_FILES_UNUSED: str = (
+        '{"DB_UNUSED": "unused_in_db",'
+        ' "DB_UNUSED_REMOVE": "remove_unused_in_db",'
+        ' "FOLDER_UNUSED": "unused_in_folder",'
+        ' "FOLDER_UNUSED_REMOVE": "remove_unused_in_folder"}'
+    )
 
     # Настройки ENUM-класса персонала для постановки задач
     BOT_USER: int = 2
