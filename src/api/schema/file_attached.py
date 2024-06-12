@@ -1,12 +1,7 @@
 """src/api/schemas/files.py"""
-import time
 from datetime import date
-from typing import Type
 
 from pydantic import BaseModel, FilePath, Field, computed_field, field_serializer, PositiveInt
-# from sqlalchemy import BLOB
-from sqlalchemy.sql.sqltypes import BLOB
-from fastapi.responses import FileResponse
 
 from src.api.constants import *
 from src.settings import settings
@@ -54,3 +49,13 @@ class FileUploadedResponse(BaseModel):
     """Схема ответа после загрузки файлов."""
     file_names_written_in_db: list[str] = Field(..., serialization_alias=FILES_WRITTEN_DB)
     file_ids_written_in_db: list[PositiveInt] = Field(..., serialization_alias=FILES_IDS_WRITTEN_DB)
+
+class FileDBUnusedResponse(BaseModel):
+    """Схема ответа для поиска бесхозных файлов в БД."""
+    file_names_unused_in_db: list[str] = Field(..., serialization_alias=FILES_NAMES_UNUSED_IN_DB)
+    file_ids_unused_in_db: list[PositiveInt] = Field(..., serialization_alias=FILES_IDS_UNUSED_IN_DB)
+
+class FileDBUnusedDeletedResponse(BaseModel):
+    """Схема ответа после удаления бесхозных файлов в БД."""
+    file_names_unused_in_db_removed: list[str] = Field(..., serialization_alias=FILES_NAMES_UNUSED_IN_DB_REMOVED)
+    file_ids_unused_in_db_removed: list[PositiveInt] = Field(..., serialization_alias=FILES_IDS_UNUSED_IN_DB)

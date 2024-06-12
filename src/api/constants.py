@@ -60,19 +60,24 @@ IS_REGISTERED = " is registered."
 
 # files_alias
 GET_FILE_BY_ID = "Получить файл по id."
-CHOICE_FORMAT = "Формат представления"
-CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"
+CHOICE_FORMAT = "Формат представления: "
+CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"  # todo delete
+FILES_NAMES_UNUSED_IN_DB = "Бесхозные файлы в БД: "
+FILES_NAMES_UNUSED_IN_DB_REMOVED = "Удалены следующие бесхозные файлы: "
+FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
 FILES_RECEIVED = "Files_received: "
 FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
 FILES_SET_TO = "Привязанные файлы: "
+FILES_IDS_INTERSECTION = "Общие ids множеств: "
+FILES_IDS_DIFFERENCE = "Уникальные ids множествa 1: "
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 ROUND_FILE_SIZE = 1
 SOME_ID = 1
-SOME_NAME = (datetime.now(TZINFO)).strftime(DATE_FORMAT)  # "could_find_names_and_digits_eng"
+SOME_NAME = "dd-mm-2024"  # "could_find_names_and_digits_eng"
 SEARCH_FILES_BY_NAME = "Поиск файлов по имени: "
 SEARCH_FILES_BY_ID = "Поиск файлов по id файлов: "
 

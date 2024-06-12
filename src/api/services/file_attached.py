@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db import get_session
 from src.core.db.models import FileAttached, User, TasksFiles
 from src.core.db.repository.file_attached import FileRepository
+from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
 from pathlib import Path
 import zipfile
@@ -28,12 +29,14 @@ class FileService:
     def __init__(
         self,
         file_repository: FileRepository = Depends(),
+        session: AsyncSession = Depends(get_session),
+        task_repository: TaskRepository = Depends(),
         users_repository: UsersRepository = Depends(),
-        session: AsyncSession = Depends(get_session)
     ) -> None:
         self._repository: FileRepository = file_repository
-        self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
+        self._task_repository: TaskRepository = task_repository
+        self._users_repository: UsersRepository = users_repository
 
     async def check_folder_exists(self, folder: Path) -> None:  # Path - не мб асинхронным?
         """Проверяет наличие каталога, и создает его если нет."""
@@ -163,6 +166,18 @@ class FileService:
             headers={'Content-Disposition': f'attachment;filename={FILE_NAME_SAVE_FORMAT + "_archive.zip"}'}
         )
 
+    async def get_file_ids_intersection(self, array_1: Sequence[int], array_2: Sequence[int]) -> Sequence[int]:
+        """Отдает пересечение двух множеств ids."""
+        intersection = np.intersect1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
+        await log.ainfo("{}{}".format(FILES_IDS_INTERSECTION, intersection))
+        return intersection
+
+    async def get_file_ids_difference(self, array_1: Sequence[int], array_2: Sequence[int]) -> Sequence[int]:
+        """Отдает разницу двух множеств ids: array_1 - array_2."""
+        difference = np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
+        await log.ainfo("{}{}".format(FILES_IDS_DIFFERENCE, difference))
+        return np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
+
     async def actualize_object(  # todo перенести в универсальные сервисы
             self,
             file_id: int | None,
@@ -189,23 +204,38 @@ class FileService:
     async def get_all(self) -> Sequence[FileAttached]:
         return await self._repository.get_all()
 
+    async def get_all_db_file_names_and_ids(self) -> tuple[list[str], list[int]]:
+        """Отдает кортеж из имен и их ids всех файлов в БД."""
+        db_files = await self._repository.get_all()
+        return [db_file.name for db_file in db_files], [db_file.id for db_file in db_files]
+
     async def get_all_for_search_word(self, search_word: str) -> Sequence[FileAttached]:
+        """Отдает файлы, соответствующие критерию поиска."""
         return await self._repository.get_all_for_search_word(search_word)
+
+    async def get_by_ids(self, ids: Sequence[int]) -> Sequence[FileAttached]:
+        """Отдает файлы, по их ids."""
+        return await self._repository.get_by_ids(ids)
 
     async def get_all_file_ids_from_tasks(self) -> Sequence[int]:
         """Отдает ids файлов, привязанных ко всем задачам."""
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         return [relation.file_id for relation in relations]
 
-    async def remove(self, file_id: int) -> None:
+    async def get_all_file_names_from_tasks(self) -> Sequence[str]:  # todo если не требуется - удалить
+        """Отдает имена файлов, привязанных ко всем задачам."""
+        files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
+        return [file.name for file in files]
+
+    async def remove(self, file_id: int) -> None:  # todo delete - unused
         file = await self._repository.get(file_id)
         return await self._repository.remove(file)
 
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
         """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
-        files_to_remove: Sequence[int] = np.array(files)
-        all_file_ids_from_tasks: Sequence[int] = np.array(await self.get_all_file_ids_from_tasks())
-        intersection = np.intersect1d(files_to_remove, all_file_ids_from_tasks)
+        intersection: Sequence[int] = await self.get_file_ids_intersection(
+            np.array(files), np.array(await self.get_all_file_ids_from_tasks())
+        )
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
             raise HTTPException(status_code=403, detail="{}{}".format(FILES_REMOVE_FORBIDDEN, intersection))
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)

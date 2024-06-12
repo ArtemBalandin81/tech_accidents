@@ -71,6 +71,11 @@ class AbstractRepository(abc.ABC):
         objects = await self._session.scalars(select(self._model))
         return objects.all()
 
+    async def get_by_ids(self, instances: Sequence[int]) -> Sequence[DatabaseModel]:
+        """Возвращает объекты модели из базы данных по списку ids."""
+        objects = await self._session.scalars(select(self._model).where(self._model.id.in_(instances)))
+        return objects.all()
+
     @auto_commit
     # async def create_all(self, objects: list[DatabaseModel]) -> None:
     async def create_all(self, objects: Sequence[DatabaseModel]) -> None:

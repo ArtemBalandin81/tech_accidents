@@ -9,7 +9,9 @@ from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 
 from src.api.constants import *
-from src.api.schema import FileAttachedResponse, FileUploadedResponse  # todo subst to "schemas" after refactoring
+from src.api.schema import (  # todo subst to "schemas"
+    FileAttachedResponse, FileDBUnusedResponse, FileDBUnusedDeletedResponse, FileUploadedResponse
+)
 from src.api.services import FileService
 from src.core.db.models import FileAttached
 from src.core.db.user import current_superuser, current_user
@@ -94,13 +96,42 @@ async def get_files(
     tags=[FILES],
 )
 async def get_files_unused(
-        choice_remove_files_unused: ChoiceRemoveFilesUnused = Query(..., alias=CHOICE_FORMAT),
+        choices_with_files_unused: ChoiceRemoveFilesUnused = Query(..., alias=CHOICE_FORMAT),
         file_service: FileService = Depends(),
 ):
-    """Ищет все бесхозные файлы и дает возможность их удалить из директории с файлами."""
-    files_ids_db: Sequence[FileAttached] = await file_service.get_all()
+    """
+    Ищет все бесхозные файлы и дает возможность их удалить из БД и из директории с файлами:
+    "DB_UNUSED": "unused_in_db",
+    "DB_UNUSED_REMOVE": "remove_unused_in_db",
+    "FOLDER_UNUSED": "unused_in_folder",
+    "FOLDER_UNUSED_REMOVE": "remove_unused_in_folder"
+    """
+    await log.ainfo("{}{}".format(CHOICE_FORMAT, choices_with_files_unused))
+    db_file_names_and_ids: tuple[list[str], list[int]] = await file_service.get_all_db_file_names_and_ids()
+    file_ids_in_tasks: Sequence[int] = await file_service.get_all_file_ids_from_tasks()
+    options_for_files_unused = settings.CHOICE_REMOVE_FILES_UNUSED.split('"')
+    file_ids_unused: Sequence[int] = await file_service.get_file_ids_difference(
+        db_file_names_and_ids[1], file_ids_in_tasks
+    )
+    file_names_unused: Sequence[int] = [file.name for file in await file_service.get_by_ids(file_ids_unused)]
+    if choices_with_files_unused == options_for_files_unused[3]:  # == "unused_in_db"
+        await log.ainfo("{}{}".format(FILES_NAMES_UNUSED_IN_DB, file_names_unused))
+        return FileDBUnusedResponse(
+            file_names_unused_in_db=file_names_unused,
+            file_ids_unused_in_db=file_ids_unused
+        )
+    elif choices_with_files_unused == options_for_files_unused[7]:  # == "remove_unused_in_db"
+        await file_service.remove_files(file_ids_unused, FILES_DIR)
+        await log.ainfo("{}{}".format(FILES_NAMES_UNUSED_IN_DB_REMOVED, file_names_unused))
+        return FileDBUnusedDeletedResponse(
+            file_names_unused_in_db_removed=file_names_unused,
+            file_ids_unused_in_db_removed=file_ids_unused
+        )
+    elif choices_with_files_unused == options_for_files_unused[11]:  # == "unused_in_folder"  # todo
+        print("TRUE unused_in_folder")
+    elif choices_with_files_unused == options_for_files_unused[15]:  # == "remove_unused_in_folder"  # todo
+        print("TRUE remove_unused_in_folder")
 
-    return files_ids_db  # todo
 
 
 @file_router.get(
