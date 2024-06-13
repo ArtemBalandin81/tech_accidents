@@ -64,7 +64,7 @@ class Settings(BaseSettings):
         '{"DB_UNUSED": "unused_in_db",'
         ' "DB_UNUSED_REMOVE": "remove_unused_in_db",'
         ' "FOLDER_UNUSED": "unused_in_folder",'
-        ' "FOLDER_UNUSED_REMOVE": "remove_unused_in_folder"}'
+        ' "FOLDER_UNUSED_REMOVE": "delete_unused_in_folder"}'
     )
 
     # Настройки ENUM-класса персонала для постановки задач

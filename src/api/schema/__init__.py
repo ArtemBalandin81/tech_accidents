@@ -1,6 +1,7 @@
 from .tasks import AddTaskFileResponse, AnalyticTaskResponse, TaskResponse, TaskBase
 from .file_attached import (
-    FileBase, FileDBUnusedResponse, FileDBUnusedDeletedResponse, FileAttachedResponse, FileUploadedResponse
+    FileBase, FileDBUnusedResponse, FileDBUnusedDeletedResponse, FileAttachedResponse, FileUploadedResponse,
+    FileUnusedResponse, FileUnusedDeletedResponse
 )
 
 __all__ = (
@@ -11,6 +12,8 @@ __all__ = (
     "FileDBUnusedResponse",
     "FileDBUnusedDeletedResponse",
     "FileUploadedResponse",
+    "FileUnusedResponse",
+    "FileUnusedDeletedResponse",
     "TaskBase",
     "TaskResponse",
     # "TasksRequest",

@@ -44,6 +44,10 @@ class FileService:
             folder.mkdir(parents=True, exist_ok=True)
             await log.ainfo("{}".format(DIR_CREATED), folder=folder)
 
+    async def get_all_files_in_folder(self, folder: Path) -> Sequence[str]:
+        """Отдает список всех файлов в директории."""
+        return [file.name for file in folder.glob('*')]
+
     async def rename_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
         """Переименовывает загружаемый файл под требуемый формат и валидирует его размер и тип."""
         file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
@@ -144,13 +148,21 @@ class FileService:
         )
         return file_names_and_ids_written_in_db
 
-    async def prepare_files_to_work_with(self, file_ids: Sequence[int], files_dir: Path) -> list[Path]:
-        """Готовит список файлов для обработки."""
-        files_to_work_with: list[Path] = []
-        for file_id in file_ids:
-            file_db = await self.get(file_id)
-            files_to_work_with.append(files_dir.joinpath(file_db.name))
-        return files_to_work_with
+    async def prepare_files_to_work_with(self, files_attributes: Sequence[int | str], files_dir: Path) -> list[Path]:
+        """Отдает список файлов для обработки."""
+        if isinstance(files_attributes[0], str):
+            return [files_dir.joinpath(file) for file in files_attributes]
+        elif isinstance(files_attributes[0], int):
+            return [files_dir.joinpath(file_db.name) for file_db in await self.get_by_ids(files_attributes)]
+        else:
+            await log.aerror("{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_ALLOWED))
+            raise HTTPException(status_code=406, detail="{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_ALLOWED))
+
+    async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
+        """Удаляет из каталога список переданных файлов."""
+        for file in files_to_delete:
+            file.unlink()
+        return files_to_delete
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
@@ -166,16 +178,20 @@ class FileService:
             headers={'Content-Disposition': f'attachment;filename={FILE_NAME_SAVE_FORMAT + "_archive.zip"}'}
         )
 
-    async def get_file_ids_intersection(self, array_1: Sequence[int], array_2: Sequence[int]) -> Sequence[int]:
+    async def get_arrays_intersection(
+            self, array_1: Sequence[str | int], array_2: Sequence[str | int]
+    ) -> Sequence[str | int]:
         """Отдает пересечение двух множеств ids."""
         intersection = np.intersect1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
         await log.ainfo("{}{}".format(FILES_IDS_INTERSECTION, intersection))
         return intersection
 
-    async def get_file_ids_difference(self, array_1: Sequence[int], array_2: Sequence[int]) -> Sequence[int]:
-        """Отдает разницу двух множеств ids: array_1 - array_2."""
+    async def get_arrays_difference(
+            self, array_1: Sequence[str | int], array_2: Sequence[str | int]
+    ) -> Sequence[str | int]:
+        """Отдает разницу множеств имен или ids: array_1 - array_2."""
         difference = np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
-        await log.ainfo("{}{}".format(FILES_IDS_DIFFERENCE, difference))
+        await log.ainfo("{}{}".format(ARRAYS_DIFFERENCE, difference))
         return np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
 
     async def actualize_object(  # todo перенести в универсальные сервисы
@@ -227,19 +243,14 @@ class FileService:
         files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
         return [file.name for file in files]
 
-    async def remove(self, file_id: int) -> None:  # todo delete - unused
-        file = await self._repository.get(file_id)
-        return await self._repository.remove(file)
-
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
         """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
-        intersection: Sequence[int] = await self.get_file_ids_intersection(
+        intersection: Sequence[int] = await self.get_arrays_intersection(
             np.array(files), np.array(await self.get_all_file_ids_from_tasks())
         )
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
             raise HTTPException(status_code=403, detail="{}{}".format(FILES_REMOVE_FORBIDDEN, intersection))
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
-        for file in files_to_remove:
-            file.unlink()
+        await self.delete_files_in_folder(files_to_remove)
         await self._repository.remove_all(FileAttached, files)
         return files_to_remove

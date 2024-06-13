@@ -59,3 +59,11 @@ class FileDBUnusedDeletedResponse(BaseModel):
     """Схема ответа после удаления бесхозных файлов в БД."""
     file_names_unused_in_db_removed: list[str] = Field(..., serialization_alias=FILES_NAMES_UNUSED_IN_DB_REMOVED)
     file_ids_unused_in_db_removed: list[PositiveInt] = Field(..., serialization_alias=FILES_IDS_UNUSED_IN_DB)
+
+class FileUnusedResponse(BaseModel):
+    """Схема ответа для поиска бесхозных файлов в каталоге файлов."""
+    files_unused: list[str] = Field(..., serialization_alias=FILES_UNUSED_IN_FOLDER)
+
+class FileUnusedDeletedResponse(BaseModel):
+    """Схема ответа после удаления бесхозных файлов из каталога."""
+    files_unused: list[str] = Field(..., serialization_alias=FILES_UNUSED_IN_FOLDER_REMOVED)

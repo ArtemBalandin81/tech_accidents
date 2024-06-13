@@ -115,7 +115,7 @@ class TaskService:
         return await self._repository.get_tasks_todo(user_id)
 
     async def remove(self, task_id: int) -> Sequence[Task]:
-        await self._file_repository.remove_all(FileAttached, await self.get_file_ids_from_task(task_id))
+        await self._file_repository.remove_all(FileAttached, await self.get_file_ids_from_task(task_id))  # todo не тут
         await self._repository.remove(await self._repository.get(task_id))
         return await self._repository.get_all_id_sorted()
 

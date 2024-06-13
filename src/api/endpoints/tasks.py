@@ -131,7 +131,7 @@ async def create_new_task_by_form_with_files(
     dependencies=[Depends(current_superuser)],
     tags=[TASKS_POST]
 )
-async def set_files_to_task(  # todo хорошо бы еще админский сервис очищения неиспользованных файлов
+async def set_files_to_task(
     *,
     task_id: PositiveInt,
     files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_TASK),
@@ -171,7 +171,7 @@ async def partially_update_task_by_form(
 ) -> AnalyticTaskResponse:
     task_from_db = await task_service.get(task_id)  # получаем объект из БД и заполняем недостающие поля
     deadline: date = (
-        datetime.strptime(deadline, DATE_FORMAT)
+        datetime.strptime(str(deadline), DATE_FORMAT)  # todo here
         if deadline is not None
         else datetime.strptime(task_from_db.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
     )  # Из БД получаем date -> конвертируем в str -> записываем обратно в БД в datetime для сопоставимости форматов
@@ -302,7 +302,18 @@ async def get_task_by_id(
     summary=TASK_DELETE,
     tags=[TASKS_POST]
 )
-async def remove_task(task_id: PositiveInt, task_service: TaskService = Depends()) -> Sequence[TaskBase]:
+async def remove_task(
+        task_id: PositiveInt,
+        file_service: FileService = Depends(),
+        task_service: TaskService = Depends()
+) -> Sequence[TaskBase]:
+    files_ids_set_to_task: Sequence[int] = await task_service.get_file_ids_from_task(task_id)
+    if files_ids_set_to_task:
+        files_to_delete: Sequence[Path] = await file_service.prepare_files_to_work_with(
+            files_ids_set_to_task, FILES_DIR
+        )
+        await file_service.delete_files_in_folder(files_to_delete)
+        await log.ainfo("{}{}{}{}{}{}".format(TASK, task_id, SPACE, FILES_SET_TO, files_to_delete, DELETED_OK))
     actual_tasks = await task_service.remove(task_id)
     await task_service.set_files_to_task(task_id, [])
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
