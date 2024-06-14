@@ -154,7 +154,7 @@ async def partially_update_task_by_form(
     task_id: PositiveInt,
     deadline: Optional[str] = Query(
         None,
-        example=CREATE_TASK_DEADLINE,
+        description=CREATE_TASK_DEADLINE,
         alias=TASK_FINISH,
         regex=DATE_PATTERN_FORM
     ),
@@ -163,7 +163,8 @@ async def partially_update_task_by_form(
     is_archived: bool = Query(None, alias=IS_ARCHIVED),
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
     executor_email: Executor = Query(None, alias=TASK_EXECUTOR_MAIL),
-    file_to_upload: UploadFile = None,  # todo реализовать опциональную полную очистку прикрепленных файлов
+    file_to_upload: UploadFile = None,
+    to_unlink_files: bool = Query(None, alias=TASK_FILES_UNLINK),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     file_service: FileService = Depends(),
@@ -171,7 +172,7 @@ async def partially_update_task_by_form(
 ) -> AnalyticTaskResponse:
     task_from_db = await task_service.get(task_id)  # получаем объект из БД и заполняем недостающие поля
     deadline: date = (
-        datetime.strptime(str(deadline), DATE_FORMAT)  # todo here
+        datetime.strptime(str(deadline), DATE_FORMAT)
         if deadline is not None
         else datetime.strptime(task_from_db.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
     )  # Из БД получаем date -> конвертируем в str -> записываем обратно в БД в datetime для сопоставимости форматов
@@ -188,6 +189,26 @@ async def partially_update_task_by_form(
     }
     edited_task = await task_service.actualize_object(task_id, task_object, user)
     edited_task_response: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
+    if to_unlink_files and file_to_upload is not None:
+        await log.aerror("{}".format(TASKS_FILES_REMOVE_AND_SET))
+        raise HTTPException(status_code=406, detail="{}".format(TASKS_FILES_REMOVE_AND_SET))
+    if to_unlink_files:
+        file_names_and_ids_set_to_task: tuple[list[str], list[PositiveInt]] = (
+            await task_service.get_file_names_and_ids_from_task(task_id)
+        )
+        await task_service.set_files_to_task(task_id, [])
+        edited_task_response[0]["extra_files"]: list[str] = []
+        if file_names_and_ids_set_to_task[1] is not None:
+            await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)
+            await log.ainfo("{}{}{}{}{}{}".format(
+                TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, file_names_and_ids_set_to_task[0], DELETED_OK)
+            )
+        await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
+            TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED,
+            SPACE, is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
+            executor_email, SPACE, FILES_ATTACHED_TO_TASK, [],)
+        )
+        return AnalyticTaskResponse(**edited_task_response[0])
     if file_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
         file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
         file_names_and_ids_attached: tuple[list[str], list[PositiveInt]] = (

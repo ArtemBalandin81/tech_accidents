@@ -164,6 +164,10 @@ class FileService:
             file.unlink()
         return files_to_delete
 
+    async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
+        """Удаляет из БД список переданных файлов."""
+        await self._repository.remove_all(FileAttached, files_to_delete)
+
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
         virtual_binary_file = io.BytesIO()  # Open to grab in-memory ZIP contents: virtual binary data file for r & w
@@ -252,5 +256,6 @@ class FileService:
             raise HTTPException(status_code=403, detail="{}{}".format(FILES_REMOVE_FORBIDDEN, intersection))
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
         await self.delete_files_in_folder(files_to_remove)
-        await self._repository.remove_all(FileAttached, files)
+        await self.delete_files_in_db(files)
+        # await self._repository.remove_all(FileAttached, files)  # todo удалить после тестирования
         return files_to_remove
