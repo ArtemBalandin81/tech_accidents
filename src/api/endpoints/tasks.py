@@ -27,7 +27,7 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
     POST_TASK_FORM,
     description=TASK_CREATE_FORM,
     summary=TASK_CREATE_FORM,
-    tags=[TASKS_POST]
+    tags=[TASKS_POST]  # todo киррилица в swagger http://127.0.0.1:8001/docs#/Задачи%3A%20назначить%20задачу/create_new_task_by_form_api_tasks_post_task_form_post
 )
 async def create_new_task_by_form(
     *,
@@ -76,10 +76,10 @@ async def create_new_task_by_form(
 
 
 @task_router.post(
-    POST_TASKS_FORM,
+    POST_TASK_FILES_FORM,
     description=TASKS_CREATE_FORM,
     summary=TASKS_CREATE_FORM,
-    tags=[TASKS_POST]
+    tags=[TASKS_POST]  # todo киррилица в swagger
 )
 async def create_new_task_by_form_with_files(
     *,
@@ -129,7 +129,7 @@ async def create_new_task_by_form_with_files(
     description=SET_FILES_LIST_TO_TASK,
     summary=SET_FILES_LIST_TO_TASK,
     dependencies=[Depends(current_superuser)],
-    tags=[TASKS_POST]
+    tags=[TASKS_POST]  # todo киррилица в swagger
 )
 async def set_files_to_task(
     *,
@@ -143,12 +143,12 @@ async def set_files_to_task(
     return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
 
 
-@task_router.patch(  #todo здесь также нужно предусмотреть добавление файлов - опять сервис единый, чтобы не дублировал
+@task_router.patch(
     TASK_ID,
     dependencies=[Depends(current_user)],
     description=TASK_PATCH_FORM,
     summary=TASK_PATCH_FORM,
-    tags=[TASKS_POST]
+    tags=[TASKS_POST]  # todo киррилица в swagger
 )
 async def partially_update_task_by_form(
     task_id: PositiveInt,
@@ -244,7 +244,7 @@ async def partially_update_task_by_form(
     response_model_exclude_none=True,
     description=TASK_LIST,
     summary=TASK_LIST,
-    tags=[TASKS_GET]
+    tags=[TASKS_GET]  # todo киррилица в swagger
 )
 async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_all())  # noqa
@@ -255,7 +255,7 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
     response_model_exclude_none=True,
     description=TASK_OPENED_LIST,
     summary=TASK_OPENED_LIST,
-    tags=[TASKS_GET]
+    tags=[TASKS_GET]  # todo киррилица в swagger
 )
 async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_all_opened())  # noqa
@@ -266,7 +266,7 @@ async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequenc
     description=MY_TASKS_LIST,
     summary=MY_TASKS_LIST,
     response_model_exclude_none=True,
-    tags=[TASKS_GET]
+    tags=[TASKS_GET]  # todo киррилица в swagger
 )
 async def get_my_tasks_ordered(
     task_service: TaskService = Depends(),
@@ -280,7 +280,7 @@ async def get_my_tasks_ordered(
     description=ME_TODO_LIST,
     summary=ME_TODO_LIST,
     response_model_exclude_none=True,
-    tags=[TASKS_GET]
+    tags=[TASKS_GET]  # todo киррилица в swagger
 )
 async def get_my_tasks_todo(
     task_service: TaskService = Depends(),
@@ -295,7 +295,7 @@ async def get_my_tasks_todo(
     dependencies=[Depends(current_user)],
     description=TASK_DESCRIPTION,
     summary=TASK_DESCRIPTION,
-    tags=[TASKS_GET]
+    tags=[TASKS_GET]  # todo киррилица в swagger
 )
 async def get_task_by_id(
     task_id: PositiveInt,
@@ -316,12 +316,12 @@ async def get_task_by_id(
         return AnalyticTaskResponse(**task[0])
 
 
-@task_router.delete(  # todo удалять также и сами файлы физически из папки
+@task_router.delete(
     TASK_ID,
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=TASK_DELETE,
-    tags=[TASKS_POST]
+    tags=[TASKS_POST]  # todo киррилица в swagger
 )
 async def remove_task(
         task_id: PositiveInt,

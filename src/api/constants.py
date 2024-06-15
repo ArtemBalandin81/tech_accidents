@@ -47,7 +47,7 @@ GET_OPENED_ROUTE = "/opened"
 ME_TODO = "/my_tasks_todo"
 MY_TASKS = "/my_tasks_ordered"
 POST_TASK_FORM = "/post_task_form"
-POST_TASKS_FORM = "/post_tasks_form"
+POST_TASK_FILES_FORM = "/post_task_with_files_form"
 TASK_ID = "/{task_id}"
 
 # endpoints TAGS
