@@ -77,8 +77,8 @@ async def create_new_task_by_form(
 
 @task_router.post(
     POST_TASK_FILES_FORM,
-    description=TASKS_CREATE_FORM,
-    summary=TASKS_CREATE_FORM,
+    description=TASK_FILES_CREATE_FORM,
+    summary=TASK_FILES_CREATE_FORM,
     tags=[TASKS_POST]  # todo киррилица в swagger
 )
 async def create_new_task_by_form_with_files(
@@ -97,6 +97,9 @@ async def create_new_task_by_form_with_files(
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     """Постановка задачи из формы с обязательной загрузкой нескольких файлов."""
+    file_names = [file.filename for file in files_to_upload]
+    if len(set(file_names)) != len(file_names):
+        raise HTTPException(status_code=403, detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
     if another_email is not None:
         executor = await users_service.get_by_email(another_email)
     else:
@@ -240,12 +243,12 @@ async def partially_update_task_by_form(
 
 
 @task_router.get(
-    GET_ALL_ROUTE,
+    MAIN_ROUTE,
     response_model_exclude_none=True,
     description=TASK_LIST,
     summary=TASK_LIST,
     tags=[TASKS_GET]  # todo киррилица в swagger
-)
+)  # todo -> Sequence[AnalyticTaskResponse]:
 async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_all())  # noqa
 
@@ -256,7 +259,7 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
     description=TASK_OPENED_LIST,
     summary=TASK_OPENED_LIST,
     tags=[TASKS_GET]  # todo киррилица в swagger
-)
+)  # todo -> Sequence[AnalyticTaskResponse]:
 async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
     return await task_service.perform_changed_schema(await task_service.get_all_opened())  # noqa
 
@@ -281,7 +284,7 @@ async def get_my_tasks_ordered(
     summary=ME_TODO_LIST,
     response_model_exclude_none=True,
     tags=[TASKS_GET]  # todo киррилица в swagger
-)
+)  # todo -> Sequence[AnalyticTaskResponse]:
 async def get_my_tasks_todo(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
@@ -335,7 +338,7 @@ async def remove_task(
         )
         await file_service.delete_files_in_folder(files_to_delete)
         await log.ainfo("{}{}{}{}{}{}".format(TASK, task_id, SPACE, FILES_SET_TO, files_to_delete, DELETED_OK))
-    actual_tasks = await task_service.remove(task_id)
+    actual_tasks: Sequence[Task] = await task_service.remove(task_id)
     await task_service.set_files_to_task(task_id, [])
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
     await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))

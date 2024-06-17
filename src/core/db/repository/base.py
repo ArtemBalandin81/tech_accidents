@@ -47,9 +47,10 @@ class AbstractRepository(abc.ABC):
         await self._session.commit()
 
     @auto_commit
-    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:
+    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:  # todo return deleted obj
         """Удаляет объекты модели из базы данных."""
-        await self._session.execute(delete(instance).where(instance.id.in_(instances)))
+        objects = await self._session.execute(delete(instance).where(instance.id.in_(instances)))
+        # return objects  # todo try: .fetchall()
 
     @auto_commit
     async def update(self, _id: int, instance: DatabaseModel) -> DatabaseModel:
@@ -77,10 +78,10 @@ class AbstractRepository(abc.ABC):
         return objects.all()
 
     @auto_commit
-    # async def create_all(self, objects: list[DatabaseModel]) -> None:
-    async def create_all(self, objects: Sequence[DatabaseModel]) -> None:
-        """Создает несколько объектов модели в базе данных."""
+    async def create_all(self, objects: Sequence[DatabaseModel]) -> Sequence[DatabaseModel]:
+        """Создает и возвращает несколько объектов модели в базе данных."""
         self._session.add_all(objects)
+        return objects
 
     async def count_all(self) -> int:
         """Возвращает количество юнитов категории."""

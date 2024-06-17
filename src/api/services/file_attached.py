@@ -58,7 +58,7 @@ class FileService:
                 status_code=403,
                 detail="{}{}{}{}".format(
                     file_name,
-                    FILE_TYPE_DOWNLOAD_ALLOWED,
+                    FILE_TYPE_DOWNLOAD_NOT_ALLOWED,
                     ALLOWED_FILE_TYPE_DOWNLOAD,
                     settings.FILE_TYPE_DOWNLOAD
                 )
@@ -125,7 +125,7 @@ class FileService:
             }
             file_names_written_in_db.append(file_name)
             to_create.append(FileAttached(**file_object))  # todo лучше схему пайдентик
-        await self._repository.create_all(to_create)
+        files_in_db: Sequence[FileAttached] = await self._repository.create_all(to_create)
         await log.ainfo("{}".format(FILES_WRITTEN_DB), files=to_create)
         return file_names_written_in_db, [obj.id for obj in to_create]  # todo file_names_written_in_db - лишнее
 
@@ -155,8 +155,10 @@ class FileService:
         elif isinstance(files_attributes[0], int):
             return [files_dir.joinpath(file_db.name) for file_db in await self.get_by_ids(files_attributes)]
         else:
-            await log.aerror("{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_ALLOWED))
-            raise HTTPException(status_code=406, detail="{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_ALLOWED))
+            await log.aerror("{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED))
+            raise HTTPException(
+                status_code=406, detail="{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED)
+            )
 
     async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
         """Удаляет из каталога список переданных файлов."""
@@ -166,7 +168,7 @@ class FileService:
 
     async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
         """Удаляет из БД список переданных файлов."""
-        await self._repository.remove_all(FileAttached, files_to_delete)
+        return await self._repository.remove_all(FileAttached, files_to_delete)
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
         """Архивирует в zip список переданных файлов."""
@@ -257,5 +259,5 @@ class FileService:
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
         await self.delete_files_in_folder(files_to_remove)
         await self.delete_files_in_db(files)
-        # await self._repository.remove_all(FileAttached, files)  # todo удалить после тестирования
         return files_to_remove
+
