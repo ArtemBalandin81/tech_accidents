@@ -82,3 +82,8 @@ class AddTaskFileResponse(BaseModel):
     """Схема ответа после добавления файлов к задачам."""
     task_id: int = Field(..., serialization_alias=TASK)
     files_ids: list[int] = Field(..., serialization_alias=FILES_WRITTEN_DB)
+
+
+class TaskDeletedResponse(BaseModel):
+    """Схема ответа после удаления задачи."""
+    task_deleted: list[TaskResponse] = Field(..., serialization_alias=TASK_DELETED)

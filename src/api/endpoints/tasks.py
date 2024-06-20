@@ -5,15 +5,16 @@ from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import (APIRouter, Depends, File, HTTPException, Query, Response,
+                     UploadFile)
 from pydantic import EmailStr, PositiveInt
-
 from src.api.constants import *
-from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse, TaskBase  # todo subst to "schemas" refactoring
+from src.api.schema import (AddTaskFileResponse,  # todo "schemas"
+                            AnalyticTaskResponse, TaskDeletedResponse)
 from src.api.services import FileService, TaskService, UsersService
 from src.core.db.models import Task, User
 from src.core.db.user import current_superuser, current_user
-from src.core.enums import Executor, TechProcess, ChoiceDownloadFiles
+from src.core.enums import ChoiceDownloadFiles, Executor, TechProcess
 from src.settings import settings
 
 log = structlog.get_logger()
@@ -27,7 +28,7 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
     POST_TASK_FORM,
     description=TASK_CREATE_FORM,
     summary=TASK_CREATE_FORM,
-    tags=[TASKS_POST]  # todo киррилица в swagger http://127.0.0.1:8001/docs#/Задачи%3A%20назначить%20задачу/create_new_task_by_form_api_tasks_post_task_form_post
+    tags=[TASKS_POST]
 )
 async def create_new_task_by_form(
     *,
@@ -57,11 +58,11 @@ async def create_new_task_by_form(
         "description": description,
         "executor": executor.id,
     }
-    # 1. Записываем задачу в БД, чтобы к ней прикрепить файл впоследствии:
-    new_task: Task = await task_service.actualize_object(None, task_object, user)
+    new_task: Task = await task_service.actualize_object(None, task_object, user)  # 1. Пишем задачу в БД без файлов
     task_response: dict = await task_service.change_schema_response(new_task)
-    if file_to_upload is None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
+    if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
+    # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         [file_to_upload], FILES_DIR, file_timestamp
@@ -79,7 +80,7 @@ async def create_new_task_by_form(
     POST_TASK_FILES_FORM,
     description=TASK_FILES_CREATE_FORM,
     summary=TASK_FILES_CREATE_FORM,
-    tags=[TASKS_POST]  # todo киррилица в swagger
+    tags=[TASKS_POST]
 )
 async def create_new_task_by_form_with_files(
     *,
@@ -112,8 +113,8 @@ async def create_new_task_by_form_with_files(
         "description": description,
         "executor": executor.id,
     }
-    # 1. Записываем задачу в БД, чтобы к ней прикрепить файл впоследствии:
-    new_task: Task = await task_service.actualize_object(None, task_object, user)
+    new_task: Task = await task_service.actualize_object(None, task_object, user)  # 1. Пишем задачу в БД без файлов
+    # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         files_to_upload, FILES_DIR, file_timestamp
@@ -132,7 +133,7 @@ async def create_new_task_by_form_with_files(
     description=SET_FILES_LIST_TO_TASK,
     summary=SET_FILES_LIST_TO_TASK,
     dependencies=[Depends(current_superuser)],
-    tags=[TASKS_POST]  # todo киррилица в swagger
+    tags=[TASKS_POST]
 )
 async def set_files_to_task(
     *,
@@ -151,7 +152,7 @@ async def set_files_to_task(
     dependencies=[Depends(current_user)],
     description=TASK_PATCH_FORM,
     summary=TASK_PATCH_FORM,
-    tags=[TASKS_POST]  # todo киррилица в swagger
+    tags=[TASKS_POST]
 )
 async def partially_update_task_by_form(
     task_id: PositiveInt,
@@ -173,6 +174,7 @@ async def partially_update_task_by_form(
     file_service: FileService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
+    """Редактирование задачи с возможностью очистки прикрепленных файлов, или добавления нового файла."""
     task_from_db = await task_service.get(task_id)  # получаем объект из БД и заполняем недостающие поля
     deadline: date = (
         datetime.strptime(str(deadline), DATE_FORMAT)
@@ -247,9 +249,10 @@ async def partially_update_task_by_form(
     response_model_exclude_none=True,
     description=TASK_LIST,
     summary=TASK_LIST,
-    tags=[TASKS_GET]  # todo киррилица в swagger
-)  # todo -> Sequence[AnalyticTaskResponse]:
+    tags=[TASKS_GET]
+)
 async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
+    """Возвращает из БД все задачи: исполненные и открытые для всех пользователей."""
     return await task_service.perform_changed_schema(await task_service.get_all())  # noqa
 
 
@@ -258,9 +261,10 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
     response_model_exclude_none=True,
     description=TASK_OPENED_LIST,
     summary=TASK_OPENED_LIST,
-    tags=[TASKS_GET]  # todo киррилица в swagger
-)  # todo -> Sequence[AnalyticTaskResponse]:
+    tags=[TASKS_GET]
+)
 async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequence[AnalyticTaskResponse]:
+    """Возвращает из БД все невыполненные задачи для всех пользователей."""
     return await task_service.perform_changed_schema(await task_service.get_all_opened())  # noqa
 
 
@@ -269,12 +273,13 @@ async def get_all_opened_tasks(task_service: TaskService = Depends()) -> Sequenc
     description=MY_TASKS_LIST,
     summary=MY_TASKS_LIST,
     response_model_exclude_none=True,
-    tags=[TASKS_GET]  # todo киррилица в swagger
+    tags=[TASKS_GET]
 )
 async def get_my_tasks_ordered(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
+    """Возвращает все неисполненные задачи, выставленные текущим пользователем."""
     return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id))  # noqa
 
 
@@ -283,12 +288,13 @@ async def get_my_tasks_ordered(
     description=ME_TODO_LIST,
     summary=ME_TODO_LIST,
     response_model_exclude_none=True,
-    tags=[TASKS_GET]  # todo киррилица в swagger
-)  # todo -> Sequence[AnalyticTaskResponse]:
+    tags=[TASKS_GET]
+)
 async def get_my_tasks_todo(
     task_service: TaskService = Depends(),
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
+    """Возвращает все неисполненные задачи, выставленные текущему пользователю."""
     return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id))  # noqa
 
 
@@ -298,7 +304,7 @@ async def get_my_tasks_todo(
     dependencies=[Depends(current_user)],
     description=TASK_DESCRIPTION,
     summary=TASK_DESCRIPTION,
-    tags=[TASKS_GET]  # todo киррилица в swagger
+    tags=[TASKS_GET]
 )
 async def get_task_by_id(
     task_id: PositiveInt,
@@ -306,12 +312,15 @@ async def get_task_by_id(
     task_service: TaskService = Depends(),
     file_service: FileService = Depends()
 ) -> AnalyticTaskResponse | Response:  # Invalid args for response field -> response_model=None
+    """Возвращает из БД задачу по id c возможностью загрузки прикрепленных к ней файлов."""
     file_ids: Sequence[PositiveInt] = await task_service.get_file_ids_from_task(task_id)
     files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
     if choice_download_files == files_download_true:
-        if len(file_ids) == 0:
-            await log.aerror(NOT_FOUND)
-            raise HTTPException(status_code=403, detail="{}".format(NOT_FOUND))
+        if not file_ids:
+            await log.aerror("{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND))
+            raise HTTPException(
+                status_code=404, detail="{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND)
+            )
         else:
             return await file_service.zip_files(await file_service.prepare_files_to_work_with(file_ids, FILES_DIR))
     else:
@@ -324,22 +333,30 @@ async def get_task_by_id(
     description=TASK_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=TASK_DELETE,
-    tags=[TASKS_POST]  # todo киррилица в swagger
+    tags=[TASKS_POST]
 )
 async def remove_task(
         task_id: PositiveInt,
         file_service: FileService = Depends(),
         task_service: TaskService = Depends()
-) -> Sequence[TaskBase]:
+) -> TaskDeletedResponse:
+    """Удаляет по id задачу и все прикрепленные к ней файлы (из БД и каталога)."""
+    task_to_delete: Task = await task_service.get(task_id)
     files_ids_set_to_task: Sequence[int] = await task_service.get_file_ids_from_task(task_id)
     if files_ids_set_to_task:
         files_to_delete: Sequence[Path] = await file_service.prepare_files_to_work_with(
             files_ids_set_to_task, FILES_DIR
         )
         await file_service.delete_files_in_folder(files_to_delete)
-        await log.ainfo("{}{}{}{}{}{}".format(TASK, task_id, SPACE, FILES_SET_TO, files_to_delete, DELETED_OK))
-    actual_tasks: Sequence[Task] = await task_service.remove(task_id)
-    await task_service.set_files_to_task(task_id, [])
+        await log.ainfo("{}{}{}{}{}{}".format(
+            TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED, files_to_delete, DELETED_OK)
+        )
+        await file_service.delete_files_in_db(files_ids_set_to_task)
+        await log.ainfo("{}{}{}{}{}{}".format(
+            TASK, task_id, SPACE, FILES_UNUSED_IN_DB_REMOVED, files_to_delete, DELETED_OK)
+        )
+        await task_service.set_files_to_task(task_id, [])
+        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
+    await task_service.remove(task_id)
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
-    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
-    return actual_tasks  # noqa
+    return TaskDeletedResponse(task_deleted=[task_to_delete.__dict__])

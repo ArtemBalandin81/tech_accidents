@@ -51,9 +51,9 @@ POST_TASK_FILES_FORM = "/post_task_with_files_form"
 TASK_ID = "/{task_id}"
 
 # endpoints TAGS
-FILES = "Файлы: загрузка, получение, удаление"
-TASKS_GET = "Задачи: посмотреть задачи"
-TASKS_POST = "Задачи: назначить задачу"
+FILES = "Файлы: загрузка, получение, удаление"  # кириллица в swagger
+TASKS_GET = "Задачи: посмотреть задачи"  # кириллица в swagger
+TASKS_POST = "Задачи: назначить задачу"  # кириллица в swagger
 
 # auth
 IS_REGISTERED = " is registered."
@@ -61,7 +61,7 @@ IS_REGISTERED = " is registered."
 # files_alias
 ARRAYS_DIFFERENCE = "Бесхозные файлы (ids): "
 CHOICE_FORMAT = "Формат представления: "
-CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"  # todo delete
+# CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"  # todo delete
 FILES_DELETED = "Files_deleted: "
 FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
@@ -77,7 +77,7 @@ FILES_UNUSED_IN_FOLDER = "Бесхозные файлы в каталоге фа
 FILES_UNUSED_IN_FOLDER_REMOVED = "Из каталога удалены бесхозные файлы: "
 FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
-GET_FILE_BY_ID = "Получить файл по id."
+GET_FILE_BY_ID = "Получить файл по id: "
 ROUND_FILE_SIZE = 1
 SOME_ID = 1
 SOME_NAME = "dd-mm-2024"  # "could_find_names_and_digits_eng"
@@ -129,6 +129,7 @@ FILE_SAVED = "Файл успешно скопирован."
 IS_ARCHIVED = "Задача выполнена"
 TASK = "Задача: "
 TASK_CREATE_FORM = "Постановка задачи из формы с возможностью загрузки 1 файла."
+TASK_DELETED = "Задача удалена: "
 TASK_FILES_CREATE_FORM = "Постановка задачи из формы с обязательной загрузкой нескольких файлов."
 TASK_DURATION = "Дней на задачу"
 TASK_DESCRIPTION = "Описание задачи: "

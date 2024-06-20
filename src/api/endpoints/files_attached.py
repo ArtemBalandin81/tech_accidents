@@ -4,15 +4,14 @@ from pathlib import Path
 from typing import Sequence
 
 import structlog
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from fastapi import (APIRouter, Depends, HTTPException, Query, Response,
+                     UploadFile)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
-
 from src.api.constants import *
-from src.api.schema import (
-    FileBase, FilesDeleteResponse, FileDBUnusedResponse, FileDBUnusedDeletedResponse, FileUploadedResponse,
-    FileUnusedResponse, FileUnusedDeletedResponse
-)
+from src.api.schema import (FileBase, FileDBUnusedDeletedResponse,
+                            FileDBUnusedResponse, FileUnusedDeletedResponse,
+                            FileUnusedResponse, FileUploadedResponse)
 from src.api.services import FileService
 from src.core.db.models import FileAttached
 from src.core.db.user import current_superuser, current_user
@@ -25,10 +24,12 @@ file_router = APIRouter()
 SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
 FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
+
 async def file_uploader(files: list[UploadFile]):
-    """Эксперементальная функция для испльзования в Depends() в async def upload_files_by_form."""
+    """Эксперементальная функция для испльзования в async def upload_files_by_form в Depends() ."""
     await log.ainfo("{}{}".format(UPLOAD_FILES_BY_FORM, files))
     return files
+
 
 @file_router.post(
     DOWNLOAD_FILES,
@@ -39,12 +40,13 @@ async def file_uploader(files: list[UploadFile]):
 )
 async def upload_files_by_form(
     *,
-    files_to_upload: list[UploadFile] = Depends(file_uploader),  # эксперементально
+    files_to_upload: list[UploadFile] = Depends(file_uploader),  # tried to make list[UploadFile] optional
     file_service: FileService = Depends(),
 ) -> FileUploadedResponse:
     """Загружает файлы в каталог и записывает их в БД."""
     file_names = [file.filename for file in files_to_upload]
     if len(set(file_names)) != len(file_names):
+        await log.aerror("{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
         raise HTTPException(status_code=403, detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # for equal file_name in db & upload folder
     file_names_and_ids_written_in_db = await file_service.download_and_write_files_in_db(
@@ -53,6 +55,7 @@ async def upload_files_by_form(
     file_ids_in_db = file_names_and_ids_written_in_db[1]
     files_uploaded: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_in_db)
     return FileUploadedResponse(files_written_in_db=files_uploaded)
+
 
 @file_router.get(
     GET_FILES,
@@ -70,20 +73,46 @@ async def get_files(
     await log.ainfo("{}{}".format(SEARCH_FILES_BY_NAME, search_name))
     await log.ainfo("{}{}".format(SEARCH_FILES_BY_ID, files_ids_wanted))
     if (search_name is not None and search_name != SOME_NAME) and files_ids_wanted is not None:
-        await log.aerror(FILE_SEARCH_DOWNLOAD_OPTION)  # SOME_NAME допустимо в поиске по id
+        await log.aerror(FILE_SEARCH_DOWNLOAD_OPTION)  # SOME_NAME is available searching by id
         raise HTTPException(status_code=403, detail="{}".format(FILE_SEARCH_DOWNLOAD_OPTION))
     if files_ids_wanted is not None:
         files_to_zip = await file_service.prepare_files_to_work_with(files_ids_wanted, FILES_DIR)
     else:
         files_db = await file_service.get_all_for_search_word(search_name)  # noqa
         await log.ainfo("{}{}".format(FILES_RECEIVED, files_db))
-        if len(files_db) == 0:
-            await log.aerror(NOT_FOUND)
-            raise HTTPException(status_code=403, detail="{}".format(NOT_FOUND))
+        if not files_db:  # if files_db is None - download empty zip-folder instead of raising exception
+            await log.aerror("{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))
+            raise HTTPException(status_code=404, detail="{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))
         files_to_zip = [FILES_DIR.joinpath(searched_result.name) for searched_result in files_db]
     return await file_service.zip_files(files_to_zip)
 
+
 @file_router.get(
+    FILE_ID,
+    response_model=FileBase,
+    dependencies=[Depends(current_user)],
+    description=GET_FILE_BY_ID,
+    summary=GET_FILE_BY_ID,
+    tags=[FILES],
+)
+async def get_file_by_id(
+        file_id: PositiveInt,
+        choice_download_files: ChoiceDownloadFiles = Query(..., alias=CHOICE_FORMAT),
+        file_service: FileService = Depends(),
+):
+    """Ищет файл по id и отдает информацию о нем в json, или позволяет выгрузить сам файл."""
+    file_db: FileAttached = await file_service.get(file_id)
+    file_name = file_db.name
+    content = f"attachment; filename={file_name}"
+    headers = {"Content-Disposition": content}
+    response = FileResponse(FILES_DIR.joinpath(file_db.name), headers=headers)
+    files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
+    if choice_download_files == files_download_true:
+        return response
+    return file_db
+
+
+@file_router.delete(
     GET_FILES_UNUSED,
     description=MANAGE_FILES_UNUSED,
     dependencies=[Depends(current_superuser)],
@@ -118,6 +147,11 @@ async def get_files_unused(
             file_names_and_ids_in_db[1], file_ids_in_tasks
         )
         files_unused: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_unused)
+        if not files_unused:
+            await log.aerror("{}{}{}".format(FILES_IDS_UNUSED_IN_DB, files_unused, NOT_FOUND))
+            raise HTTPException(
+                status_code=404, detail="{}{}{}".format(FILES_IDS_UNUSED_IN_DB, files_unused, NOT_FOUND)
+            )
         await file_service.remove_files(file_ids_unused, FILES_DIR)
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_DB_REMOVED, files_unused))
         return FileDBUnusedDeletedResponse(file_unused_in_db_removed=files_unused)
@@ -133,34 +167,16 @@ async def get_files_unused(
         files_unused_in_folder: Sequence[str] = await file_service.get_arrays_difference(
             all_files_in_folder, file_names_and_ids_in_db[0],
         )
+        if not files_unused_in_folder:
+            await log.aerror("{}{}{}".format(FILES_UNUSED_IN_FOLDER, files_unused_in_folder, NOT_FOUND))
+            raise HTTPException(
+                status_code=404, detail="{}{}{}".format(FILES_UNUSED_IN_FOLDER, files_unused_in_folder, NOT_FOUND)
+            )
         files_to_delete: list[Path] = await file_service.prepare_files_to_work_with(files_unused_in_folder, FILES_DIR)
         await file_service.delete_files_in_folder(files_to_delete)
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_FOLDER_REMOVED, files_unused_in_folder))
         return FileUnusedDeletedResponse(files_unused=files_unused_in_folder,)
 
-@file_router.get(
-    FILE_ID,
-    response_model=FileBase,
-    dependencies=[Depends(current_user)],
-    description=GET_FILE_BY_ID,
-    summary=GET_FILE_BY_ID,
-    tags=[FILES],
-)
-async def get_file_by_id(
-        file_id: PositiveInt,
-        choice_download_files: ChoiceDownloadFiles = Query(..., alias=CHOICE_FORMAT),
-        file_service: FileService = Depends(),
-):
-    """Ищет файл по id и отдает информацию о нем в json, или позволяет выгрузить сам файл."""
-    file_db: FileAttached = await file_service.get(file_id)
-    file_name = file_db.name
-    content = f"attachment; filename={file_name}"
-    headers = {"Content-Disposition": content}
-    response = FileResponse(FILES_DIR.joinpath(file_db.name), headers=headers)
-    files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
-    if choice_download_files == files_download_true:
-        return response
-    return file_db
 
 @file_router.delete(
     FILE_ID,
@@ -182,15 +198,18 @@ async def remove_files_from_db_and_folder(
         raise HTTPException(status_code=403, detail="{}".format(FILE_SEARCH_DOWNLOAD_OPTION))
     if file_ids_wanted is not None:
         files_to_remove = await file_service.get_by_ids(file_ids_wanted)
+        if not files_to_remove:
+            await log.aerror("{}{}{}".format(GET_FILE_BY_ID, file_ids_wanted, NOT_FOUND))
+            raise HTTPException(status_code=404, detail="{}{}{}".format(GET_FILE_BY_ID, file_ids_wanted, NOT_FOUND))
         await file_service.remove_files(file_ids_wanted, FILES_DIR)
         await log.ainfo("{}{}".format(files_to_remove, DELETED_OK))
         return FileDBUnusedDeletedResponse(file_unused_in_db_removed=files_to_remove)
     else:
         searched_files_db: Sequence[FileAttached] = await file_service.get_all_for_search_word(search_name) # noqa
         await log.ainfo("{}{}".format(FILES_RECEIVED, searched_files_db))
-        if searched_files_db is None:
-            await log.aerror(NOT_FOUND)
-            raise HTTPException(status_code=403, detail="{}".format(NOT_FOUND))
+        if not searched_files_db:
+            await log.aerror("{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))
+            raise HTTPException(status_code=404, detail="{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))
         await file_service.remove_files([found_files.id for found_files in searched_files_db], FILES_DIR)
         await log.ainfo("{}{}".format(searched_files_db, DELETED_OK))
         return FileDBUnusedDeletedResponse(file_unused_in_db_removed=searched_files_db)

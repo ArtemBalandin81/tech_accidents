@@ -32,11 +32,6 @@ class FileBase(BaseModel):
         from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
 
 
-class FilesDeleteResponse(BaseModel):
-    """Схема ответа после удаления файлов в БД."""
-    files_deleted: list[FileBase] = Field(..., serialization_alias=FILES_DELETED)
-
-
 class FileUploadedResponse(BaseModel):
     """Схема ответа после загрузки файлов."""
     files_written_in_db: list[FileBase] = Field(..., serialization_alias=FILES_WRITTEN_DB)

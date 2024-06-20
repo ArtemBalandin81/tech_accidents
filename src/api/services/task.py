@@ -29,10 +29,7 @@ class TaskService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-    async def change_schema_response(
-            self,
-            task: Task,
-    ) -> dict:
+    async def change_schema_response(self, task: Task) -> dict:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
         user = await self._users_repository.get(task.user_id)
         executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id
@@ -86,10 +83,10 @@ class TaskService:
             user: User | int
     ) -> Task:
         if in_object["task_start"] > in_object["deadline"]:
-            raise HTTPException(status_code=422, detail="Check start_time > finish_time")
+            raise HTTPException(status_code=422, detail="Check start_time > finish_time")  # todo
         if user is None:
-            raise HTTPException(status_code=422, detail="Check USER is not NONE!")
-        if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
+            raise HTTPException(status_code=422, detail="Check USER is not NONE!")  # todo
+        if type(user) is int:  # Проверяет, что пользователь не передается напрямую id  # todo isinstance
             in_object["user_id"] = user
         else:
             in_object["user_id"] = user.id
@@ -114,10 +111,10 @@ class TaskService:
     async def get_my_tasks_todo(self, user_id: int) -> Sequence[Task]:
         return await self._repository.get_tasks_todo(user_id)
 
-    async def remove(self, task_id: int) -> Sequence[Task]:
-        await self._file_repository.remove_all(FileAttached, await self.get_file_ids_from_task(task_id))  # todo не тут
+    async def remove(self, task_id: int) -> None: # Sequence[Task]:  # Задача удаляется только вместе с прикрепленными файлами
+        # await self._file_repository.remove_all(FileAttached, await self.get_file_ids_from_task(task_id))
         await self._repository.remove(await self._repository.get(task_id))
-        return await self._repository.get_all_id_sorted()
+        # return await self._repository.get_all_id_sorted()
 
     async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
         """Присваивает задаче список файлов."""
@@ -128,7 +125,7 @@ class TaskService:
         task_files_relations: Sequence[TasksFiles] = await self._repository.get_task_files_relations(task_id)
         return [relation.file_id for relation in task_files_relations]
 
-    async def get_file_names_from_task(self, task_id: int) -> Sequence[str]:  # todo вытаскивать файлы
+    async def get_file_names_from_task(self, task_id: int) -> Sequence[str]:
         """Получить список файлов, привязанных к задаче."""
         files: Sequence[FileAttached] = await self._repository.get_files_from_task(task_id)
         return [file.name for file in files]
