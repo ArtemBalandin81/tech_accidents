@@ -342,21 +342,20 @@ async def remove_task(
 ) -> TaskDeletedResponse:
     """Удаляет по id задачу и все прикрепленные к ней файлы (из БД и каталога)."""
     task_to_delete: Task = await task_service.get(task_id)
+    task_to_delete_response = task_to_delete.__dict__
+    task_to_delete_response["extra_files"] = []
     files_ids_set_to_task: Sequence[int] = await task_service.get_file_ids_from_task(task_id)
     if files_ids_set_to_task:
         files_to_delete: Sequence[Path] = await file_service.prepare_files_to_work_with(
             files_ids_set_to_task, FILES_DIR
         )
-        await file_service.delete_files_in_folder(files_to_delete)
+        await task_service.set_files_to_task(task_id, [])
+        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
+        await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
         await log.ainfo("{}{}{}{}{}{}".format(
             TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED, files_to_delete, DELETED_OK)
         )
-        await file_service.delete_files_in_db(files_ids_set_to_task)
-        await log.ainfo("{}{}{}{}{}{}".format(
-            TASK, task_id, SPACE, FILES_UNUSED_IN_DB_REMOVED, files_to_delete, DELETED_OK)
-        )
-        await task_service.set_files_to_task(task_id, [])
-        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
+        task_to_delete_response["extra_files"] = files_to_delete
     await task_service.remove(task_id)
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
-    return TaskDeletedResponse(task_deleted=[task_to_delete.__dict__])
+    return TaskDeletedResponse(task_deleted=[task_to_delete_response], files_ids=files_ids_set_to_task)

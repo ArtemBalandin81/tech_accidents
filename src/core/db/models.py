@@ -41,7 +41,7 @@ class Task(Base):
     """Модель задач: 1 пользователь = 1 задача."""
 
     __tablename__ = "tasks"
-    task: Mapped[str] = mapped_column(String(64), nullable=True)
+    task: Mapped[str] = mapped_column(String(64), nullable=True)  # todo to constants
     description: Mapped[str]
     task_start: Mapped[date] = mapped_column(nullable=True)
     deadline: Mapped[date] = mapped_column(nullable=True)
@@ -66,7 +66,7 @@ class FileAttached(Base):
 
     __tablename__ = "files"
 
-    name: Mapped[str] = mapped_column(String(256))
+    name: Mapped[str] = mapped_column(String(256))  # todo to constants
     file: Mapped[BLOB] = mapped_column(BLOB)
     tasks: Mapped[list["Task"]] = relationship(secondary="tasks_files", back_populates="files")
 

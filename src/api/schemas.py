@@ -2,7 +2,8 @@
 import time
 
 from fastapi_users import schemas
-from pydantic import BaseModel, Extra, Field, computed_field, field_serializer
+from pydantic import (BaseModel, Extra, Field, PositiveInt, computed_field,
+                      field_serializer)
 from src.api.constants import *
 from src.core.enums import RiskAccidentSource, TechProcess
 from src.settings import settings
@@ -43,8 +44,8 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
     """Схема json-запроса для создания Suspension."""
     datetime_start: datetime = Field(..., example=FROM_TIME)
     datetime_finish: datetime = Field(..., example=TO_TIME)
-    description: str = Field(..., max_length=256, example=INTERNET_ERROR)
-    implementing_measures: str = Field(..., max_length=256, example=MEASURES)
+    description: str = Field(..., max_length=SUSPENSION_DESCRIPTION_LENGTH, example=INTERNET_ERROR)
+    implementing_measures: str = Field(..., max_length=SUSPENSION_IMPLEMENTING_MEASURES, example=MEASURES)
     risk_accident: RiskAccidentSource
     tech_process: TechProcess
 
@@ -64,7 +65,7 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
 
 class SuspensionBase(BaseModel):
     """Базовая схема."""
-    id: int
+    id: PositiveInt
     datetime_start: datetime = Field(
         ...,
         title=SUSPENSION_START,
@@ -79,14 +80,14 @@ class SuspensionBase(BaseModel):
     )
     description: str = Field(
         ...,
-        max_length=256,
+        max_length=SUSPENSION_DESCRIPTION_LENGTH,
         title=SUSPENSION_DESCRIPTION,
         serialization_alias=SUSPENSION_DESCRIPTION,
         example=INTERNET_ERROR
     )
     implementing_measures: str = Field(
         ...,
-        max_length=256,
+        max_length=SUSPENSION_IMPLEMENTING_MEASURES,
         title=IMPLEMENTING_MEASURES,
         serialization_alias=IMPLEMENTING_MEASURES,
         example=MEASURES
@@ -94,10 +95,10 @@ class SuspensionBase(BaseModel):
 
     @computed_field(alias=SUSPENSION_DURATION)
     @property
-    def duration(self) -> int | float:
+    def duration(self) -> PositiveInt | float:
         suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
         suspension_start = time.strptime(self.datetime_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
-        return (time.mktime(suspension_finish) - time.mktime(suspension_start)) / 60  # in minutes
+        return (time.mktime(suspension_finish) - time.mktime(suspension_start)) / SUSPENSION_DURATION_RESPONSE  # mins
 
     class Config:
         """Implement a custom json serializer by using pydantic's custom json encoders.
@@ -108,8 +109,8 @@ class SuspensionBase(BaseModel):
 class SuspensionResponse(SuspensionBase):
     """Схема ответа для Suspension с использованием response_model."""
     risk_accident: str = Field(..., serialization_alias=RISK_ACCIDENT)
-    tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
-    user_id: int = Field(..., serialization_alias=USER_ID)
+    tech_process: PositiveInt = Field(..., serialization_alias=TECH_PROCESS)
+    user_id: PositiveInt = Field(..., serialization_alias=USER_ID)
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
@@ -127,7 +128,7 @@ class AnalyticResponse(SuspensionBase):
     risk_accident: str = Field(..., serialization_alias=RISK_ACCIDENT)
     business_process: str = Field(..., serialization_alias=TECH_PROCESS)
     user_email: str = Field(..., serialization_alias=USER_MAIL)
-    user_id: int = Field(..., serialization_alias=USER_ID)
+    user_id: PositiveInt = Field(..., serialization_alias=USER_ID)
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
 
@@ -137,21 +138,21 @@ class AnalyticResponse(SuspensionBase):
         return (server_time + timedelta(hours=settings.TIMEZONE_OFFSET)).strftime(DATE_TIME_FORMAT)
 
     class Config:
-        from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+        from_attributes = True  # in V2: 'orm_mode' has been renamed! In order to serialize ORM-model into schema.
 
 
 class SuspensionAnalytics(BaseModel):
     """Класс ответа для аналитики случаев простоя за период времени."""
 
-    suspensions_in_mins_total: int = Field(..., serialization_alias=MINS_TOTAL)
-    suspensions_total: int = Field(..., serialization_alias=SUSPENSION_TOTAl)
-    suspension_max_time_for_period: int = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
+    suspensions_in_mins_total: PositiveInt = Field(..., serialization_alias=MINS_TOTAL)
+    suspensions_total: PositiveInt = Field(..., serialization_alias=SUSPENSION_TOTAl)
+    suspension_max_time_for_period: PositiveInt = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
     last_time_suspension: datetime = Field(..., serialization_alias=SUSPENSION_LAST_TIME)
-    last_time_suspension_id: int = Field(..., serialization_alias=SUSPENSION_LAST_ID)
+    last_time_suspension_id: PositiveInt = Field(..., serialization_alias=SUSPENSION_LAST_ID)
     suspensions_detailed: list[AnalyticResponse] = {}  # todo = Field(..., serialization_alias=???) мн без = {}
 
     class Config:
-        from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+        from_attributes = True  # in V2: 'orm_mode' has been renamed! In order to serialize ORM-model into schema.
         json_encoders = {datetime: lambda db_date_time: db_date_time.strftime(DATE_TIME_FORMAT)}
 
 
@@ -159,5 +160,5 @@ class DBBackupResponse(BaseModel):
     """Класс ответа для бэкапа БД."""
     last_backup: str | None
     first_backup: str | None
-    total_backups: int
+    total_backups: PositiveInt
     time: str

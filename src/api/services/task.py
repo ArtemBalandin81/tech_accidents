@@ -83,10 +83,12 @@ class TaskService:
             user: User | int
     ) -> Task:
         if in_object["task_start"] > in_object["deadline"]:
-            raise HTTPException(status_code=422, detail="Check start_time > finish_time")  # todo
-        if user is None:
-            raise HTTPException(status_code=422, detail="Check USER is not NONE!")  # todo
-        if type(user) is int:  # Проверяет, что пользователь не передается напрямую id  # todo isinstance
+            raise HTTPException(status_code=422, detail=START_FINISH_TIME)
+        elif in_object["task_start"] < datetime.strptime((datetime.now(TZINFO)).strftime(DATE_FORMAT), DATE_FORMAT):
+            raise HTTPException(status_code=422, detail=FINISH_NOW_TIME)
+        elif user is None:
+            raise HTTPException(status_code=422, detail=NO_USER)
+        elif type(user) is int:  # Проверяет, что пользователь не передается напрямую id  # todo isinstance
             in_object["user_id"] = user
         else:
             in_object["user_id"] = user.id

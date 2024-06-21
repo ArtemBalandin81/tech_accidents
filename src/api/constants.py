@@ -27,6 +27,12 @@ FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='m
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
 TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
 
+# forms settings
+FILE_NAME_LENGTH = 128
+TASK_DESCRIPTION_LENGTH = 512
+SUSPENSION_DESCRIPTION_LENGTH = 256
+SUSPENSION_IMPLEMENTING_MEASURES = 512
+
 # endpoints files & services & users
 DOWNLOAD_FILES = "/download_files"
 FILE_ID = "/{file_id}"
@@ -63,6 +69,7 @@ ARRAYS_DIFFERENCE = "Бесхозные файлы (ids): "
 CHOICE_FORMAT = "Формат представления: "
 # CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"  # todo delete
 FILES_DELETED = "Files_deleted: "
+FILES_IDS_DELETED = "ids удаленных файлов: "
 FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
@@ -87,6 +94,7 @@ SEARCH_FILES_BY_ID = "Поиск файлов по id файлов: "
 # files_descriptions
 FILES_ATTACHED_TO_TASK = ". К задаче добавлены следующие файлы: "
 FILE_DELETE = "Удалить файл (только админ)."
+FILE_NAME = "Имя файла."
 GET_SEVERAL_FILES = "Получить несколько файлов."
 MANAGE_FILES_UNUSED = "Управление бесхозными файлами (только админ)."
 UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы: "
@@ -100,6 +108,7 @@ RISK_ACCIDENT = "Риск-инцидент"
 RISK_ACCIDENT_SOURCE = "Источник угроз"
 SUSPENSION_DESCRIPTION = "Описание простоя"
 SUSPENSION_DURATION = "Простой (мин)"
+SUSPENSION_DURATION_RESPONSE = 60  # in mins
 SUSPENSION_FINISH = "Окончание простоя"
 SUSPENSION_LAST_ID = "ID последнего простоя"
 SUSPENSION_LAST_TIME = "Время последнего простоя"
@@ -132,6 +141,7 @@ TASK_CREATE_FORM = "Постановка задачи из формы с воз�
 TASK_DELETED = "Задача удалена: "
 TASK_FILES_CREATE_FORM = "Постановка задачи из формы с обязательной загрузкой нескольких файлов."
 TASK_DURATION = "Дней на задачу"
+TASK_DURATION_RESPONSE = (60 * 60 * 24)  # in days
 TASK_DESCRIPTION = "Описание задачи: "
 TASK_EXECUTOR = "Исполнитель задачи: "
 TASK_EXECUTOR_MAIL = "Почта исполнителя"
@@ -163,8 +173,11 @@ FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id и�
 FILE_TASK_DOWNLOAD_NOT_CHOSEN = "Не активирован выбор файлов для загрузки в эндпоинте!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
+NO_USER = "Check USER is not NONE!"
 NOT_FOUND = " - not found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
+START_FINISH_TIME = "Check start_time > finish_time"
+FINISH_NOW_TIME = "Check finish_time > current_time"
 SAME_NAMES = " загружается один файл дважды: "
 TASKS_FILES_MISMATCH = ". Несоответствие в таблицах TasksFiles и Files: "
 TASKS_FILES_REMOVE_AND_SET = "Запрещено одновременно удалять и добавлять файлы. Выберите одно из действий!"

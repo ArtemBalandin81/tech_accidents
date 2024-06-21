@@ -1,8 +1,7 @@
-"""src/api/schemas/files.py"""
+"""src/api/schemas/file_attached.py"""
 from datetime import date
 
-from pydantic import BaseModel, FilePath, Field, computed_field, field_serializer, PositiveInt
-
+from pydantic import BaseModel, Field, PositiveInt, field_serializer
 from src.api.constants import *
 from src.settings import settings
 
@@ -12,10 +11,9 @@ class FileBase(BaseModel):
     id: PositiveInt
     name: str = Field(
         ...,
-        max_length=256,
-        title="Имя файла.",
-        serialization_alias="Имя файла.",
-        example="Some_file_name"
+        max_length=FILE_NAME_LENGTH,
+        title=FILE_NAME,
+        serialization_alias=FILE_NAME,
     )
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
@@ -29,7 +27,7 @@ class FileBase(BaseModel):
         """Implement a custom json serializer by using pydantic's custom json encoders.
         Переводит datetime из БД в формат str для удобства отображения."""
         json_encoders = {date: lambda db_date_time: (db_date_time + timedelta(hours=0)).strftime(DATE_FORMAT)}
-        from_attributes = True  # in V2: 'orm_mode' has been renamed to 'from_attributes'
+        from_attributes = True  # in V2: 'orm_mode' has been renamed! In order to serialize ORM-model into schema.
 
 
 class FileUploadedResponse(BaseModel):

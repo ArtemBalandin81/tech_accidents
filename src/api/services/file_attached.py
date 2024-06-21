@@ -38,7 +38,7 @@ class FileService:
         self._task_repository: TaskRepository = task_repository
         self._users_repository: UsersRepository = users_repository
 
-    async def check_folder_exists(self, folder: Path) -> None:  # Path - не мб асинхронным?
+    async def check_folder_exists(self, folder: Path) -> None:
         """Проверяет наличие каталога, и создает его если нет."""
         if not Path(folder).exists():
             folder.mkdir(parents=True, exist_ok=True)
@@ -54,26 +54,24 @@ class FileService:
         file_size = round(file.size / FILE_SIZE_IN, ROUND_FILE_SIZE)
         file_type = file.filename.split(".")[-1]
         if file_type not in settings.FILE_TYPE_DOWNLOAD:
-            raise HTTPException(
-                status_code=403,
-                detail="{}{}{}{}".format(
-                    file_name,
-                    FILE_TYPE_DOWNLOAD_NOT_ALLOWED,
-                    ALLOWED_FILE_TYPE_DOWNLOAD,
-                    settings.FILE_TYPE_DOWNLOAD
-                )
+            details = "{}{}{}{}".format(
+                file_name,
+                FILE_TYPE_DOWNLOAD_NOT_ALLOWED,
+                ALLOWED_FILE_TYPE_DOWNLOAD,
+                settings.FILE_TYPE_DOWNLOAD
             )
+            await log.aerror(details)
+            raise HTTPException(status_code=403, detail=details)
         if file_size > settings.MAX_FILE_SIZE_DOWNLOAD:
-            raise HTTPException(
-                status_code=403,
-                detail="{}{}{}{}{}".format(
+            details = "{}{}{}{}{}".format(
                     file_name,
                     FIlE_SIZE_EXCEEDED,
                     file_size,
                     ALLOWED_FILE_SIZE_DOWNLOAD,
                     settings.MAX_FILE_SIZE_DOWNLOAD
                 )
-            )
+            await log.aerror(details)
+            raise HTTPException(status_code=403, detail=details)
         return file_name, file_size
 
     async def download_files(
@@ -86,11 +84,11 @@ class FileService:
         file_names_downloaded = []
         await self.check_folder_exists(saved_files_folder)
         for file in files:
-            file_name_size = await self.rename_validate_file(file_timestamp, file)
+            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
             try:
-                with open(saved_files_folder.joinpath(file_name_size[0]), "wb") as f:
+                with open(saved_files_folder.joinpath(file_name_and_size[0]), "wb") as f:
                     f.write(file.file.read())
-                file_names_downloaded.append(file_name_size[0])
+                file_names_downloaded.append(file_name_and_size[0])
             except Exception as e:
                 return {"message": e.args}
         await log.ainfo("{}".format(FILES_UPLOADED), files=file_names_downloaded)
@@ -105,14 +103,13 @@ class FileService:
         """Пишет файлы в БД и проверяет, что загруженные файлы соответствуют тем, что записываются в БД."""
         file_names_written_in_db = []
         for file in files_to_write:
-            file_name_size = await self.rename_validate_file(file_timestamp, file)
-            file_name = file_name_size[0]
+            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
+            file_name = file_name_and_size[0]
             file_names_written_in_db.append(file_name)
         if file_names_downloaded != file_names_written_in_db:  # todo доп. проверять кол-во файлов до загрузки и после
-            raise HTTPException(
-                status_code=409,
-                detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, file_names_downloaded, file_names_written_in_db)
-            )
+            details = "{}{}{}".format(FILES_DOWNLOAD_ERROR, file_names_downloaded, file_names_written_in_db)
+            await log.aerror(details)
+            raise HTTPException(status_code=409, detail=details)
         file_names_written_in_db = []
         to_create = []
         for file in files_to_write:
@@ -155,10 +152,9 @@ class FileService:
         elif isinstance(files_attributes[0], int):
             return [files_dir.joinpath(file_db.name) for file_db in await self.get_by_ids(files_attributes)]
         else:
-            await log.aerror("{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED))
-            raise HTTPException(
-                status_code=406, detail="{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED)
-            )
+            details = "{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED)
+            await log.aerror(details)
+            raise HTTPException(status_code=406, detail=details)
 
     async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
         """Удаляет из каталога список переданных файлов."""
@@ -260,4 +256,3 @@ class FileService:
         await self.delete_files_in_folder(files_to_remove)
         await self.delete_files_in_db(files)
         return files_to_remove
-

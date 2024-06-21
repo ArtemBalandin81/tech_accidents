@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from src.api.constants import DISPLAY_TIME, FROM_TIME_NOW, TO_TIME_PERIOD
+from src.api.constants import *
 from src.api.schemas import SuspensionRequest
 from src.core.db import get_session
 from src.core.db.models import Suspension, User
@@ -32,13 +32,13 @@ class SuspensionService:
         if not isinstance(in_object, dict):
             in_object = in_object.dict()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
-            raise HTTPException(status_code=422, detail="Check start_time >= finish_time")
+            raise HTTPException(status_code=422, detail=START_FINISH_TIME)
         # todo в доккер идет не корректное сравнение, т.к. сдвигается на - 5 часов время now() - корректируем
         if (
                 in_object["datetime_finish"].timestamp()
                 > (datetime.now() + timedelta(hours=settings.TIMEZONE_OFFSET)).timestamp()
         ):  # для сравнения дат используем timestamp()
-            raise HTTPException(status_code=422, detail="Check finish_time > current time")
+            raise HTTPException(status_code=422, detail=FINISH_NOW_TIME)
         if user is None:
             raise HTTPException(status_code=422, detail="Check USER is not NONE!")
         if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
