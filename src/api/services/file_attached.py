@@ -1,24 +1,22 @@
 """src/api/services/file_attached.py"""
-import numpy as np
-
+import io
+import os
+import zipfile
 from collections.abc import Sequence
+from pathlib import Path
 
+import numpy as np
+import structlog
 from fastapi import Depends, HTTPException, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
+from src.api.constants import *
+from src.api.schema import FileCreate
 from src.core.db import get_session
-from src.core.db.models import FileAttached, User, TasksFiles
+from src.core.db.models import FileAttached, TasksFiles
 from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
-from pathlib import Path
-import zipfile
-import structlog
-import io
-from src.api.constants import *
-import os
-
 from src.settings import settings
-
 
 log = structlog.get_logger()
 
@@ -44,49 +42,50 @@ class FileService:
             folder.mkdir(parents=True, exist_ok=True)
             await log.ainfo("{}".format(DIR_CREATED), folder=folder)
 
-    async def get_all_files_in_folder(self, folder: Path) -> Sequence[str]:
-        """Отдает список всех файлов в директории."""
+    async def get_all_files_names_in_folder(self, folder: Path) -> Sequence[str]:
+        """Отдает список имен всех файлов в директории."""
         return [file.name for file in folder.glob('*')]
 
-    async def rename_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
+    async def rename_and_validate_file(self, file_timestamp: str, file: UploadFile) -> tuple[str, int]:
         """Переименовывает загружаемый файл под требуемый формат и валидирует его размер и тип."""
         file_name = file_timestamp + "_" + file.filename.lower().translate(TRANSLATION_TABLE)
         file_size = round(file.size / FILE_SIZE_IN, ROUND_FILE_SIZE)
         file_type = file.filename.split(".")[-1]
-        if file_type not in settings.FILE_TYPE_DOWNLOAD:
+        allowed_file_types = settings.FILE_TYPE_DOWNLOAD
+        if file_type not in allowed_file_types:
             details = "{}{}{}{}".format(
                 file_name,
                 FILE_TYPE_DOWNLOAD_NOT_ALLOWED,
                 ALLOWED_FILE_TYPE_DOWNLOAD,
-                settings.FILE_TYPE_DOWNLOAD
+                allowed_file_types
             )
-            await log.aerror(details)
+            await log.aerror(details, file_type=file_type, allowed_file_types=allowed_file_types)
             raise HTTPException(status_code=403, detail=details)
         if file_size > settings.MAX_FILE_SIZE_DOWNLOAD:
             details = "{}{}{}{}{}".format(
-                    file_name,
-                    FIlE_SIZE_EXCEEDED,
-                    file_size,
-                    ALLOWED_FILE_SIZE_DOWNLOAD,
-                    settings.MAX_FILE_SIZE_DOWNLOAD
-                )
+                file_name,
+                FIlE_SIZE_EXCEEDED,
+                file_size,
+                ALLOWED_FILE_SIZE_DOWNLOAD,
+                settings.MAX_FILE_SIZE_DOWNLOAD
+            )
             await log.aerror(details)
             raise HTTPException(status_code=403, detail=details)
         return file_name, file_size
 
-    async def download_files(
+    async def download_files_in_folder(
             self,
             files: list[UploadFile],
-            saved_files_folder: Path,
+            files_folder: Path,
             file_timestamp: str = FILE_NAME_SAVE_FORMAT
     ) -> list[str] | dict:
         """Загружает файлы в указанный каталог на сервере."""
         file_names_downloaded = []
-        await self.check_folder_exists(saved_files_folder)
+        await self.check_folder_exists(files_folder)
         for file in files:
-            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
+            file_name_and_size = await self.rename_and_validate_file(file_timestamp, file)
             try:
-                with open(saved_files_folder.joinpath(file_name_and_size[0]), "wb") as f:
+                with open(files_folder.joinpath(file_name_and_size[0]), "wb") as f:
                     f.write(file.file.read())
                 file_names_downloaded.append(file_name_and_size[0])
             except Exception as e:
@@ -103,17 +102,17 @@ class FileService:
         """Пишет файлы в БД и проверяет, что загруженные файлы соответствуют тем, что записываются в БД."""
         file_names_written_in_db = []
         for file in files_to_write:
-            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
+            file_name_and_size = await self.rename_and_validate_file(file_timestamp, file)
             file_name = file_name_and_size[0]
             file_names_written_in_db.append(file_name)
-        if file_names_downloaded != file_names_written_in_db:  # todo доп. проверять кол-во файлов до загрузки и после
+        if file_names_downloaded != file_names_written_in_db:
             details = "{}{}{}".format(FILES_DOWNLOAD_ERROR, file_names_downloaded, file_names_written_in_db)
-            await log.aerror(details)
+            await log.aerror(details, downloaded=file_names_downloaded, written=file_names_written_in_db)
             raise HTTPException(status_code=409, detail=details)
         file_names_written_in_db = []
         to_create = []
         for file in files_to_write:
-            file_name_and_size = await self.rename_validate_file(file_timestamp, file)
+            file_name_and_size = await self.rename_and_validate_file(file_timestamp, file)
             file_name = file_name_and_size[0]
             file_size = file_name_and_size[1]
             file_object = {
@@ -121,20 +120,19 @@ class FileService:
                 "file": bytes("{}{}".format(file_size, FILE_SIZE_VOLUME), FILE_SIZE_ENCODE),
             }
             file_names_written_in_db.append(file_name)
-            to_create.append(FileAttached(**file_object))  # todo лучше схему пайдентик
+            to_create.append(FileAttached(**FileCreate(**file_object).model_dump()))  # create with pydantic validate!
         files_in_db: Sequence[FileAttached] = await self._repository.create_all(to_create)
-        await log.ainfo("{}".format(FILES_WRITTEN_DB), files=to_create)
-        return file_names_written_in_db, [obj.id for obj in to_create]  # todo file_names_written_in_db - лишнее
+        await log.ainfo("{}".format(FILES_WRITTEN_DB), files=files_in_db)
+        return file_names_written_in_db, [obj.id for obj in to_create]
 
     async def download_and_write_files_in_db(
             self,
             files_to_upload: list[UploadFile],
-            saved_files_folder: Path,
+            files_folder: Path,
             file_timestamp: str = FILE_NAME_SAVE_FORMAT
-
     ) -> tuple[list[str], list[int]]:
         """Сохраняет файлы, записывает их в БД и отдает их имена и ids."""
-        file_names_downloaded = await self.download_files(files_to_upload, saved_files_folder, file_timestamp)
+        file_names_downloaded = await self.download_files_in_folder(files_to_upload, files_folder, file_timestamp)
         file_names_and_ids_written_in_db = await self.write_files_in_db(
             file_names_downloaded, files_to_upload, file_timestamp
         )
@@ -146,10 +144,10 @@ class FileService:
         return file_names_and_ids_written_in_db
 
     async def prepare_files_to_work_with(self, files_attributes: Sequence[int | str], files_dir: Path) -> list[Path]:
-        """Отдает список файлов для обработки."""
+        """Отдает список файлов (Path) для последующей обработки."""
         if isinstance(files_attributes[0], str):
             return [files_dir.joinpath(file) for file in files_attributes]
-        elif isinstance(files_attributes[0], int):
+        elif isinstance(files_attributes[0], int):  # get objs from db by ids if ids got!
             return [files_dir.joinpath(file_db.name) for file_db in await self.get_by_ids(files_attributes)]
         else:
             details = "{}{}".format(files_attributes[0], FILE_TYPE_DOWNLOAD_NOT_ALLOWED)
@@ -157,13 +155,13 @@ class FileService:
             raise HTTPException(status_code=406, detail=details)
 
     async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
-        """Удаляет из каталога список переданных файлов."""
+        """Удаляет из каталога список переданных файлов (физическое удаление файлов)."""
         for file in files_to_delete:
             file.unlink()
         return files_to_delete
 
     async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
-        """Удаляет из БД список переданных файлов."""
+        """Удаляет из БД список переданных файлов (файлы удаляются из БД, но остаются физически в каталоге файлов)."""
         return await self._repository.remove_all(FileAttached, files_to_delete)
 
     async def zip_files(self, files_to_zip: list[Path]) -> Response:
@@ -185,7 +183,7 @@ class FileService:
     ) -> Sequence[str | int]:
         """Отдает пересечение двух множеств ids."""
         intersection = np.intersect1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
-        await log.ainfo("{}{}".format(FILES_IDS_INTERSECTION, intersection))
+        await log.ainfo("{}".format(FILES_IDS_INTERSECTION), intersection=intersection)
         return intersection
 
     async def get_arrays_difference(
@@ -193,33 +191,15 @@ class FileService:
     ) -> Sequence[str | int]:
         """Отдает разницу множеств имен или ids: array_1 - array_2."""
         difference = np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
-        await log.ainfo("{}{}".format(ARRAYS_DIFFERENCE, difference))
+        await log.ainfo("{}".format(ARRAYS_DIFFERENCE), difference=difference)
         return np.setdiff1d(np.array(array_1), np.array(array_2)).tolist()  # noqa
 
-    async def actualize_object(  # todo перенести в универсальные сервисы
-            self,
-            file_id: int | None,
-            in_object: dict,
-            user: User | int
-    ):
-        # if in_object["task_start"] > in_object["deadline"]:
-        #     raise HTTPException(status_code=422, detail="Check start_time > finish_time")
-        # if user is None:  # todo в модели файлов нет пользователей, они появляются через модели задач и простоев
-        #     raise HTTPException(status_code=422, detail="Check USER is not NONE!")
-        # if type(user) is int:  # Проверяет, что пользователь не передается напрямую id
-        #     in_object["user_id"] = user
-        # else:
-        #     in_object["user_id"] = user.id
-        file = FileAttached(**in_object)
-        if file_id is None:  # если file_id не передан - создаем, иначе - правим!
-            return await self._repository.create(file)
-        await self.get(file_id)  # проверяем, что объект для правки существует!
-        return await self._repository.update(file_id, file)
-
     async def get(self, file_id: int) -> FileAttached:
+        """Получает объект модели по ID. В случае отсутствия объекта бросает ошибку."""
         return await self._repository.get(file_id)
 
     async def get_all(self) -> Sequence[FileAttached]:
+        """Возвращает все объекты модели из базы данных."""
         return await self._repository.get_all()
 
     async def get_all_db_file_names_and_ids(self) -> tuple[list[str], list[int]]:
@@ -240,7 +220,7 @@ class FileService:
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         return [relation.file_id for relation in relations]
 
-    async def get_all_file_names_from_tasks(self) -> Sequence[str]:  # todo если не требуется - удалить
+    async def get_all_file_names_from_tasks(self) -> Sequence[str]:
         """Отдает имена файлов, привязанных ко всем задачам."""
         files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
         return [file.name for file in files]
@@ -251,7 +231,9 @@ class FileService:
             np.array(files), np.array(await self.get_all_file_ids_from_tasks())
         )
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
-            raise HTTPException(status_code=403, detail="{}{}".format(FILES_REMOVE_FORBIDDEN, intersection))
+            details = "{}{}".format(FILES_REMOVE_FORBIDDEN, intersection)
+            await log.aerror(details, intersection=intersection)
+            raise HTTPException(status_code=403, detail=details)
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
         await self.delete_files_in_folder(files_to_remove)
         await self.delete_files_in_db(files)

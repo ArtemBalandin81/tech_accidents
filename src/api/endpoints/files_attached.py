@@ -13,6 +13,7 @@ from src.api.schema import (FileBase, FileDBUnusedDeletedResponse,
                             FileDBUnusedResponse, FileUnusedDeletedResponse,
                             FileUnusedResponse, FileUploadedResponse)
 from src.api.services import FileService
+from src.api.validators import check_same_files_not_to_download
 from src.core.db.models import FileAttached
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import ChoiceDownloadFiles, ChoiceRemoveFilesUnused
@@ -44,10 +45,7 @@ async def upload_files_by_form(
     file_service: FileService = Depends(),
 ) -> FileUploadedResponse:
     """Загружает файлы в каталог и записывает их в БД."""
-    file_names = [file.filename for file in files_to_upload]
-    if len(set(file_names)) != len(file_names):
-        await log.aerror("{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
-        raise HTTPException(status_code=403, detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
+    await check_same_files_not_to_download(files_to_upload)
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # for equal file_name in db & upload folder
     file_names_and_ids_written_in_db = await file_service.download_and_write_files_in_db(
         files_to_upload, FILES_DIR, file_timestamp
@@ -156,14 +154,14 @@ async def get_files_unused(
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_DB_REMOVED, files_unused))
         return FileDBUnusedDeletedResponse(file_unused_in_db_removed=files_unused)
     elif choices_with_files_unused == options_for_files_unused[11]:  # == "unused_in_folder"
-        all_files_in_folder = await file_service.get_all_files_in_folder(FILES_DIR)
+        all_files_in_folder: Sequence[str] = await file_service.get_all_files_names_in_folder(FILES_DIR)
         files_unused_in_folder: Sequence[str] = await file_service.get_arrays_difference(
             all_files_in_folder, file_names_and_ids_in_db[0],
         )
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_FOLDER, files_unused_in_folder))
         return FileUnusedResponse(files_unused=files_unused_in_folder,)
     elif choices_with_files_unused == options_for_files_unused[15]:  # == "remove_unused_in_folder"
-        all_files_in_folder: Sequence[str] = await file_service.get_all_files_in_folder(FILES_DIR)
+        all_files_in_folder: Sequence[str] = await file_service.get_all_files_names_in_folder(FILES_DIR)
         files_unused_in_folder: Sequence[str] = await file_service.get_arrays_difference(
             all_files_in_folder, file_names_and_ids_in_db[0],
         )

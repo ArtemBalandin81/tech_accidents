@@ -30,7 +30,7 @@ class SuspensionService:
             user: User | int
     ):
         if not isinstance(in_object, dict):
-            in_object = in_object.dict()
+            in_object = in_object.dict()  # todo .model_dump()
         if in_object["datetime_start"] >= in_object["datetime_finish"]:
             raise HTTPException(status_code=422, detail=START_FINISH_TIME)
         # todo в доккер идет не корректное сравнение, т.к. сдвигается на - 5 часов время now() - корректируем

@@ -6,6 +6,12 @@ from src.api.constants import *
 from src.settings import settings
 
 
+class FileCreate(BaseModel):
+    """Схема cоздания объекта в БД."""
+    name: str = Field(..., max_length=FILE_NAME_LENGTH, title=FILE_NAME, serialization_alias=FILE_NAME)
+    file: bytes
+
+
 class FileBase(BaseModel):
     """Базовая схема для работы с моделью файлов."""
     id: PositiveInt

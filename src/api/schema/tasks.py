@@ -1,6 +1,7 @@
 """src/api/schemas/tasks.py"""
 import time
 from datetime import date
+from typing import Optional
 
 from pydantic import (BaseModel, Field, PositiveInt, computed_field,
                       field_serializer)
@@ -8,10 +9,16 @@ from src.api.constants import *
 from src.settings import settings
 
 
-class TaskBase(BaseModel):
-    """Базовая схема задач."""
-    id: PositiveInt
+class TaskCreate(BaseModel):
+    """Схема cоздания объекта в БД."""
     task: str = Field(..., serialization_alias=TASK)
+    description: str = Field(
+        ...,
+        max_length=TASK_DESCRIPTION_LENGTH,
+        title=TASK_DESCRIPTION,
+        serialization_alias=TASK_DESCRIPTION,
+        example=TASK_DESCRIPTION
+    )
     task_start: date = Field(
         ...,
         title=TASK_START,
@@ -24,7 +31,28 @@ class TaskBase(BaseModel):
         serialization_alias=TASK_FINISH,
         example=TO_TIME
     )
-    description: str = Field(
+    tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
+    executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
+    is_archived: Optional[bool] = False
+
+
+class TaskBase(BaseModel):  # todo наследоваться от TaskCreate
+    """Базовая схема задач."""
+    id: PositiveInt
+    task: str = Field(..., serialization_alias=TASK)  # todo
+    task_start: date = Field(  # todo
+        ...,
+        title=TASK_START,
+        serialization_alias=TASK_START,
+        example=FROM_TIME
+    )
+    deadline: date = Field(  # todo
+        ...,
+        title=TASK_FINISH,
+        serialization_alias=TASK_FINISH,
+        example=TO_TIME
+    )
+    description: str = Field(  # todo
         ...,
         max_length=TASK_DESCRIPTION_LENGTH,
         title=TASK_DESCRIPTION,

@@ -9,9 +9,10 @@ from fastapi import (APIRouter, Depends, File, HTTPException, Query, Response,
                      UploadFile)
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import (AddTaskFileResponse,  # todo "schemas"
-                            AnalyticTaskResponse, TaskDeletedResponse)
+from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse, TaskCreate, TaskDeletedResponse  # todo "schemas"
 from src.api.services import FileService, TaskService, UsersService
+from src.api.validators import (check_start_not_exceeds_finish, check_same_files_not_to_download,
+                                check_not_download_and_delete_files_at_one_time)
 from src.core.db.models import Task, User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import ChoiceDownloadFiles, Executor, TechProcess
@@ -46,24 +47,26 @@ async def create_new_task_by_form(
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     """Постановка задачи из формы с возможностью загрузки 1 файла."""
+    await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)
     if another_email is not None:
         executor = await users_service.get_by_email(another_email)
     else:
         executor = await users_service.get_by_email(executor_email.value)
     task_object = {
-        "task_start": datetime.strptime(task_start, DATE_FORMAT),  # обратная конвертация в datetime
-        "deadline": datetime.strptime(deadline, DATE_FORMAT),  # обратная конвертация в datetime,
+        "task_start": datetime.strptime(task_start, DATE_FORMAT),  # reverse in datetime
+        "deadline": datetime.strptime(deadline, DATE_FORMAT),  # reverse in datetime
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
         "executor": executor.id,
     }
-    new_task: Task = await task_service.actualize_object(None, task_object, user)  # 1. Пишем задачу в БД без файлов
+    # 1. Write task in db with pydantic (without attached_files).
+    new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)
     task_response: dict = await task_service.change_schema_response(new_task)
     if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
-    # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
-    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
+    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # timestamp in filename
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         [file_to_upload], FILES_DIR, file_timestamp
     )
@@ -98,9 +101,8 @@ async def create_new_task_by_form_with_files(
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     """Постановка задачи из формы с обязательной загрузкой нескольких файлов."""
-    file_names = [file.filename for file in files_to_upload]
-    if len(set(file_names)) != len(file_names):
-        raise HTTPException(status_code=403, detail="{}{}{}".format(FILES_DOWNLOAD_ERROR, SAME_NAMES, file_names))
+    await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)
+    await check_same_files_not_to_download(files_to_upload)
     if another_email is not None:
         executor = await users_service.get_by_email(another_email)
     else:
@@ -113,7 +115,7 @@ async def create_new_task_by_form_with_files(
         "description": description,
         "executor": executor.id,
     }
-    new_task: Task = await task_service.actualize_object(None, task_object, user)  # 1. Пишем задачу в БД без файлов
+    new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)  # 1. Пишем задачу в БД без файлов
     # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
@@ -175,13 +177,15 @@ async def partially_update_task_by_form(
     user: User = Depends(current_user),
 ) -> AnalyticTaskResponse:
     """Редактирование задачи с возможностью очистки прикрепленных файлов, или добавления нового файла."""
-    task_from_db = await task_service.get(task_id)  # получаем объект из БД и заполняем недостающие поля
+    task_from_db = await task_service.get(task_id)  # get obj from db and fill in changed fields
+    # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
     deadline: date = (
         datetime.strptime(str(deadline), DATE_FORMAT)
         if deadline is not None
         else datetime.strptime(task_from_db.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
-    )  # Из БД получаем date -> конвертируем в str -> записываем обратно в БД в datetime для сопоставимости форматов
+    )
     task_start: date = datetime.strptime(task_from_db.task_start.strftime(DATE_FORMAT), DATE_FORMAT)
+    await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)
     executor = await users_service.get_by_email(executor_email.value) if executor_email is not None else None
     task_object = {
         "task_start": task_start,
@@ -192,18 +196,19 @@ async def partially_update_task_by_form(
         "executor": task_from_db.executor if executor_email is None else executor.id,  # noqa
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
     }
-    edited_task = await task_service.actualize_object(task_id, task_object, user)
+    edited_task: Task = await task_service.actualize_object(task_id, TaskCreate(**task_object), user)
     edited_task_response: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
-    if to_unlink_files and file_to_upload is not None:
-        await log.aerror("{}".format(TASKS_FILES_REMOVE_AND_SET))
-        raise HTTPException(status_code=406, detail="{}".format(TASKS_FILES_REMOVE_AND_SET))
+    await check_not_download_and_delete_files_at_one_time(to_unlink_files, file_to_upload)
+    # if to_unlink_files and file_to_upload is not None:  # todo delete
+    #     await log.aerror("{}".format(TASKS_FILES_REMOVE_AND_SET))
+    #     raise HTTPException(status_code=406, detail="{}".format(TASKS_FILES_REMOVE_AND_SET))
     if to_unlink_files:
         file_names_and_ids_set_to_task: tuple[list[str], list[PositiveInt]] = (
             await task_service.get_file_names_and_ids_from_task(task_id)
         )
         await task_service.set_files_to_task(task_id, [])
         edited_task_response[0]["extra_files"]: list[str] = []
-        if file_names_and_ids_set_to_task[1] is not None:
+        if file_names_and_ids_set_to_task[1]:
             await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)
             await log.ainfo("{}{}{}{}{}{}".format(
                 TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, file_names_and_ids_set_to_task[0], DELETED_OK)

@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from src.api.constants import *
+from src.api.schema import TaskCreate
 from src.core.db import get_session
 from src.core.db.models import Task, TasksFiles, User, FileAttached
 from src.core.db.repository.file_attached import FileRepository
@@ -32,7 +33,7 @@ class TaskService:
     async def change_schema_response(self, task: Task) -> dict:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
         user = await self._users_repository.get(task.user_id)
-        executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id
+        executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id: в модели и тут
         task_to_dict = task.__dict__
         task_to_dict["user_email"] = user.email
         task_to_dict["executor_email"] = executor.email
@@ -76,26 +77,25 @@ class TaskService:
                 list_changed_response.append(task_response)
         return list_changed_response
 
-    async def actualize_object(  # todo перенести в универсальные сервисы
+    async def actualize_object(  # todo перенести в универсальные сервисы? - Лишнее,т.к. у каждой модели свои фишки
             self,
             task_id: int | None,
-            in_object: dict,
+            in_object: TaskCreate | dict,
             user: User | int
     ) -> Task:
-        if in_object["task_start"] > in_object["deadline"]:
-            raise HTTPException(status_code=422, detail=START_FINISH_TIME)
-        elif in_object["task_start"] < datetime.strptime((datetime.now(TZINFO)).strftime(DATE_FORMAT), DATE_FORMAT):
-            raise HTTPException(status_code=422, detail=FINISH_NOW_TIME)
-        elif user is None:
+        if not isinstance(in_object, dict):
+            in_object = in_object.model_dump()
+        if user is None:
+            await log.aerror(NO_USER)
             raise HTTPException(status_code=422, detail=NO_USER)
-        elif type(user) is int:  # Проверяет, что пользователь не передается напрямую id  # todo isinstance
+        if isinstance(type(user), int):
             in_object["user_id"] = user
         else:
             in_object["user_id"] = user.id
         task = Task(**in_object)
-        if task_id is None:  # если task_id не передан - создаем, иначе - правим!
+        if task_id is None:
             return await self._repository.create(task)
-        await self.get(task_id)  # проверяем, что объект для правки существует!
+        await self.get(task_id)  # check the object to patch exists!
         return await self._repository.update(task_id, task)
 
     async def get(self, task_id: int) -> Task:
