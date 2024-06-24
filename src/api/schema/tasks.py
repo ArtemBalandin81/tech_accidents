@@ -1,4 +1,4 @@
-"""src/api/schemas/tasks.py"""
+"""src/api/schema/tasks.py"""
 import time
 from datetime import date
 from typing import Optional
@@ -87,7 +87,7 @@ class TaskResponse(TaskBase):
     tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
     user_id: int = Field(..., serialization_alias=TASK_USER_ID)
     executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
-    extra_files: list = Field(..., serialization_alias=FILES_SET_TO)
+    extra_files: Optional[list] = Field(None, serialization_alias=FILES_SET_TO)
 
 
 class AnalyticTaskResponse(TaskBase):
@@ -98,7 +98,7 @@ class AnalyticTaskResponse(TaskBase):
     extra_files: list = Field(..., serialization_alias=FILES_SET_TO)
 
 
-class AddTaskFileResponse(BaseModel):
+class AddTaskFileResponse(BaseModel):  # todo delete not used
     """Схема ответа после добавления файлов к задачам."""
     task_id: int = Field(..., serialization_alias=TASK)
     files_ids: list[int] = Field(..., serialization_alias=FILES_WRITTEN_DB)

@@ -215,6 +215,11 @@ class FileService:
         """Отдает файлы, по их ids."""
         return await self._repository.get_by_ids(ids)
 
+    async def get_names_by_file_ids(self, ids: Sequence[int]) -> Sequence[str]:
+        """Отдает имена файлов, по их ids."""
+        files: Sequence[FileAttached] = await self._repository.get_by_ids(ids)
+        return [file.name for file in files]
+
     async def get_all_file_ids_from_tasks(self) -> Sequence[int]:
         """Отдает ids файлов, привязанных ко всем задачам."""
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()

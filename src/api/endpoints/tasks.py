@@ -9,10 +9,12 @@ from fastapi import (APIRouter, Depends, File, HTTPException, Query, Response,
                      UploadFile)
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import AddTaskFileResponse, AnalyticTaskResponse, TaskCreate, TaskDeletedResponse  # todo "schemas"
+from src.api.schema import (AnalyticTaskResponse, TaskCreate,  # todo "schemas"
+                            TaskDeletedResponse, TaskResponse)
 from src.api.services import FileService, TaskService, UsersService
-from src.api.validators import (check_start_not_exceeds_finish, check_same_files_not_to_download,
-                                check_not_download_and_delete_files_at_one_time)
+from src.api.validators import (
+    check_not_download_and_delete_files_at_one_time,
+    check_same_files_not_to_download, check_start_not_exceeds_finish)
 from src.core.db.models import Task, User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import ChoiceDownloadFiles, Executor, TechProcess
@@ -65,7 +67,7 @@ async def create_new_task_by_form(
     task_response: dict = await task_service.change_schema_response(new_task)
     if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
-    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db
+    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
     file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # timestamp in filename
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         [file_to_upload], FILES_DIR, file_timestamp
@@ -74,8 +76,8 @@ async def create_new_task_by_form(
     file_id = file_names_and_ids[1]
     file_name = file_names_and_ids[0]
     await task_service.set_files_to_task(task_id, file_id)
-    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_id))
-    task_response["extra_files"]: list[str] = file_name  # дополняем словарь для ответа AnalyticTaskResponse
+    await log.ainfo("{}".format(FILES_ATTACHED_TO_TASK), task_id=task_id, file_id=file_id, file_name=file_name)
+    task_response["extra_files"]: list[str] = file_name  # add dictionary for AnalyticTaskResponse
     return AnalyticTaskResponse(**task_response)
 
 
@@ -108,23 +110,26 @@ async def create_new_task_by_form_with_files(
     else:
         executor = await users_service.get_by_email(executor_email.value)
     task_object = {
-        "task_start": datetime.strptime(task_start, DATE_FORMAT),  # обратная конвертация в datetime
-        "deadline": datetime.strptime(deadline, DATE_FORMAT),  # обратная конвертация в datetime,
+        "task_start": datetime.strptime(task_start, DATE_FORMAT),  # reverse in datetime
+        "deadline": datetime.strptime(deadline, DATE_FORMAT),  # reverse in datetime
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
         "executor": executor.id,
     }
-    new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)  # 1. Пишем задачу в БД без файлов
-    # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
-    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # метка времени в имени файла
+    new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)  # 1. Write task in db
+    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # timestamp in filename
     file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
         files_to_upload, FILES_DIR, file_timestamp
     )
     task_id = new_task.id
     files_ids = file_names_and_ids[1]
     await task_service.set_files_to_task(task_id, files_ids)
-    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
+    await log.ainfo(
+        "{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK),
+        task_id=task_id, files_ids=files_ids, files_names=file_names_and_ids[0]
+    )
     task_response: dict = await task_service.change_schema_response(new_task)
     task_response["extra_files"]: list[str] = file_names_and_ids[0]
     return AnalyticTaskResponse(**task_response)
@@ -142,11 +147,17 @@ async def set_files_to_task(
     task_id: PositiveInt,
     files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_TASK),
     task_service: TaskService = Depends(),
-) -> AddTaskFileResponse:
+    file_service: FileService = Depends(),
+) -> TaskResponse:
     """Прикрепление файлов к задаче (запись отношения в БД) (только админ)."""
     await task_service.set_files_to_task(task_id, files_ids)
-    await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, files_ids))
-    return AddTaskFileResponse(task_id=task_id, files_ids=files_ids)
+    files_names: Sequence[str] = await file_service.get_names_by_file_ids(files_ids)
+    await log.ainfo(
+        "{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK),
+        task_id=task_id, files_ids=files_ids, files_names=files_names
+    )
+    task: Task = await task_service.get(task_id)
+    return TaskResponse(**task.__dict__, extra_files=files_names)
 
 
 @task_router.patch(
@@ -199,9 +210,6 @@ async def partially_update_task_by_form(
     edited_task: Task = await task_service.actualize_object(task_id, TaskCreate(**task_object), user)
     edited_task_response: Sequence[dict] = await task_service.perform_changed_schema(edited_task)
     await check_not_download_and_delete_files_at_one_time(to_unlink_files, file_to_upload)
-    # if to_unlink_files and file_to_upload is not None:  # todo delete
-    #     await log.aerror("{}".format(TASKS_FILES_REMOVE_AND_SET))
-    #     raise HTTPException(status_code=406, detail="{}".format(TASKS_FILES_REMOVE_AND_SET))
     if to_unlink_files:
         file_names_and_ids_set_to_task: tuple[list[str], list[PositiveInt]] = (
             await task_service.get_file_names_and_ids_from_task(task_id)
@@ -210,13 +218,16 @@ async def partially_update_task_by_form(
         edited_task_response[0]["extra_files"]: list[str] = []
         if file_names_and_ids_set_to_task[1]:
             await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)
-            await log.ainfo("{}{}{}{}{}{}".format(
-                TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, file_names_and_ids_set_to_task[0], DELETED_OK)
+            await log.ainfo(
+                "{}{}{}{}{}".format(TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, DELETED_OK),
+                task_id=task_id,
+                files_ids=file_names_and_ids_set_to_task[1],
+                files_names=file_names_and_ids_set_to_task[0]
             )
-        await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-            TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED,
-            SPACE, is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
-            executor_email, SPACE, FILES_ATTACHED_TO_TASK, [],)
+        await log.ainfo(
+            "{}{}".format(TASK_PATCH_FORM, task_id),
+            task_id=task_id, task=task, task_description=description, is_archived=is_archived, deadline=deadline,
+            tech_process=tech_process, executor=executor_email, files=None,
         )
         return AnalyticTaskResponse(**edited_task_response[0])
     if file_to_upload is not None:  # 2. Сохраняем файл и вносим о нем записи в таблицы files и tasks_files в БД
@@ -233,18 +244,23 @@ async def partially_update_task_by_form(
         new_file_ids = new_file_id + file_names_and_ids_set_to_task[1]
         new_file_names = new_file_name + file_names_and_ids_set_to_task[0]
         await task_service.set_files_to_task(task_id, new_file_ids)
-        edited_task_response[0]["extra_files"]: list[str] = new_file_names  # дополняем словарь AnalyticTaskResponse
-        await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-            TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED,
-            SPACE, is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
-            executor_email, SPACE, FILES_ATTACHED_TO_TASK, new_file_id, SPACE, new_file_name, SPACE, FILES_SET_TO,
-            new_file_ids, new_file_names)
+        edited_task_response[0]["extra_files"]: list[str] = new_file_names  # add dictionary for AnalyticTaskResponse
+        await log.ainfo(
+            "{}{}".format(TASK_PATCH_FORM, task_id),
+            task_id=task_id, task=task, task_description=description, is_archived=is_archived, deadline=deadline,
+            tech_process=tech_process, executor=executor_email, new_file_id=new_file_id, new_file_name=new_file_name,
+            files_ids=new_file_ids, files_names=new_file_names
         )
         return AnalyticTaskResponse(**edited_task_response[0])
     await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
         TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED, SPACE,
         is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
         executor_email)
+    )
+    await log.ainfo(
+        "{}{}".format(TASK_PATCH_FORM, task_id),
+        task_id=task_id, task=task, task_description=description, is_archived=is_archived, deadline=deadline,
+        tech_process=tech_process, executor=executor_email
     )
     return AnalyticTaskResponse(**edited_task_response[0])
 
@@ -322,10 +338,9 @@ async def get_task_by_id(
     files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
     if choice_download_files == files_download_true:
         if not file_ids:
-            await log.aerror("{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND))
-            raise HTTPException(
-                status_code=404, detail="{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND)
-            )
+            details = "{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND)
+            await log.aerror(details, task_id=task_id, files_ids=file_ids)
+            raise HTTPException(status_code=404, detail=details)
         else:
             return await file_service.zip_files(await file_service.prepare_files_to_work_with(file_ids, FILES_DIR))
     else:
@@ -355,10 +370,11 @@ async def remove_task(
             files_ids_set_to_task, FILES_DIR
         )
         await task_service.set_files_to_task(task_id, [])
-        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []))
+        await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []), task_id=task_id, files=[])
         await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
-        await log.ainfo("{}{}{}{}{}{}".format(
-            TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED, files_to_delete, DELETED_OK)
+        await log.ainfo(
+            "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
+            task_id=task_id, files=files_to_delete,
         )
         task_to_delete_response["extra_files"] = files_to_delete
     await task_service.remove(task_id)
