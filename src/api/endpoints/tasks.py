@@ -5,14 +5,14 @@ from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import (APIRouter, Depends, File, HTTPException, Query, Response,
-                     UploadFile)
+from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
 from src.api.schema import (AnalyticTaskResponse, TaskCreate,  # todo "schemas"
                             TaskDeletedResponse, TaskResponse)
 from src.api.services import FileService, TaskService, UsersService
 from src.api.validators import (
+    check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_same_files_not_to_download, check_start_not_exceeds_finish)
 from src.core.db.models import Task, User
@@ -337,12 +337,8 @@ async def get_task_by_id(
     file_ids: Sequence[PositiveInt] = await task_service.get_file_ids_from_task(task_id)
     files_download_true = settings.CHOICE_DOWNLOAD_FILES.split('"')[-2]  # защита на случай изменений в enum-классе
     if choice_download_files == files_download_true:
-        if not file_ids:
-            details = "{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, NOT_FOUND)
-            await log.aerror(details, task_id=task_id, files_ids=file_ids)
-            raise HTTPException(status_code=404, detail=details)
-        else:
-            return await file_service.zip_files(await file_service.prepare_files_to_work_with(file_ids, FILES_DIR))
+        await check_exist_files_attached(file_ids, task_id)
+        return await file_service.zip_files(await file_service.prepare_files_to_work_with(file_ids, FILES_DIR))
     else:
         task: Sequence[dict] = await task_service.perform_changed_schema(await task_service.get(task_id))
         return AnalyticTaskResponse(**task[0])

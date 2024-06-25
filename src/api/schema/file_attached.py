@@ -1,4 +1,4 @@
-"""src/api/schemas/file_attached.py"""
+"""src/api/schema/file_attached.py"""
 from datetime import date
 
 from pydantic import BaseModel, Field, PositiveInt, field_serializer

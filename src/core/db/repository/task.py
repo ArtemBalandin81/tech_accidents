@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db.db import get_session
 from src.core.db.models import FileAttached, Task, TasksFiles
 from src.core.db.repository.base import ContentRepository
+from src.core.exceptions import NotFoundException
 
 
 class TaskRepository(ContentRepository):
@@ -68,6 +69,9 @@ class TaskRepository(ContentRepository):
         """Присваивает задаче список файлов."""
         await self._session.commit()
         async with self._session.begin():
+            task = await self._session.scalar(select(Task).where(Task.id == task_id))
+            if task is None:
+                raise NotFoundException(object_name=Task.__name__, object_id=task_id)
             await self._session.execute(delete(TasksFiles).where(TasksFiles.task_id == task_id))
             if files_ids:
                 await self._session.execute(
@@ -76,7 +80,7 @@ class TaskRepository(ContentRepository):
                     )
                 )
 
-    async def get_task_files_relations(self, task_id: int) -> Sequence[TasksFiles]:  # todo это не файлы а связи!!!
+    async def get_task_files_relations(self, task_id: int) -> Sequence[TasksFiles]:
         """Получить список отношений задача-файл."""
         task_files_relations = await self._session.scalars(
             select(TasksFiles)
@@ -94,7 +98,7 @@ class TaskRepository(ContentRepository):
         )
         return files.all()
 
-    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:  # todo требует донастройки - фигачит все айди
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
         """Получить список файлов, прикрепленных ко всем задачам."""
         files = await self._session.scalars(
             select(FileAttached)

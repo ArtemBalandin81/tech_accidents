@@ -8,7 +8,7 @@ from sqlalchemy.sql import expression, func
 from sqlalchemy.sql.sqltypes import TIMESTAMP, BLOB
 
 
-class Base(DeclarativeBase):  # todo без применения миграций не работают изменения
+class Base(DeclarativeBase):
     """Основа для базового класса."""
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -47,7 +47,7 @@ class Task(Base):
     deadline: Mapped[date] = mapped_column(nullable=True)
     tech_process: Mapped[int]
     user_id: Mapped[int] = mapped_column(ForeignKey("user.id"))  # постановщик (заказчик: внутренний клиент) задачи
-    executor: Mapped[int] = mapped_column(ForeignKey("user.id"))  # исполнитель # todo заменить на executor_id
+    executor: Mapped[int] = mapped_column(ForeignKey("user.id"))  # исполнитель # todo executor_id and services/task.py
     is_archived: Mapped[bool] = mapped_column(server_default=expression.false())
 
     files: Mapped[list["FileAttached"]] = relationship(secondary="tasks_files", back_populates="tasks")

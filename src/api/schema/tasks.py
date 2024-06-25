@@ -36,29 +36,9 @@ class TaskCreate(BaseModel):
     is_archived: Optional[bool] = False
 
 
-class TaskBase(BaseModel):  # todo наследоваться от TaskCreate
+class TaskBase(TaskCreate):
     """Базовая схема задач."""
     id: PositiveInt
-    task: str = Field(..., serialization_alias=TASK)  # todo
-    task_start: date = Field(  # todo
-        ...,
-        title=TASK_START,
-        serialization_alias=TASK_START,
-        example=FROM_TIME
-    )
-    deadline: date = Field(  # todo
-        ...,
-        title=TASK_FINISH,
-        serialization_alias=TASK_FINISH,
-        example=TO_TIME
-    )
-    description: str = Field(  # todo
-        ...,
-        max_length=TASK_DESCRIPTION_LENGTH,
-        title=TASK_DESCRIPTION,
-        serialization_alias=TASK_DESCRIPTION,
-        example=TASK_DESCRIPTION
-    )
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
     is_archived: bool
@@ -96,12 +76,6 @@ class AnalyticTaskResponse(TaskBase):
     user_email: str = Field(..., serialization_alias=USER_MAIL)
     executor_email: str = Field(..., serialization_alias=TASK_EXECUTOR_MAIL)
     extra_files: list = Field(..., serialization_alias=FILES_SET_TO)
-
-
-class AddTaskFileResponse(BaseModel):  # todo delete not used
-    """Схема ответа после добавления файлов к задачам."""
-    task_id: int = Field(..., serialization_alias=TASK)
-    files_ids: list[int] = Field(..., serialization_alias=FILES_WRITTEN_DB)
 
 
 class TaskDeletedResponse(BaseModel):

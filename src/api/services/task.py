@@ -1,19 +1,20 @@
 """src/api/services/task.py"""
 from collections.abc import Sequence
+
+import structlog
 from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-import structlog
-
 from src.api.constants import *
 from src.api.schema import TaskCreate
 from src.core.db import get_session
-from src.core.db.models import Task, TasksFiles, User, FileAttached
+from src.core.db.models import FileAttached, Task, TasksFiles, User
 from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
 from src.core.enums import TechProcess
 
 log = structlog.get_logger()
+
 
 class TaskService:
     """Сервис для работы с моделью Task."""
@@ -46,17 +47,23 @@ class TaskService:
             task_id: int,
     ) -> Sequence[str] | None:
         """Отдает имена файлов из таблицы TasksFiles, если они записаны в БД и запись (m-t-m) им соответствует."""
-        file_ids: Sequence[int] = await self.get_file_ids_from_task(task_id)
-        # file_names: Sequence[str] = await self.get_file_names_from_task(task_id)
-        file_names_and_ids: tuple[list[str], list[int]] = await self.get_file_names_and_ids_from_task(task_id)
-        if len(file_ids) != len(file_names_and_ids[0]):
-            tasks_files_mismatch = "{}{}{}{}{}".format(
-                TASK, task_id, TASKS_FILES_MISMATCH, file_ids, file_names_and_ids[0]
+        files_ids_from_task_files_relations: Sequence[int] = await self.get_file_ids_from_task(task_id)
+        files_names_and_ids_from_file_attached: tuple[list[str], list[int]] = (
+            await self.get_file_names_and_ids_from_task(task_id)
+        )
+        if len(files_ids_from_task_files_relations) != len(files_names_and_ids_from_file_attached[0]):
+            details = "{}{}{}{}{}".format(  # todo возможно, это избыточная проверка!
+                TASK, task_id, TASKS_FILES_MISMATCH, files_ids_from_task_files_relations,
+                files_names_and_ids_from_file_attached[0]
             )
-            await log.aerror(tasks_files_mismatch)
-            raise HTTPException(status_code=206, detail=tasks_files_mismatch)
-        # await log.ainfo("{}{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, file_ids, file_names_and_ids[0]))
-        return file_names_and_ids[0]
+            await log.aerror(
+                details,
+                task_id=task_id,
+                ids_from_task_files=files_ids_from_task_files_relations,
+                ids_from_file_attached=files_names_and_ids_from_file_attached[1]
+            )
+            raise HTTPException(status_code=206, detail=details)
+        return files_names_and_ids_from_file_attached[0]
 
     async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
             self,
@@ -77,16 +84,17 @@ class TaskService:
                 list_changed_response.append(task_response)
         return list_changed_response
 
-    async def actualize_object(  # todo перенести в универсальные сервисы? - Лишнее,т.к. у каждой модели свои фишки
+    async def actualize_object(
             self,
             task_id: int | None,
             in_object: TaskCreate | dict,
             user: User | int
     ) -> Task:
+        """Создает или изменяет объект модели в базе."""
         if not isinstance(in_object, dict):
             in_object = in_object.model_dump()
         if user is None:
-            await log.aerror(NO_USER)
+            await log.aerror(NO_USER, user=user)
             raise HTTPException(status_code=422, detail=NO_USER)
         if isinstance(type(user), int):
             in_object["user_id"] = user
@@ -95,49 +103,47 @@ class TaskService:
         task = Task(**in_object)
         if task_id is None:
             return await self._repository.create(task)
-        await self.get(task_id)  # check the object to patch exists!
         return await self._repository.update(task_id, task)
 
     async def get(self, task_id: int) -> Task:
+        """Возвращает объект модели из базы."""
         return await self._repository.get(task_id)
 
     async def get_all(self) -> Sequence[Task]:
+        """Возвращает все объекты модели из базы."""
         return await self._repository.get_all()
 
     async def get_all_opened(self) -> Sequence[Task]:
+        """Возвращает все незакрытые задачи из базы."""
         return await self._repository.get_all_opened()
 
     async def get_tasks_ordered(self, user_id: int) -> Sequence[Task]:
+        """Возвращает выставленные текущим пользователем задачи из базы."""
         return await self._repository.get_tasks_ordered(user_id)
 
     async def get_my_tasks_todo(self, user_id: int) -> Sequence[Task]:
+        """Возвращает выставленные текущему пользователю задачи из базы."""
         return await self._repository.get_tasks_todo(user_id)
 
-    async def remove(self, task_id: int) -> None: # Sequence[Task]:  # Задача удаляется только вместе с прикрепленными файлами
-        # await self._file_repository.remove_all(FileAttached, await self.get_file_ids_from_task(task_id))
+    async def remove(self, task_id: int) -> None:
+        """Удаляет объект модели из базы."""
         await self._repository.remove(await self._repository.get(task_id))
-        # return await self._repository.get_all_id_sorted()
 
     async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
         """Присваивает задаче список файлов."""
         await self._repository.set_files_to_task(task_id, files_ids)
 
     async def get_file_ids_from_task(self, task_id: int) -> Sequence[int]:
-        """Получить список id файлов, привязанных к задаче, из таблицы TasksFiles m-t-m."""
+        """Получить список ids файлов, привязанных к задаче, из таблицы TasksFiles m-t-m."""
         task_files_relations: Sequence[TasksFiles] = await self._repository.get_task_files_relations(task_id)
         return [relation.file_id for relation in task_files_relations]
 
-    async def get_file_names_from_task(self, task_id: int) -> Sequence[str]:
-        """Получить список файлов, привязанных к задаче."""
-        files: Sequence[FileAttached] = await self._repository.get_files_from_task(task_id)
-        return [file.name for file in files]
-
     async def get_file_names_and_ids_from_task(self, task_id: int) -> tuple[list[str], list[int]]:
-        """Отдает кортеж из списка имен и id файлов, привязанных к задаче."""
+        """Отдает кортеж из списка имен и ids файлов, привязанных к задаче из таблицы FileAttached."""
         files: Sequence[FileAttached] = await self._repository.get_files_from_task(task_id)
         return [file.name for file in files], [file.id for file in files]
 
     async def get_all_file_names_and_ids_from_tasks(self) -> tuple[list[str], list[int]]:
-        """Отдает кортеж из списка имен и id файлов, привязанных ко всем задачам."""
+        """Отдает кортеж из списка имен и ids файлов, привязанных ко всем задачам."""
         files: Sequence[FileAttached] = await self._repository.get_all_files_from_tasks()
         return [file.name for file in files], [file.id for file in files]
