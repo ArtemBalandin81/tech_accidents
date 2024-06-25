@@ -46,10 +46,9 @@ class AbstractRepository(abc.ABC):
         await self._session.commit()
 
     @auto_commit
-    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:  # todo return deleted obj
+    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:
         """Удаляет объекты модели из базы данных."""
-        objects = await self._session.execute(delete(instance).where(instance.id.in_(instances)))
-        # return objects  # todo try: .fetchall()
+        await self._session.execute(delete(instance).where(instance.id.in_(instances)))
 
     @auto_commit
     async def update(self, _id: int, instance: DatabaseModel) -> DatabaseModel:

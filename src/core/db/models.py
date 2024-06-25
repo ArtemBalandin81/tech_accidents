@@ -5,7 +5,7 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.sql import expression, func
-from sqlalchemy.sql.sqltypes import TIMESTAMP, BLOB
+from sqlalchemy.sql.sqltypes import BLOB, TIMESTAMP
 
 
 class Base(DeclarativeBase):

@@ -41,6 +41,9 @@ GET_FILES_UNUSED = "/get_files_unused"
 
 LOGIN = "api/auth/jwt/login"
 
+# endpoints services
+GET_TEST_URL = "/test_url"
+
 # endpoints suspensions
 ANALYTICS = "/analytics"
 MY_SUSPENSIONS = "/my_suspensions"
