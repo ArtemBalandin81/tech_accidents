@@ -43,6 +43,7 @@ LOGIN = "api/auth/jwt/login"
 
 # endpoints services
 GET_TEST_URL = "/test_url"
+DB_BACKUP = "/db_backup"
 
 # endpoints suspensions
 ANALYTICS = "/analytics"
@@ -131,6 +132,7 @@ MEASURES = "Перезагрузка оборудования."
 
 # db_backups
 COPY_FILE_ERROR = "Ошибка при копировании файла."
+DB_BACKUP_DESCRIPTION = "Бэкап БД."
 DELETED_OK = " успешно удален(а)."
 DIR_CREATED = "Создан каталог."
 DIR_CREATED_ERROR = "Ошибка создания каталога."
@@ -189,6 +191,7 @@ PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
 PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
 
 # register_connection_errors: check Internet access info
+GET_URL_DESCRIPTION = "Проверка доступа к сайту."
 FAILED_GET_URL = "Failed_get_url."
 FIRST_COUNTER = "First_time_counter."
 INFO_CONNECTIONS = "Info_connections"
