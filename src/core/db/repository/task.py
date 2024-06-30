@@ -2,11 +2,12 @@
 from collections.abc import Sequence
 
 from fastapi import Depends
-from sqlalchemy import select
+from sqlalchemy import delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db.db import get_session
-from src.core.db.models import Task
+from src.core.db.models import FileAttached, Task, TasksFiles
 from src.core.db.repository.base import ContentRepository
+from src.core.exceptions import NotFoundException
 
 
 class TaskRepository(ContentRepository):
@@ -20,6 +21,14 @@ class TaskRepository(ContentRepository):
         objects = await self._session.scalars(
             select(Task)
             .order_by(Task.task_start.desc())
+        )
+        return objects.all()
+
+    async def get_all_id_sorted(self) -> Sequence[Task]:
+        """Возвращает все задачи из базы данных, отсортированные по id."""
+        objects = await self._session.scalars(
+            select(Task)
+            .order_by(Task.id.desc())
         )
         return objects.all()
 
@@ -55,3 +64,43 @@ class TaskRepository(ContentRepository):
             .order_by(Task.deadline.asc())
         )
         return tasks_todo.all()
+
+    async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
+        """Присваивает задаче список файлов."""
+        await self._session.commit()
+        async with self._session.begin():
+            task = await self._session.scalar(select(Task).where(Task.id == task_id))
+            if task is None:
+                raise NotFoundException(object_name=Task.__name__, object_id=task_id)
+            await self._session.execute(delete(TasksFiles).where(TasksFiles.task_id == task_id))
+            if files_ids:
+                await self._session.execute(
+                    insert(TasksFiles).values(
+                        [{"task_id": task_id, "file_id": file_id} for file_id in files_ids]
+                    )
+                )
+
+    async def get_task_files_relations(self, task_id: int) -> Sequence[TasksFiles]:
+        """Получить список отношений задача-файл."""
+        task_files_relations = await self._session.scalars(
+            select(TasksFiles)
+            .where(TasksFiles.task_id == task_id)
+            .order_by(TasksFiles.file_id.asc())
+        )
+        return task_files_relations.all()
+
+    async def get_files_from_task(self, task_id: int) -> Sequence[FileAttached]:
+        """Получить список файлов, прикрепленных к задаче."""
+        files = await self._session.scalars(
+            select(FileAttached)
+            .join(Task.files)
+            .where(Task.id == task_id)
+        )
+        return files.all()
+
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
+        """Получить список файлов, прикрепленных ко всем задачам."""
+        files = await self._session.scalars(
+            select(FileAttached)
+        )
+        return files.all()

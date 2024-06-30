@@ -12,7 +12,7 @@ class ContentService(abc.ABC):
         self._repository: ContentRepository = repository
         self._session: AsyncSession = session
 
-    async def actualize_objects(self, objects: list[any], model_class: any) -> list[any]:
+    async def actualize_objects(self, objects: list[any], model_class: any) -> list[any]:  # todo не используется
         to_create, to_update = [], []
         ids = [obj.id for obj in objects]
         async with self._session.begin() as session:

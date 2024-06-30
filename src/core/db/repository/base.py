@@ -3,7 +3,7 @@ import abc
 from datetime import datetime
 from typing import Sequence, TypeVar
 
-from sqlalchemy import func, select, update
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.exceptions import AlreadyExistsException, NotFoundException
@@ -37,7 +37,6 @@ class AbstractRepository(abc.ABC):
             await self._session.commit()
         except IntegrityError as exc:
             raise AlreadyExistsException(instance) from exc
-
         await self._session.refresh(instance)
         return instance
 
@@ -45,6 +44,11 @@ class AbstractRepository(abc.ABC):
         """Удаляет объект модели из базы данных."""
         await self._session.delete(instance)
         await self._session.commit()
+
+    @auto_commit
+    async def remove_all(self, instance: DatabaseModel, instances: Sequence[int]) -> None:
+        """Удаляет объекты модели из базы данных."""
+        await self._session.execute(delete(instance).where(instance.id.in_(instances)))
 
     @auto_commit
     async def update(self, _id: int, instance: DatabaseModel) -> DatabaseModel:
@@ -66,10 +70,16 @@ class AbstractRepository(abc.ABC):
         objects = await self._session.scalars(select(self._model))
         return objects.all()
 
+    async def get_by_ids(self, instances: Sequence[int]) -> Sequence[DatabaseModel]:
+        """Возвращает объекты модели из базы данных по списку ids."""
+        objects = await self._session.scalars(select(self._model).where(self._model.id.in_(instances)))
+        return objects.all()
+
     @auto_commit
-    async def create_all(self, objects: list[DatabaseModel]) -> None:
-        """Создает несколько объектов модели в базе данных."""
+    async def create_all(self, objects: Sequence[DatabaseModel]) -> Sequence[DatabaseModel]:
+        """Создает и возвращает несколько объектов модели в базе данных."""
         self._session.add_all(objects)
+        return objects
 
     async def count_all(self) -> int:
         """Возвращает количество юнитов категории."""

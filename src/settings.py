@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
     DEBUG: bool = False
+    FILES_DOWNLOAD_DIR: str = "uploaded_files"
+    FILE_TYPE_DOWNLOAD: str | list = ("doc", "docx", "xls", "xlsx", "img", "png", "txt", "pdf", "jpeg")
+    MAX_FILE_SIZE_DOWNLOAD: int = 10000  # Максимальный допустимый к загрузке размер файла в кб
     ROOT_PATH: str = "/api"
     SECRET_KEY: str = "secret_key"
     TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
@@ -55,24 +58,33 @@ class Settings(BaseSettings):
     CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
 
+    # Настройки ENUM-класса в форме выбора загрузки и удаления файлов
+    CHOICE_DOWNLOAD_FILES: str = '{"JSON": "json", "FILES": "files"}'
+    CHOICE_REMOVE_FILES_UNUSED: str = (
+        '{"DB_UNUSED": "unused_in_db",'
+        ' "DB_UNUSED_REMOVE": "remove_unused_in_db",'
+        ' "FOLDER_UNUSED": "unused_in_folder",'
+        ' "FOLDER_UNUSED_REMOVE": "delete_unused_in_folder"}'
+    )
+
     # Настройки ENUM-класса персонала для постановки задач
     BOT_USER: int = 2
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
-        ' "100": "error_of_load_users@please_check.env",'
+        ' "100": "error_of_load_users@please_check.env"}'
     )
     # Настройки ENUM-класса тех.процессов для фиксации простоев
     INTERNET_ACCESS_TECH_PROCESS: int = 25  # Наиболее критический к отсутствию доступа в Интернет ТП в Организации
     TECH_PROCESS: str = (
         '{"DU_25": "25",'
         ' "SPEC_DEP_26": "26",'
-        ' "CLIENTS_27": "27",'
+        ' "CLIENTS_27": "27"}'
     )
     # Настройки ENUM-класса угроз для фиксации простоев
     RISK_SOURCE: str = (
         '{"99": "unload_risk_source_please_check.env.",'
         ' "100": "error_of_load_risk_accident_source@please_check.env",'
-        ' "ROUTER": "Риск инцидент: сбой в работе рутера.",'
+        ' "ROUTER": "Риск инцидент: сбой в работе рутера."}'
     )
 
     @property

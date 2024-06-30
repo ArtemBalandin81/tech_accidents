@@ -56,7 +56,7 @@ async def create_new_suspension_by_form(
 
 
 @suspension_router.post(
-    GET_ALL_ROUTE,
+    MAIN_ROUTE,
     response_model=SuspensionResponse,
     description="Фиксации случая простоя из json.",  # todo в константы
     summary="Фиксации случая простоя из json.",
@@ -93,7 +93,7 @@ async def partially_update_suspension(
 
 
 @suspension_router.get(
-    GET_ALL_ROUTE,
+    MAIN_ROUTE,
     response_model_exclude_none=True,
     description="Список всех случаев простоя.",  # todo в константы
     summary="Список всех случаев простоя.",
