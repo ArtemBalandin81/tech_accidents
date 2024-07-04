@@ -30,6 +30,7 @@ TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespe
 # forms settings
 FILE_NAME_LENGTH = 128
 TASK_DESCRIPTION_LENGTH = 512
+TASK_NAME_LENGTH = 128
 SUSPENSION_DESCRIPTION_LENGTH = 256
 SUSPENSION_IMPLEMENTING_MEASURES = 512
 
@@ -77,6 +78,7 @@ FILES_IDS_DELETED = "ids удаленных файлов: "
 FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
+FILES_IN_FOLDER = "Файлы в каталоге файлов: "
 FILES_UNUSED_IN_DB = "Бесхозные файлы в БД: "
 FILES_UNUSED_IN_DB_REMOVED = "Из БД удалены бесхозные файлы: "
 FILES_RECEIVED = "Files_received: "

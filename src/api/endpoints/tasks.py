@@ -60,7 +60,7 @@ async def create_new_task_by_form(
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
-        "executor": executor.id,
+        "executor_id": executor.id,
     }
     # 1. Write task in db with pydantic (without attached_files).
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)
@@ -115,7 +115,7 @@ async def create_new_task_by_form_with_files(
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
-        "executor": executor.id,
+        "executor_id": executor.id,
     }
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)  # 1. Write task in db
     # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
@@ -204,7 +204,7 @@ async def partially_update_task_by_form(
         "task": task_from_db.task if task is None else task,
         "tech_process": task_from_db.tech_process if tech_process is None else tech_process,
         "description": task_from_db.description if description is None else description,
-        "executor": task_from_db.executor if executor_email is None else executor.id,  # noqa
+        "executor_id": task_from_db.executor_id if executor_email is None else executor.id,  # noqa
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
     }
     edited_task: Task = await task_service.actualize_object(task_id, TaskCreate(**task_object), user)

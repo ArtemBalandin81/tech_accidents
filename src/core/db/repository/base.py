@@ -89,25 +89,25 @@ class AbstractRepository(abc.ABC):
 class ContentRepository(AbstractRepository, abc.ABC):
     """Класс контента, для дополнения паттерна Repository."""
 
-    async def count_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+    async def count_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
         """Считает количество случаев за указанные период."""
         return await self._session.scalar(
-            select(func.count(self._model.datetime_start))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
+            select(func.count(self._model.suspension_start))
+            .where(self._model.suspension_start >= suspension_start)
+            .where(self._model.suspension_finish <= suspension_finish)
         )
 
     async def get_all_for_period_time(
             self,
-            datetime_start: datetime,
-            datetime_finish: datetime
+            suspension_start: datetime,
+            suspension_finish: datetime
     ) -> Sequence[DatabaseModel]:
         """Возвращает все объекты модели из базы данных за указанный период."""
         objects = await self._session.scalars(
             select(self._model)
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-            .order_by(self._model.datetime_start.desc())
+            .where(self._model.suspension_start >= suspension_start)
+            .where(self._model.suspension_finish <= suspension_finish)
+            .order_by(self._model.suspension_start.desc())
         )
         return objects.all()
 
@@ -118,18 +118,22 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .order_by(self._model.id.desc())
         )
 
-    async def suspension_max_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+    async def suspension_max_time_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
         """Считает максимальную разницу между началом и концом за указанный период."""
         return await self._session.scalar(
-            select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
+            select(
+                func.max(func.julianday(self._model.suspension_finish) - func.julianday(self._model.suspension_start))
+            )
+            .where(self._model.suspension_start >= suspension_start)
+            .where(self._model.suspension_finish <= suspension_finish)
         )
 
-    async def sum_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
+    async def sum_time_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
         """Считает время в днях за указанный период."""
         return await self._session.scalar(
-            select(func.sum(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
+            select(
+                func.sum(func.julianday(self._model.suspension_finish) - func.julianday(self._model.suspension_start))
+            )
+            .where(self._model.suspension_start >= suspension_start)
+            .where(self._model.suspension_finish <= suspension_finish)
         )

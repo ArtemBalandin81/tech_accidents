@@ -4,6 +4,7 @@ import os
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import structlog
@@ -154,11 +155,19 @@ class FileService:
             await log.aerror(details)
             raise HTTPException(status_code=406, detail=details)
 
-    async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
+    async def delete_files_in_folder(
+            self, files_to_delete: Sequence[Path]
+    ) -> Sequence[Path] | dict[str, tuple[Any, ...]]:
         """Удаляет из каталога список переданных файлов (физическое удаление файлов)."""
         for file in files_to_delete:
-            file.unlink()
-        return files_to_delete
+            try:
+                file.unlink()
+            except FileNotFoundError as e:
+                details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+                await log.aerror(details, file_to_remove=file)
+                # raise HTTPException(status_code=403, detail=details)
+                return {"message": e.args}
+            return files_to_delete
 
     async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
         """Удаляет из БД список переданных файлов (файлы удаляются из БД, но остаются физически в каталоге файлов)."""

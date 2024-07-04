@@ -19,23 +19,23 @@ class SuspensionRepository(ContentRepository):
     async def count_for_period_for_user(
             self,
             user_id: int,
-            datetime_start: datetime,
-            datetime_finish: datetime,
+            suspension_start: datetime,
+            suspension_finish: datetime,
 
     ) -> int:
         """Считает количество простоев за указанные период для пользователя."""
         return await self._session.scalar(
-            select(func.count(Suspension.datetime_start))
+            select(func.count(Suspension.suspension_start))
             .where(Suspension.user_id == user_id)
-            .where(Suspension.datetime_start >= datetime_start)
-            .where(Suspension.datetime_finish <= datetime_finish)
+            .where(Suspension.suspension_start >= suspension_start)
+            .where(Suspension.suspension_finish <= suspension_finish)
         )
 
     async def get_all(self) -> Sequence[Suspension]:
         """Возвращает все объекты модели из базы данных, отсортированные по времени."""
         objects = await self._session.scalars(
             select(Suspension)
-            .order_by(Suspension.datetime_start.desc())
+            .order_by(Suspension.suspension_start.desc())
         )
         return objects.all()
 
@@ -54,52 +54,56 @@ class SuspensionRepository(ContentRepository):
             .where(Suspension.user_id == user_id)
             # .limit(limit)  # todo реализовать пагинацию
             # .offset(offset)
-            .order_by(Suspension.datetime_start.desc())
+            .order_by(Suspension.suspension_start.desc())
         )
         return suspensions_for_user.all()
 
     async def get_suspensions_for_period_for_user(
             self,
             user_id: int,
-            datetime_start: datetime,
-            datetime_finish: datetime
+            suspension_start: datetime,
+            suspension_finish: datetime
     ) -> Sequence[Suspension]:
         """Получить список простоев пользователя за выбранный период времени."""
         suspensions_for_user_for_period = await self._session.scalars(
             select(Suspension)
             .where(Suspension.user_id == user_id)
-            .where(Suspension.datetime_start >= datetime_start)
-            .where(Suspension.datetime_finish <= datetime_finish)
-            .order_by(Suspension.datetime_start.desc())
-            .order_by(Suspension.datetime_start.desc())
+            .where(Suspension.suspension_start >= suspension_start)
+            .where(Suspension.suspension_finish <= suspension_finish)
+            .order_by(Suspension.suspension_start.desc())
+            .order_by(Suspension.suspension_start.desc())
         )
         return suspensions_for_user_for_period.all()
 
     async def suspension_max_time_for_period_for_user(
             self,
             user_id: int,
-            datetime_start: datetime,
-            datetime_finish: datetime
+            suspension_start: datetime,
+            suspension_finish: datetime
     ) -> int:
         """Считает максимальную разницу между началом и концом за указанный период для пользователя."""
         return await self._session.scalar(
-            select(func.max(func.julianday(Suspension.datetime_finish) - func.julianday(Suspension.datetime_start)))
+            select(func.max(func.julianday(
+                Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
+                   )
             .where(Suspension.user_id == user_id)
-            .where(Suspension.datetime_start >= datetime_start)
-            .where(Suspension.datetime_finish <= datetime_finish)
+            .where(Suspension.suspension_start >= suspension_start)
+            .where(Suspension.suspension_finish <= suspension_finish)
         )
 
     async def sum_time_for_period_for_user(
             self,
             user_id: int,
-            datetime_start: datetime,
-            datetime_finish: datetime,
+            suspension_start: datetime,
+            suspension_finish: datetime,
 
     ) -> int:
         """Считает время в днях за указанный период для пользователя."""
         return await self._session.scalar(
-            select(func.sum(func.julianday(Suspension.datetime_finish) - func.julianday(Suspension.datetime_start)))
+            select(func.sum(func.julianday(
+                Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
+                   )
             .where(Suspension.user_id == user_id)
-            .where(Suspension.datetime_start >= datetime_start)
-            .where(Suspension.datetime_finish <= datetime_finish)
+            .where(Suspension.suspension_start >= suspension_start)
+            .where(Suspension.suspension_finish <= suspension_finish)
         )

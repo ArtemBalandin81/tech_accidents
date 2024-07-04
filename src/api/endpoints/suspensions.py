@@ -30,7 +30,7 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
 async def create_new_suspension_by_form(
     *,
     datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
-    datetime_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
+    suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
     # risk_accident: RiskAccidentSource,
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -40,11 +40,11 @@ async def create_new_suspension_by_form(
     users_service: UsersService = Depends(),
     user: User = Depends(current_user),
 ) -> AnalyticResponse:
-    datetime_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-    datetime_finish: datetime = datetime.strptime(datetime_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    suspension_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
     suspension_object = {
-        "datetime_start": datetime_start,
-        "datetime_finish": datetime_finish,
+        "suspension_start": suspension_start,
+        "suspension_finish": suspension_finish,
         "risk_accident": risk_accident.value,
         "tech_process": tech_process.value,
         "description": description,
@@ -111,19 +111,19 @@ async def get_all_suspensions(suspension_service: SuspensionService = Depends())
     tags=["Suspensions ANALYTICS"]  # todo в константы
 )
 async def get_all_for_period_time(
-    datetime_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
-    datetime_finish: str = Query(..., example=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH),  # для отображения в сваггер
+    suspension_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
+    suspension_finish: str = Query(..., example=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH),  # для отображения в сваггер
     user_id: Optional[int] = Query(None, example="", alias=USER_ID),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> SuspensionAnalytics:
-    datetime_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-    datetime_finish: datetime = datetime.strptime(datetime_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    suspension_start: datetime = datetime.strptime(suspension_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
+    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
     if user_id is None:
-        suspensions = await suspension_service.get_all_for_period_time(datetime_start, datetime_finish)
+        suspensions = await suspension_service.get_all_for_period_time(suspension_start, suspension_finish)
     else:
         suspensions = await suspension_service.get_suspensions_for_period_for_user(
-            user_id, datetime_start, datetime_finish
+            user_id, suspension_start, suspension_finish
         )
     suspensions_list = []
     for suspension in suspensions:  # todo это работа сервиса, перенести
@@ -132,13 +132,13 @@ async def get_all_for_period_time(
         suspensions_list.append(suspension_to_dict)
     return SuspensionAnalytics(  # todo аналитику тоже придется перенастроить на использование юзера, или нет
         suspensions_in_mins_total=(
-            await suspension_service.sum_suspensions_time_for_period(user_id, datetime_start, datetime_finish)
+            await suspension_service.sum_suspensions_time_for_period(user_id, suspension_start, suspension_finish)
         ),
         suspensions_total=(
-            await suspension_service.count_suspensions_for_period(user_id, datetime_start, datetime_finish)
+            await suspension_service.count_suspensions_for_period(user_id, suspension_start, suspension_finish)
         ),
         suspension_max_time_for_period=(
-            await suspension_service.suspension_max_time_for_period(user_id, datetime_start, datetime_finish)
+            await suspension_service.suspension_max_time_for_period(user_id, suspension_start, suspension_finish)
         ),
         last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
         last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),

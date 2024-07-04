@@ -57,7 +57,7 @@ class TaskRepository(ContentRepository):
         """Получить список задач, выставленных пользователю."""
         tasks_todo = await self._session.scalars(
             select(Task)
-            .where(Task.executor == user_id)
+            .where(Task.executor_id == user_id)
             .where(Task.is_archived == 0)
             # .limit(limit)  # todo реализовать пагинацию
             # .offset(offset)

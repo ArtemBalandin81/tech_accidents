@@ -42,8 +42,8 @@ class UserUpdate(schemas.BaseUserUpdate):
 
 class SuspensionRequest(BaseModel):  # TODO реализовать схему валидации
     """Схема json-запроса для создания Suspension."""
-    datetime_start: datetime = Field(..., example=FROM_TIME)
-    datetime_finish: datetime = Field(..., example=TO_TIME)
+    suspension_start: datetime = Field(..., example=FROM_TIME)
+    suspension_finish: datetime = Field(..., example=TO_TIME)
     description: str = Field(..., max_length=SUSPENSION_DESCRIPTION_LENGTH, example=INTERNET_ERROR)
     implementing_measures: str = Field(..., max_length=SUSPENSION_IMPLEMENTING_MEASURES, example=MEASURES)
     risk_accident: RiskAccidentSource
@@ -54,8 +54,8 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
         json_schema_extra = {
             "example": {
                 "risk_accident": ROUTER_ERROR,  # TODO валидация и отображение ошибки???
-                "datetime_start": FROM_TIME,
-                "datetime_finish": TO_TIME,
+                "suspension_start": FROM_TIME,
+                "suspension_finish": TO_TIME,
                 "tech_process": "25",  # TODO валидация и отображение ошибки???
                 "description": INTERNET_ERROR,
                 "implementing_measures": MEASURES,
@@ -66,13 +66,13 @@ class SuspensionRequest(BaseModel):  # TODO реализовать схему в
 class SuspensionBase(BaseModel):
     """Базовая схема."""
     id: PositiveInt
-    datetime_start: datetime = Field(
+    suspension_start: datetime = Field(
         ...,
         title=SUSPENSION_START,
         serialization_alias=SUSPENSION_START,
         example=FROM_TIME
     )
-    datetime_finish: datetime = Field(
+    suspension_finish: datetime = Field(
         ...,
         title=SUSPENSION_FINISH,
         serialization_alias=SUSPENSION_FINISH,
@@ -96,8 +96,8 @@ class SuspensionBase(BaseModel):
     @computed_field(alias=SUSPENSION_DURATION)
     @property
     def duration(self) -> PositiveInt | float:
-        suspension_finish = time.strptime(self.datetime_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
-        suspension_start = time.strptime(self.datetime_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
+        suspension_finish = time.strptime(self.suspension_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
+        suspension_start = time.strptime(self.suspension_start.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
         return (time.mktime(suspension_finish) - time.mktime(suspension_start)) / SUSPENSION_DURATION_RESPONSE  # mins
 
     class Config:

@@ -32,7 +32,7 @@ class TaskCreate(BaseModel):
         example=TO_TIME
     )
     tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
-    executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
+    executor_id: int = Field(..., serialization_alias=TASK_EXECUTOR)
     is_archived: Optional[bool] = False
 
 
@@ -66,7 +66,7 @@ class TaskResponse(TaskBase):
     """Схема ответа для задач."""
     tech_process: int = Field(..., serialization_alias=TECH_PROCESS)
     user_id: int = Field(..., serialization_alias=TASK_USER_ID)
-    executor: int = Field(..., serialization_alias=TASK_EXECUTOR)
+    executor_id: int = Field(..., serialization_alias=TASK_EXECUTOR)
     extra_files: Optional[list] = Field(None, serialization_alias=FILES_SET_TO)
 
 

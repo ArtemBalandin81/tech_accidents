@@ -31,11 +31,11 @@ class SuspensionService:
     ):
         if not isinstance(in_object, dict):
             in_object = in_object.dict()  # todo .model_dump()
-        if in_object["datetime_start"] >= in_object["datetime_finish"]:
+        if in_object["suspension_start"] >= in_object["suspension_finish"]:
             raise HTTPException(status_code=422, detail=START_FINISH_TIME)
         # todo в доккер идет не корректное сравнение, т.к. сдвигается на - 5 часов время now() - корректируем
         if (
-                in_object["datetime_finish"].timestamp()
+                in_object["suspension_finish"].timestamp()
                 > (datetime.now() + timedelta(hours=settings.TIMEZONE_OFFSET)).timestamp()
         ):  # для сравнения дат используем timestamp()
             raise HTTPException(status_code=422, detail=FINISH_NOW_TIME)
@@ -54,13 +54,13 @@ class SuspensionService:
     async def count_suspensions_for_period(
             self,
             user_id: int,
-            datetime_start: datetime = TO_TIME_PERIOD,
-            datetime_finish: datetime = FROM_TIME_NOW
+            suspension_start: datetime = TO_TIME_PERIOD,
+            suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
         if user_id is None:
-            return await self._repository.count_for_period(datetime_start, datetime_finish)
+            return await self._repository.count_for_period(suspension_start, suspension_finish)
         else:
-            return await self._repository.count_for_period_for_user(user_id, datetime_start, datetime_finish)
+            return await self._repository.count_for_period_for_user(user_id, suspension_start, suspension_finish)
 
     async def get(self, suspension_id: int) -> Suspension:
         return await self._repository.get(suspension_id)
@@ -70,10 +70,10 @@ class SuspensionService:
 
     async def get_all_for_period_time(
             self,
-            datetime_start: datetime = TO_TIME_PERIOD,
-            datetime_finish: datetime = FROM_TIME_NOW
+            suspension_start: datetime = TO_TIME_PERIOD,
+            suspension_finish: datetime = FROM_TIME_NOW
     ) -> list[any]:
-        return await self._repository.get_all_for_period_time(datetime_start, datetime_finish)
+        return await self._repository.get_all_for_period_time(suspension_start, suspension_finish)
 
     async def get_last_suspension_id(self, user_id: int) -> int:
         if user_id is None:
@@ -86,7 +86,7 @@ class SuspensionService:
             last_suspension = await self._repository.get(await self._repository.get_last_id())
         else:
             last_suspension = await self._repository.get(await self.get_last_suspension_id(user_id))
-        return last_suspension.datetime_start
+        return last_suspension.suspension_start
 
     async def get_suspensions_for_user(self, user_id: int) -> Sequence[any]:
         return await self._repository.get_suspensions_for_user(user_id)
@@ -94,22 +94,22 @@ class SuspensionService:
     async def get_suspensions_for_period_for_user(
         self,
         user_id: int,
-        datetime_start: datetime = TO_TIME_PERIOD,
-        datetime_finish: datetime = FROM_TIME_NOW
+        suspension_start: datetime = TO_TIME_PERIOD,
+        suspension_finish: datetime = FROM_TIME_NOW
     ) -> Sequence[any]:
-        return await self._repository.get_suspensions_for_period_for_user(user_id, datetime_start, datetime_finish)
+        return await self._repository.get_suspensions_for_period_for_user(user_id, suspension_start, suspension_finish)
 
     async def sum_suspensions_time_for_period(
             self,
             user_id: int,
-            datetime_start: datetime = TO_TIME_PERIOD,
-            datetime_finish: datetime = FROM_TIME_NOW
+            suspension_start: datetime = TO_TIME_PERIOD,
+            suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
         if user_id is None:
-            total_time_suspensions = await self._repository.sum_time_for_period(datetime_start, datetime_finish)
+            total_time_suspensions = await self._repository.sum_time_for_period(suspension_start, suspension_finish)
         else:
             total_time_suspensions = await self._repository.sum_time_for_period_for_user(
-                user_id, datetime_start, datetime_finish
+                user_id, suspension_start, suspension_finish
             )
         if total_time_suspensions is None:
             return 0
@@ -118,16 +118,16 @@ class SuspensionService:
     async def suspension_max_time_for_period(
             self,
             user_id: int,
-            datetime_start: datetime = TO_TIME_PERIOD,
-            datetime_finish: datetime = FROM_TIME_NOW
+            suspension_start: datetime = TO_TIME_PERIOD,
+            suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
         if user_id is None:
             max_time_for_period = await self._repository.suspension_max_time_for_period(
-                datetime_start, datetime_finish
+                suspension_start, suspension_finish
             )
         else:
             max_time_for_period = await self._repository.suspension_max_time_for_period_for_user(
-                user_id, datetime_start, datetime_finish
+                user_id, suspension_start, suspension_finish
             )
         if max_time_for_period is None:
             return 0
