@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.constants import *
 from src.api.schema import FileCreate
 from src.core.db import get_session
-from src.core.db.models import FileAttached, TasksFiles
+from src.core.db.models import FileAttached, SuspensionsFiles, TasksFiles
 from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
@@ -234,15 +234,28 @@ class FileService:
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         return [relation.file_id for relation in relations]
 
-    async def get_all_file_names_from_tasks(self) -> Sequence[str]:
-        """Отдает имена файлов, привязанных ко всем задачам."""
-        files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
-        return [file.name for file in files]
+    async def get_all_file_ids_from_all_models(self) -> list[int]:
+        """Отдает ids файлов, привязанных ко всем моделям."""
+        files_from_tasks: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
+        files_from_suspensions: Sequence[SuspensionsFiles] = await self._repository.get_all_files_from_suspensions()
+        ids_from_tasks: list[int] = [relation.file_id for relation in files_from_tasks]
+        ids_from_suspensions: list[int] = [relation.file_id for relation in files_from_suspensions]
+        return ids_from_tasks + ids_from_suspensions
+
+    # async def get_all_file_names_from_tasks(self) -> Sequence[str]:   # todo delete - isn't used
+    #     """Отдает имена файлов, привязанных ко всем задачам."""
+    #     files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
+    #     return [file.name for file in files]
 
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
         """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
-        intersection: Sequence[int] = await self.get_arrays_intersection(
-            np.array(files), np.array(await self.get_all_file_ids_from_tasks())
+        # file_ids_from_tasks = await self.get_all_file_ids_from_tasks()
+        all_file_ids: list[int] = await self.get_all_file_ids_from_all_models()
+        # intersection: Sequence[int] = await self.get_arrays_intersection(  # todo множество файлов из всех моделей
+        #     np.array(files), np.array(await self.get_all_file_ids_from_tasks())
+        # )
+        intersection: Sequence[int] = await self.get_arrays_intersection(  # todo множество файлов из всех моделей
+            np.array(files), np.array(all_file_ids)
         )
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
             details = "{}{}".format(FILES_REMOVE_FORBIDDEN, intersection)

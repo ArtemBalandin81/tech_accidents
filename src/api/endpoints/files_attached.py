@@ -22,8 +22,8 @@ from src.settings import settings
 log = structlog.get_logger()
 file_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
 
 async def file_uploader(files: list[UploadFile]):

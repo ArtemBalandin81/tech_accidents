@@ -5,7 +5,7 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.db.db import get_session
-from src.core.db.models import FileAttached, TasksFiles
+from src.core.db.models import FileAttached, SuspensionsFiles, TasksFiles
 from src.core.db.repository.base import ContentRepository
 
 
@@ -27,9 +27,12 @@ class FileRepository(ContentRepository):
         )
         return objects.all()
 
-    async def get_all_files_from_tasks(self) -> Sequence[TasksFiles]:
+    async def get_all_files_from_suspensions(self) -> Sequence[SuspensionsFiles]:  # todo get список файлов за 1 запрос
+        """Получить список файлов, прикрепленных ко всем простоям."""
+        objects = await self._session.scalars(select(SuspensionsFiles))
+        return objects.all()
+
+    async def get_all_files_from_tasks(self) -> Sequence[TasksFiles]:  # todo get list of all attached_files в 1 запрос
         """Получить список файлов, прикрепленных ко всем задачам."""
-        objects = await self._session.scalars(
-            select(TasksFiles)
-        )
+        objects = await self._session.scalars(select(TasksFiles))
         return objects.all()

@@ -91,7 +91,7 @@ class TasksFiles(Base):
         return f"<Task {self.task_id} - Files {self.file_id}>"
 
 
-class SuspensionFiles(Base):
+class SuspensionsFiles(Base):
     """Модель отношений простои-прикрепленные файлы."""
 
     __tablename__ = "suspensions_files"

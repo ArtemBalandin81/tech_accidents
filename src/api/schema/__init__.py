@@ -1,3 +1,4 @@
+from .suspensions import AnalyticSuspensionResponse, SuspensionCreateNew, SuspensionResponseNew  # todo rename
 from .tasks import AnalyticTaskResponse, TaskBase, TaskCreate, TaskDeletedResponse, TaskResponse
 from .file_attached import (
     FileBase, FileCreate, FileDBUnusedResponse, FileDBUnusedDeletedResponse, FileUploadedResponse,
@@ -5,6 +6,7 @@ from .file_attached import (
 )
 
 __all__ = (
+    "AnalyticSuspensionResponse",
     "AnalyticTaskResponse",
     "FileBase",
     "FileCreate",
@@ -13,6 +15,8 @@ __all__ = (
     "FileUploadedResponse",
     "FileUnusedResponse",
     "FileUnusedDeletedResponse",
+    "SuspensionCreateNew",  # todo rename
+    "SuspensionResponseNew",  # todo rename
     "TaskBase",
     "TaskCreate",
     "TaskDeletedResponse",

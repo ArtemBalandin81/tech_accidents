@@ -66,7 +66,7 @@ class TaskRepository(ContentRepository):
         return tasks_todo.all()
 
     async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
-        """Присваивает задаче список файлов."""
+        """Присваивает задаче список файлов."""  # in to repository/base.py todo
         await self._session.commit()
         async with self._session.begin():
             task = await self._session.scalar(select(Task).where(Task.id == task_id))
@@ -81,7 +81,7 @@ class TaskRepository(ContentRepository):
                 )
 
     async def get_task_files_relations(self, task_id: int) -> Sequence[TasksFiles]:
-        """Получить список отношений задача-файл."""
+        """Получить список отношений задача-файл."""  # in to repository/base.py todo
         task_files_relations = await self._session.scalars(
             select(TasksFiles)
             .where(TasksFiles.task_id == task_id)
@@ -98,9 +98,7 @@ class TaskRepository(ContentRepository):
         )
         return files.all()
 
-    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:
-        """Получить список файлов, прикрепленных ко всем задачам."""
-        files = await self._session.scalars(
-            select(FileAttached)
-        )
+    async def get_all_files_from_tasks(self) -> Sequence[FileAttached]:  # TODO need refactoring
+        """Получить список файлов, прикрепленных ко всем задачам."""  # RENAME/DELETE and use get_all instead todo
+        files = await self._session.scalars(select(FileAttached))
         return files.all()

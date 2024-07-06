@@ -47,8 +47,11 @@ GET_TEST_URL = "/test_url"
 DB_BACKUP = "/db_backup"
 
 # endpoints suspensions
+ADD_FILES_TO_SUSPENSION = "/add_files_to_suspension"
 ANALYTICS = "/analytics"
 MY_SUSPENSIONS = "/my_suspensions"
+POST_SUSPENSION_FORM = "/post_suspension_form"
+POST_SUSPENSION_FILES_FORM = "/post_suspension_with_files_form"
 SUSPENSION_ID = "/{suspension_id}"
 
 # endpoints tasks
@@ -63,8 +66,9 @@ TASK_ID = "/{task_id}"
 
 # endpoints TAGS
 FILES = "Файлы: загрузка, получение, удаление"  # кириллица в swagger
-TASKS_GET = "Задачи: посмотреть задачи"  # кириллица в swagger
 TASKS_POST = "Задачи: назначить задачу"  # кириллица в swagger
+TASKS_GET = "Задачи: посмотреть задачи"  # кириллица в swagger
+SUSPENSIONS_POST = "Случаи простоев: фиксация"  # кириллица в swagger
 
 # auth
 IS_REGISTERED = " is registered."
@@ -98,6 +102,7 @@ SEARCH_FILES_BY_NAME = "Поиск файлов по имени: "
 SEARCH_FILES_BY_ID = "Поиск файлов по id файлов: "
 
 # files_descriptions
+FILES_ATTACHED_TO_SUSPENSION = ". К случаю простоя добавлены следующие файлы: "
 FILES_ATTACHED_TO_TASK = ". К задаче добавлены следующие файлы: "
 FILE_DELETE = "Удалить файл (только админ)."
 FILE_NAME = "Имя файла."
@@ -112,6 +117,9 @@ IMPLEMENTING_MEASURES = "Предпринятые действия"
 MINS_TOTAL = "Минут итого"
 RISK_ACCIDENT = "Риск-инцидент"
 RISK_ACCIDENT_SOURCE = "Источник угроз"
+SUSPENSION = "Простой: "
+SUSPENSION_CREATE_FORM = "Фиксация простоя из формы с возможностью загрузки 1 файла."
+SUSPENSION_FILES_CREATE_FORM = "Фиксация простоя из формы с обязательной загрузкой нескольких файлов."
 SUSPENSION_DESCRIPTION = "Описание простоя"
 SUSPENSION_DURATION = "Простой (мин)"
 SUSPENSION_DURATION_RESPONSE = 60  # in mins
@@ -126,20 +134,14 @@ UPDATED = "Дата обновления"
 USER_MAIL = "Почта пользователя"
 USER_ID = "id пользователя"
 
+# suspensions_descriptions
+SET_FILES_LIST_TO_SUSPENSION = "Присваивает простою список файлов."
+
 # create_suspension
 CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
 ROUTER_ERROR = "Риск инцидент: сбой в работе рутера."
 INTERNET_ERROR = "Сбой подключения к интернет."
 MEASURES = "Перезагрузка оборудования."
-
-# db_backups
-COPY_FILE_ERROR = "Ошибка при копировании файла."
-DB_BACKUP_DESCRIPTION = "Бэкап БД."
-DELETED_OK = " успешно удален(а)."
-DIR_CREATED = "Создан каталог."
-DIR_CREATED_ERROR = "Ошибка создания каталога."
-FILE_EXISTS_ERROR = "Файл уже существует."
-FILE_SAVED = "Файл успешно скопирован."
 
 # tasks_alias
 IS_ARCHIVED = "Задача выполнена"
@@ -183,12 +185,14 @@ MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы 
 NO_USER = "Check USER is not NONE!"
 NOT_FOUND = " - not found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
+SAME_NAMES = " загружается один файл дважды: "
 START_FINISH_TIME = "Check start_time > finish_time: "
 FINISH_NOW_TIME = "Check finish_time > current_time"
 START_NOW_TIME = "Check start_time < current_time"
-SAME_NAMES = " загружается один файл дважды: "
+SUSPENSION_FILES_MISMATCH = ". Несоответствие в таблицах SuspensionFiles и Files: "
 TASKS_FILES_MISMATCH = ". Несоответствие в таблицах TasksFiles и Files: "
 TASKS_FILES_REMOVE_AND_SET = "Запрещено одновременно удалять и добавлять файлы. Выберите одно из действий!"
+USER_NOT_PROVIDED = "Пользователь не предоставлен: делаю запрос пользователя в БД "
 PASSWORD_LENGTH_WARNING = "Password should be at least 6 characters!"
 PASSWORD_EMAIL_WARNING = "Password should not contain e-mail!"
 
@@ -204,3 +208,12 @@ TIME_COUNTER = "Time_counter."
 TIME_INFO = "time"
 URL_CONNECTION_ERROR = "ConnectionError"
 WITH_ID = " with id - "
+
+# db_backups
+COPY_FILE_ERROR = "Ошибка при копировании файла."
+DB_BACKUP_DESCRIPTION = "Бэкап БД."
+DELETED_OK = " успешно удален(а)."
+DIR_CREATED = "Создан каталог."
+DIR_CREATED_ERROR = "Ошибка создания каталога."
+FILE_EXISTS_ERROR = "Файл уже существует."
+FILE_SAVED = "Файл успешно скопирован."

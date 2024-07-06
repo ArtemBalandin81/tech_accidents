@@ -23,8 +23,8 @@ from src.settings import settings
 log = structlog.get_logger()
 task_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
 
 @task_router.post(
@@ -64,7 +64,7 @@ async def create_new_task_by_form(
     }
     # 1. Write task in db with pydantic (without attached_files).
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)
-    task_response: dict = await task_service.change_schema_response(new_task)
+    task_response: dict = await task_service.change_schema_response(new_task)  # todo user передавать, а не брать из БД
     if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
     # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
@@ -125,13 +125,14 @@ async def create_new_task_by_form_with_files(
     )
     task_id = new_task.id
     files_ids = file_names_and_ids[1]
+    files_names = file_names_and_ids[0]
     await task_service.set_files_to_task(task_id, files_ids)
     await log.ainfo(
         "{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK),
-        task_id=task_id, files_ids=files_ids, files_names=file_names_and_ids[0]
+        task_id=task_id, files_ids=files_ids, files_names=files_names
     )
-    task_response: dict = await task_service.change_schema_response(new_task)
-    task_response["extra_files"]: list[str] = file_names_and_ids[0]
+    task_response: dict = await task_service.change_schema_response(new_task)  # todo user передавать, а не брать из БД
+    task_response["extra_files"]: list[str] = files_names
     return AnalyticTaskResponse(**task_response)
 
 
@@ -367,11 +368,21 @@ async def remove_task(
         )
         await task_service.set_files_to_task(task_id, [])
         await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []), task_id=task_id, files=[])
-        await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
-        await log.ainfo(
-            "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
-            task_id=task_id, files=files_to_delete,
-        )
+        try:  # if files are attached to another models, they won't be deleted!!!
+            await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
+            await log.ainfo(
+                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
+                task_id=task_id, files=files_to_delete,
+            )
+        except Exception as e:  # todo кастомизировать и идентифицировать Exception
+            await log.ainfo(
+                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_task),
+                task_id=task_id, files=files_to_delete, intersection=files_ids_set_to_task,
+            )
+            await task_service.remove(task_id)
+            await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
+            task_to_delete_response["extra_files"] = files_to_delete
+            return TaskDeletedResponse(task_deleted=[task_to_delete_response], files_ids=files_ids_set_to_task)
         task_to_delete_response["extra_files"] = files_to_delete
     await task_service.remove(task_id)
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))

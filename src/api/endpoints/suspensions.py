@@ -1,19 +1,31 @@
 """src/api/endpoints/suspensions.py"""
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import structlog
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from pydantic import PositiveInt
+
 from src.api.constants import *
 from src.api.schemas import AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
-from src.api.services import SuspensionService, UsersService
+from src.api.schema import (
+    AnalyticSuspensionResponse, SuspensionCreateNew, SuspensionResponseNew,
+)  # todo "schemas"   # todo rename
+from src.api.services import FileService, SuspensionService, UsersService
+from src.api.validators import check_start_not_exceeds_finish
 from src.core.db.models import Suspension, User
 from src.core.db.user import current_superuser, current_user
 from src.core.enums import RiskAccidentSource, TechProcess
 
+log = structlog.get_logger()
 suspension_router = APIRouter()
 
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
-async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:
+
+async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:  # todo move to services
     """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""
     suspension_to_dict = suspension.__dict__
     suspension_to_dict["user_email"] = user.email
@@ -21,6 +33,132 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
     return AnalyticResponse(**suspension_to_dict)
 
 
+@suspension_router.post(
+    POST_SUSPENSION_FORM, description=SUSPENSION_CREATE_FORM, summary=SUSPENSION_CREATE_FORM, tags=[SUSPENSIONS_POST]
+)
+async def create_new_suspension_by_form(
+    *,
+    file_to_upload: UploadFile = None,
+    suspension_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
+    suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
+    risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
+    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
+    description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
+    implementing_measures: str = Query(..., max_length=256, example=MEASURES, alias=IMPLEMENTING_MEASURES),
+    file_service: FileService = Depends(),
+    suspension_service: SuspensionService = Depends(),
+    user: User = Depends(current_user),
+) -> AnalyticSuspensionResponse:
+    """Фиксация случая простоя из формы с возможностью загрузки 1 файла."""
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)
+    task_object = {
+        "suspension_start": datetime.strptime(suspension_start, DATE_TIME_FORMAT),  # reverse in datetime
+        "suspension_finish": datetime.strptime(suspension_finish, DATE_TIME_FORMAT),  # reverse in datetime
+        "risk_accident": risk_accident.value,
+        "tech_process": tech_process.value,
+        "description": description,
+        "implementing_measures": implementing_measures,
+    }
+    new_suspension: Suspension = await suspension_service.actualize_object(
+        None, SuspensionCreateNew(**task_object), user
+    )
+    suspension_response: dict = await suspension_service.change_schema_response(new_suspension, user)
+    if file_to_upload is None:
+        return AnalyticSuspensionResponse(**suspension_response)
+    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # timestamp in filename
+    file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
+        [file_to_upload], FILES_DIR, file_timestamp
+    )
+    suspension_id = new_suspension.id
+    file_id = file_names_and_ids[1]
+    file_name = file_names_and_ids[0]
+    await suspension_service.set_files_to_suspension(suspension_id, file_id)
+    await log.ainfo("{}".format(
+        FILES_ATTACHED_TO_SUSPENSION), suspension_id=suspension_id, file_id=file_id, file_name=file_name
+    )
+    suspension_response["extra_files"]: list[str] = file_name  # add dictionary for AnalyticSuspensionResponse
+    return AnalyticSuspensionResponse(**suspension_response)
+
+
+@suspension_router.post(
+    POST_SUSPENSION_FILES_FORM,
+    description=SUSPENSION_FILES_CREATE_FORM,
+    summary=SUSPENSION_FILES_CREATE_FORM,
+    tags=[SUSPENSIONS_POST]
+)
+async def create_new_suspension_by_form_with_files(
+    *,
+    files_to_upload: list[UploadFile] = File(...),
+    suspension_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
+    suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
+    risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
+    tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
+    description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
+    implementing_measures: str = Query(..., max_length=256, example=MEASURES, alias=IMPLEMENTING_MEASURES),
+    file_service: FileService = Depends(),
+    suspension_service: SuspensionService = Depends(),
+    user: User = Depends(current_user),
+) -> AnalyticSuspensionResponse:
+    """Фиксация случая простоя из формы с обязательной загрузкой нескольких файлов."""
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)
+    task_object = {
+        "suspension_start": datetime.strptime(suspension_start, DATE_TIME_FORMAT),  # reverse in datetime
+        "suspension_finish": datetime.strptime(suspension_finish, DATE_TIME_FORMAT),  # reverse in datetime
+        "risk_accident": risk_accident.value,
+        "tech_process": tech_process.value,
+        "description": description,
+        "implementing_measures": implementing_measures,
+    }
+    new_suspension: Suspension = await suspension_service.actualize_object(
+        None, SuspensionCreateNew(**task_object), user
+    )
+    suspension_response: dict = await suspension_service.change_schema_response(new_suspension, user)
+    # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
+    file_timestamp = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)  # timestamp in filename
+    file_names_and_ids: tuple[list[str], list[PositiveInt]] = await file_service.download_and_write_files_in_db(
+        files_to_upload, FILES_DIR, file_timestamp
+    )
+    suspension_id = new_suspension.id
+    files_ids = file_names_and_ids[1]
+    files_names = file_names_and_ids[0]
+    await suspension_service.set_files_to_suspension(suspension_id, files_ids)
+    await log.ainfo("{}".format(
+        FILES_ATTACHED_TO_SUSPENSION), suspension_id=suspension_id, files_ids=files_ids, files_names=files_names
+    )
+    suspension_response["extra_files"]: list[str] = files_names  # add dictionary for AnalyticSuspensionResponse
+    return AnalyticSuspensionResponse(**suspension_response)
+
+
+@suspension_router.post(
+    ADD_FILES_TO_SUSPENSION,
+    description=SET_FILES_LIST_TO_SUSPENSION,
+    summary=SET_FILES_LIST_TO_SUSPENSION,
+    dependencies=[Depends(current_superuser)],
+    tags=[SUSPENSIONS_POST]
+)
+async def set_files_to_suspension(
+    *,
+    suspension_id: PositiveInt,
+    files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_SUSPENSION),
+    suspension_service: SuspensionService = Depends(),
+    file_service: FileService = Depends(),
+) -> SuspensionResponseNew:  # todo rename
+    """Прикрепление файлов к случаям простоев (запись отношения в БД) (только админ)."""
+    await suspension_service.set_files_to_suspension(suspension_id, files_ids)
+    files_names: Sequence[str] = await file_service.get_names_by_file_ids(files_ids)
+    await log.ainfo(
+        "{}{}{}".format(SUSPENSION, suspension_id, FILES_ATTACHED_TO_SUSPENSION),
+        suspension_id=suspension_id, files_ids=files_ids, files_names=files_names
+    )
+    suspension: Suspension = await suspension_service.get(suspension_id)
+    return SuspensionResponseNew(**suspension.__dict__, extra_files=files_names)  # todo rename
+
+
+
+
+
+### OLD ENDPOINTS TO DELETE todo
 @suspension_router.post(
     "/form",  # todo в константы
     description="Фиксации случая простоя из формы.",  # todo в константы

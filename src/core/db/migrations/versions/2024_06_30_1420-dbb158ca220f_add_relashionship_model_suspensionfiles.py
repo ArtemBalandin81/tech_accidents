@@ -21,8 +21,8 @@ def upgrade() -> None:
     op.create_table('suspensions_files',
     sa.Column('suspension_id', sa.Integer(), nullable=False),
     sa.Column('file_id', sa.Integer(), nullable=False),
-    # sa.Column('created_at', sa.TIMESTAMP(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    # sa.Column('updated_at', sa.TIMESTAMP(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('created_at', sa.Date(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
+    sa.Column('updated_at', sa.Date(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
     sa.ForeignKeyConstraint(['file_id'], ['files.id'], ),
     sa.ForeignKeyConstraint(['suspension_id'], ['suspensions.id'], ),
     sa.PrimaryKeyConstraint('suspension_id', 'file_id')
