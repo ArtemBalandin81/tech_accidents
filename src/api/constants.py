@@ -68,7 +68,8 @@ TASK_ID = "/{task_id}"
 FILES = "Файлы: загрузка, получение, удаление"  # кириллица в swagger
 TASKS_POST = "Задачи: назначить задачу"  # кириллица в swagger
 TASKS_GET = "Задачи: посмотреть задачи"  # кириллица в swagger
-SUSPENSIONS_POST = "Случаи простоев: фиксация"  # кириллица в swagger
+SUSPENSIONS_POST = "Случаи простоев: внесение, редактирование, удаление"  # кириллица в swagger
+SUSPENSIONS_GET = "Случаи простоев: получение информации"  # кириллица в swagger
 
 # auth
 IS_REGISTERED = " is registered."
@@ -83,6 +84,7 @@ FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
 FILES_IN_FOLDER = "Файлы в каталоге файлов: "
+FILES_UNLINK = "Удалить все прикрепленные файлы"
 FILES_UNUSED_IN_DB = "Бесхозные файлы в БД: "
 FILES_UNUSED_IN_DB_REMOVED = "Из БД удалены бесхозные файлы: "
 FILES_RECEIVED = "Files_received: "
@@ -120,6 +122,7 @@ RISK_ACCIDENT_SOURCE = "Источник угроз"
 SUSPENSION = "Простой: "
 SUSPENSION_CREATE_FORM = "Фиксация простоя из формы с возможностью загрузки 1 файла."
 SUSPENSION_FILES_CREATE_FORM = "Фиксация простоя из формы с обязательной загрузкой нескольких файлов."
+SUSPENSION_DELETED = "Случай простоя удален: "
 SUSPENSION_DESCRIPTION = "Описание простоя"
 SUSPENSION_DURATION = "Простой (мин)"
 SUSPENSION_DURATION_RESPONSE = 60  # in mins
@@ -127,6 +130,7 @@ SUSPENSION_FINISH = "Окончание простоя"
 SUSPENSION_LAST_ID = "ID последнего простоя"
 SUSPENSION_LAST_TIME = "Время последнего простоя"
 SUSPENSION_MAX_TIME = "Максимальный простой мин."
+SUSPENSION_PATCH_FORM = "Редактирование случая простоя из формы: "
 SUSPENSION_START = "Начало простоя"
 SUSPENSION_TOTAl = "Простоев итого"
 TECH_PROCESS = "Тех-процесс: "
@@ -135,7 +139,8 @@ USER_MAIL = "Почта пользователя"
 USER_ID = "id пользователя"
 
 # suspensions_descriptions
-SET_FILES_LIST_TO_SUSPENSION = "Присваивает простою список файлов."
+SET_FILES_LIST_TO_SUSPENSION = "Прикрепляет к случаю простоя список файлов."
+SUSPENSION_DELETE = "Удалить случай простоя (только админ)."
 
 # create_suspension
 CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
@@ -155,7 +160,7 @@ TASK_DESCRIPTION = "Описание задачи: "
 TASK_EXECUTOR = "Исполнитель задачи: "
 TASK_EXECUTOR_MAIL = "Почта исполнителя"
 TASK_EXECUTOR_MAIL_NOT_FROM_ENUM = "Почта исполнителя не из списка"
-TASK_FILES_UNLINK = "Удалить все прикрепленные файлы"
+
 TASK_FINISH = "Дедлайн по задаче: "
 TASK_PATCH_FORM = "Редактирование задачи из формы: "
 TASK_START = "Дата постановки задачи"

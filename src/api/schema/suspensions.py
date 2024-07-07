@@ -14,6 +14,7 @@ from src.settings import settings
 class SuspensionBaseNew(BaseModel):  # todo rename
     """Базовая схема простоев."""
     id: PositiveInt
+    risk_accident: RiskAccidentSource = Field(..., serialization_alias=RISK_ACCIDENT)
     tech_process: PositiveInt = Field(..., serialization_alias=TECH_PROCESS)
     created_at: datetime = Field(..., serialization_alias=CREATED)
     updated_at: datetime = Field(..., serialization_alias=UPDATED)
@@ -122,7 +123,7 @@ class AnalyticSuspensionResponse(SuspensionBaseNew):  # todo ERRORS
     extra_files: list = Field(..., serialization_alias=FILES_SET_TO)
 
 
-# class TaskDeletedResponse(BaseModel):
-#     """Схема ответа после удаления задачи."""
-#     task_deleted: list[TaskResponse] = Field(..., serialization_alias=TASK_DELETED)
-#     files_ids: list[int] = Field(..., serialization_alias=FILES_IDS_DELETED)
+class SuspensionDeletedResponse(BaseModel):
+    """Схема ответа после удаления случая простоя."""
+    suspension_deleted: list[SuspensionResponseNew] = Field(..., serialization_alias=SUSPENSION_DELETED)  # todo rename
+    files_ids: list[int] = Field(..., serialization_alias=FILES_IDS_DELETED)

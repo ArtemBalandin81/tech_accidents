@@ -182,7 +182,7 @@ async def partially_update_task_by_form(
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
     executor_email: Executor = Query(None, alias=TASK_EXECUTOR_MAIL),
     file_to_upload: UploadFile = None,
-    to_unlink_files: bool = Query(None, alias=TASK_FILES_UNLINK),
+    to_unlink_files: bool = Query(None, alias=FILES_UNLINK),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     file_service: FileService = Depends(),
@@ -203,7 +203,7 @@ async def partially_update_task_by_form(
         "task_start": task_start,
         "deadline": deadline,
         "task": task_from_db.task if task is None else task,
-        "tech_process": task_from_db.tech_process if tech_process is None else tech_process,
+        "tech_process": str(task_from_db.tech_process) if tech_process is None else tech_process,  # todo check it!
         "description": task_from_db.description if description is None else description,
         "executor_id": task_from_db.executor_id if executor_email is None else executor.id,  # noqa
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
@@ -218,7 +218,7 @@ async def partially_update_task_by_form(
         await task_service.set_files_to_task(task_id, [])
         edited_task_response[0]["extra_files"]: list[str] = []
         if file_names_and_ids_set_to_task[1]:
-            await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)
+            await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)  # todo try - except wanted!
             await log.ainfo(
                 "{}{}{}{}{}".format(TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, DELETED_OK),
                 task_id=task_id,
@@ -253,11 +253,6 @@ async def partially_update_task_by_form(
             files_ids=new_file_ids, files_names=new_file_names
         )
         return AnalyticTaskResponse(**edited_task_response[0])
-    await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-        TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED, SPACE,
-        is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
-        executor_email)
-    )
     await log.ainfo(
         "{}{}".format(TASK_PATCH_FORM, task_id),
         task_id=task_id, task=task, task_description=description, is_archived=is_archived, deadline=deadline,
@@ -372,12 +367,16 @@ async def remove_task(
             await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
             await log.ainfo(
                 "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
-                task_id=task_id, files=files_to_delete,
+                task_id=task_id,
+                files=files_to_delete,
             )
         except Exception as e:  # todo кастомизировать и идентифицировать Exception
             await log.ainfo(
                 "{}{}{}{}".format(TASK, task_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_task),
-                task_id=task_id, files=files_to_delete, intersection=files_ids_set_to_task,
+                exception=e,
+                task_id=task_id,
+                files=files_to_delete,
+                intersection=files_ids_set_to_task,
             )
             await task_service.remove(task_id)
             await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
