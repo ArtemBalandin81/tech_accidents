@@ -222,24 +222,16 @@ async def partially_update_suspension_by_form(
         await suspension_service.set_files_to_suspension(suspension_id, [])
         edited_suspension_response[0]["extra_files"]: list[str] = []
         if file_names_and_ids_set_to_suspension[1]:
-            try:  # if files are attached to another models, they won't be deleted!!!
-                await file_service.remove_files(file_names_and_ids_set_to_suspension[1], FILES_DIR)
-                await log.ainfo(
-                    "{}{}{}{}".format(SUSPENSION, suspension_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
-                    suspension_id=suspension_id,
-                    files=file_names_and_ids_set_to_suspension[0],
-                )
-            except Exception as e:  # todo кастомизировать и идентифицировать Exception
-                await log.ainfo(
-                    "{}{}{}{}".format(
-                        SUSPENSION, suspension_id, SPACE, FILES_IDS_INTERSECTION,
-                        file_names_and_ids_set_to_suspension[1]
-                    ),
-                    exception=e,
-                    suspension_id=suspension_id,
-                    files=file_names_and_ids_set_to_suspension[0],
-                    intersection=file_names_and_ids_set_to_suspension[1],
-                )
+            all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
+            file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
+                file_names_and_ids_set_to_suspension[1], all_file_ids_attached
+            )
+            await file_service.remove_files(file_ids_unused, FILES_DIR)
+            await log.ainfo(
+                "{}{}{}{}".format(SUSPENSION, suspension_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
+                suspension_id=suspension_id,
+                files=file_ids_unused,
+            )
         await log.ainfo(
             "{}{}".format(SUSPENSION_PATCH_FORM, suspension_id),
             suspension_id=suspension_id, risk_accident=risk_accident, suspension_description=description, files=None,

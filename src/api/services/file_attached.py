@@ -234,7 +234,7 @@ class FileService:
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         return [relation.file_id for relation in relations]
 
-    async def get_all_file_ids_from_all_models(self) -> list[int]:
+    async def get_all_file_ids_from_all_models(self) -> list[int]:  # todo делать одним запросом в БД
         """Отдает ids файлов, привязанных ко всем моделям."""
         files_from_tasks: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         files_from_suspensions: Sequence[SuspensionsFiles] = await self._repository.get_all_files_from_suspensions()

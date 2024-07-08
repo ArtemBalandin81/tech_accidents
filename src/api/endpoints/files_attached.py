@@ -132,17 +132,17 @@ async def get_files_unused(
     options_for_files_unused = settings.CHOICE_REMOVE_FILES_UNUSED.split('"')
     file_names_and_ids_in_db: tuple[list[str], list[int]] = await file_service.get_all_db_file_names_and_ids()
     if choices_with_files_unused == options_for_files_unused[3]:  # == "unused_in_db"
-        file_ids_in_tasks: Sequence[int] = await file_service.get_all_file_ids_from_tasks()
+        all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
         file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
-            file_names_and_ids_in_db[1], file_ids_in_tasks
+            file_names_and_ids_in_db[1], all_file_ids_attached
         )
         files_unused: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_unused)
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_DB, files_unused))
         return FileDBUnusedResponse(files_unused_in_db=files_unused)
     elif choices_with_files_unused == options_for_files_unused[7]:  # == "remove_unused_in_db"
-        file_ids_in_tasks: Sequence[int] = await file_service.get_all_file_ids_from_tasks()
+        all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
         file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
-            file_names_and_ids_in_db[1], file_ids_in_tasks
+            file_names_and_ids_in_db[1], all_file_ids_attached
         )
         files_unused: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_unused)
         if not files_unused:

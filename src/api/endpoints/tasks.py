@@ -203,7 +203,7 @@ async def partially_update_task_by_form(
         "task_start": task_start,
         "deadline": deadline,
         "task": task_from_db.task if task is None else task,
-        "tech_process": str(task_from_db.tech_process) if tech_process is None else tech_process,  # todo check it!
+        "tech_process": str(task_from_db.tech_process) if tech_process is None else tech_process,
         "description": task_from_db.description if description is None else description,
         "executor_id": task_from_db.executor_id if executor_email is None else executor.id,  # noqa
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
@@ -218,12 +218,15 @@ async def partially_update_task_by_form(
         await task_service.set_files_to_task(task_id, [])
         edited_task_response[0]["extra_files"]: list[str] = []
         if file_names_and_ids_set_to_task[1]:
-            await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)  # todo try - except wanted!
+            all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
+            file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
+                file_names_and_ids_set_to_task[1], all_file_ids_attached
+            )
+            await file_service.remove_files(file_ids_unused, FILES_DIR)
             await log.ainfo(
-                "{}{}{}{}{}".format(TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, DELETED_OK),
+                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
                 task_id=task_id,
-                files_ids=file_names_and_ids_set_to_task[1],
-                files_names=file_names_and_ids_set_to_task[0]
+                files=file_ids_unused,
             )
         await log.ainfo(
             "{}{}".format(TASK_PATCH_FORM, task_id),
