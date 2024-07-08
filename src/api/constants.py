@@ -123,7 +123,7 @@ SUSPENSION = "Простой: "
 SUSPENSION_CREATE_FORM = "Фиксация простоя из формы с возможностью загрузки 1 файла."
 SUSPENSION_FILES_CREATE_FORM = "Фиксация простоя из формы с обязательной загрузкой нескольких файлов."
 SUSPENSION_DELETED = "Случай простоя удален: "
-SUSPENSION_DESCRIPTION = "Описание простоя"
+SUSPENSION_DESCRIPTION = "Описание простоя: "
 SUSPENSION_DURATION = "Простой (мин)"
 SUSPENSION_DURATION_RESPONSE = 60  # in mins
 SUSPENSION_FINISH = "Окончание простоя"
@@ -141,6 +141,7 @@ USER_ID = "id пользователя"
 # suspensions_descriptions
 SET_FILES_LIST_TO_SUSPENSION = "Прикрепляет к случаю простоя список файлов."
 SUSPENSION_DELETE = "Удалить случай простоя (только админ)."
+SUSPENSION_LIST = "Список всех случаев простоя."
 
 # create_suspension
 CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."
