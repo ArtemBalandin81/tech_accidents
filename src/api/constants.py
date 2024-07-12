@@ -15,12 +15,12 @@ FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 TRANSLATION_TABLE = str.maketrans("абвгдеёжзийклмнопрстуфхцчшщъыьэюя", "abvgdeezzijklmnoprstufhccss!y!eui")
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
-ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=30)).strftime(DATE_TIME_FORMAT)  # todo in settings
 ANALYTIC_TO_TIME = (datetime.now(TZINFO)).strftime(DATE_TIME_FORMAT)
-CREATE_SUSPENSION_FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).strftime(DATE_TIME_FORMAT)
+CREATE_SUSPENSION_FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).strftime(DATE_TIME_FORMAT)  # todo settings
 CREATE_SUSPENSION_TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).strftime(DATE_TIME_FORMAT)
 CREATE_TASK_START = (datetime.now(TZINFO)).strftime(DATE_FORMAT)
-CREATE_TASK_DEADLINE = (datetime.now(TZINFO) + timedelta(days=7)).strftime(DATE_FORMAT)
+CREATE_TASK_DEADLINE = (datetime.now(TZINFO) + timedelta(days=7)).strftime(DATE_FORMAT)  # todo in settings
 FILE_NAME_SAVE_FORMAT = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)
 FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).isoformat(timespec='minutes')
 FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='minutes')
@@ -65,11 +65,12 @@ POST_TASK_FILES_FORM = "/post_task_with_files_form"
 TASK_ID = "/{task_id}"
 
 # endpoints TAGS
+ANALYTICS_SUSPENSION = "Аналитика случаев простоя"
 FILES = "Файлы: загрузка, получение, удаление"  # кириллица в swagger
 TASKS_POST = "Задачи: назначить задачу"  # кириллица в swagger
 TASKS_GET = "Задачи: посмотреть задачи"  # кириллица в swagger
-SUSPENSIONS_POST = "Случаи простоев: внесение, редактирование, удаление"  # кириллица в swagger
-SUSPENSIONS_GET = "Случаи простоев: получение информации"  # кириллица в swagger
+SUSPENSIONS_POST = "Случаи простоя: внесение, редактирование, удаление"  # кириллица в swagger
+SUSPENSIONS_GET = "Случаи простоя: получение информации"  # кириллица в swagger
 
 # auth
 IS_REGISTERED = " is registered."
@@ -139,9 +140,11 @@ USER_MAIL = "Почта пользователя"
 USER_ID = "id пользователя"
 
 # suspensions_descriptions
+ANALYTICS_SUSPENSION_LIST = "Аналитика случаев простоя."
 SET_FILES_LIST_TO_SUSPENSION = "Прикрепляет к случаю простоя список файлов."
 SUSPENSION_DELETE = "Удалить случай простоя (только админ)."
 SUSPENSION_LIST = "Список всех случаев простоя."
+SUSPENSION_LIST_CURRENT_USER = "Список случаев простоя текущего пользователя."
 
 # create_suspension
 CREATE_DESCRIPTION = "Кратковременный сбой в работе оборудования."

@@ -8,9 +8,8 @@ from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import PositiveInt
 
 from src.api.constants import *
-from src.api.schemas import AnalyticResponse, SuspensionAnalytics, SuspensionRequest, SuspensionResponse
 from src.api.schema import (  # todo "schemas"   # todo rename
-    AnalyticSuspensionResponse, SuspensionCreateNew, SuspensionDeletedResponse, SuspensionResponseNew,
+    AnalyticsSuspensions, AnalyticSuspensionResponse, SuspensionCreate, SuspensionDeletedResponse, SuspensionResponse,
 )
 from src.api.services import FileService, SuspensionService, UsersService
 from src.api.validators import (
@@ -19,7 +18,7 @@ from src.api.validators import (
 
 from src.core.db.models import Suspension, User
 from src.core.db.user import current_superuser, current_user
-from src.core.enums import ChoiceDownloadFiles, RiskAccidentSource, TechProcess
+from src.core.enums import ChoiceDownloadFiles, RiskAccidentSource, TechProcess, Executor
 
 log = structlog.get_logger()
 suspension_router = APIRouter()
@@ -28,12 +27,52 @@ SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to s
 FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
 
-async def change_schema_response(suspension: Suspension, user: User) -> AnalyticResponse:  # todo move to services
-    """Изменяет и добавляет поля в схему ответа создания, запроса по id и аналитики."""
-    suspension_to_dict = suspension.__dict__
-    suspension_to_dict["user_email"] = user.email
-    suspension_to_dict["business_process"] = TechProcess(str(suspension.tech_process)).name
-    return AnalyticResponse(**suspension_to_dict)
+@suspension_router.get(
+    ANALYTICS,
+    response_model_exclude_none=True,
+    description=ANALYTICS_SUSPENSION_LIST,
+    summary=ANALYTICS_SUSPENSION_LIST,
+    tags=[ANALYTICS_SUSPENSION]
+)
+async def get_all_for_period_time(
+    suspension_start: str = Query(
+        ..., example=ANALYTIC_FROM_TIME, description=ANALYTIC_FROM_TIME, alias=SUSPENSION_START
+    ),
+    suspension_finish: str = Query(
+        ..., example=ANALYTIC_TO_TIME, description=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH
+    ),
+    user: Executor = Query(None, alias=USER_MAIL),
+    suspension_service: SuspensionService = Depends(),
+    users_service: UsersService = Depends(),
+) -> AnalyticsSuspensions:
+    suspension_start: datetime = datetime.strptime(suspension_start, DATE_TIME_FORMAT)  # convert in datetime
+    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # convert in datetime
+    if user is None:
+        user_id = None
+        suspensions: Sequence[Suspension] = await suspension_service.get_all_for_period_time(
+            suspension_start, suspension_finish
+        )
+    else:
+        user: User = await users_service.get_by_email(user.value)
+        user_id = user.id
+        suspensions: Sequence[Suspension] = await suspension_service.get_suspensions_for_period_for_user(
+            user_id, suspension_start, suspension_finish
+        )
+    suspensions_list = await suspension_service.perform_changed_schema(suspensions)
+    return AnalyticsSuspensions(
+        suspensions_in_mins_total=(
+            await suspension_service.sum_suspensions_time_for_period(user_id, suspension_start, suspension_finish)
+        ),
+        suspensions_total=(
+            await suspension_service.count_suspensions_for_period(user_id, suspension_start, suspension_finish)
+        ),
+        suspension_max_time_for_period=(
+            await suspension_service.suspension_max_time_for_period(user_id, suspension_start, suspension_finish)
+        ),
+        last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
+        last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),
+        suspensions_list=suspensions_list
+    )
 
 
 @suspension_router.post(
@@ -42,8 +81,12 @@ async def change_schema_response(suspension: Suspension, user: User) -> Analytic
 async def create_new_suspension_by_form(
     *,
     file_to_upload: UploadFile = None,
-    suspension_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
-    suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
+    suspension_start: str = Query(
+        ..., example=CREATE_SUSPENSION_FROM_TIME, description=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START
+    ),
+    suspension_finish: str = Query(
+        ..., example=CREATE_SUSPENSION_TO_TIME, description=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH
+    ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
@@ -63,7 +106,7 @@ async def create_new_suspension_by_form(
         "implementing_measures": implementing_measures,
     }
     new_suspension: Suspension = await suspension_service.actualize_object(
-        None, SuspensionCreateNew(**suspension_object), user
+        None, SuspensionCreate(**suspension_object), user
     )
     suspension_response: dict = await suspension_service.change_schema_response(new_suspension, user)
     if file_to_upload is None:
@@ -93,8 +136,12 @@ async def create_new_suspension_by_form(
 async def create_new_suspension_by_form_with_files(
     *,
     files_to_upload: list[UploadFile] = File(...),
-    suspension_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
-    suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
+    suspension_start: str = Query(
+        ..., example=CREATE_SUSPENSION_FROM_TIME, description=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START
+    ),
+    suspension_finish: str = Query(
+        ..., example=CREATE_SUSPENSION_TO_TIME, description=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH
+    ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
@@ -114,7 +161,7 @@ async def create_new_suspension_by_form_with_files(
         "implementing_measures": implementing_measures,
     }
     new_suspension: Suspension = await suspension_service.actualize_object(
-        None, SuspensionCreateNew(**suspension_object), user
+        None, SuspensionCreate(**suspension_object), user
     )
     suspension_response: dict = await suspension_service.change_schema_response(new_suspension, user)
     # 2. Download and write files in db and make records in tables "files" & "suspensions_files" in db:
@@ -146,7 +193,7 @@ async def set_files_to_suspension(
     files_ids: list[PositiveInt] = Query(None, alias=SET_FILES_LIST_TO_SUSPENSION),
     suspension_service: SuspensionService = Depends(),
     file_service: FileService = Depends(),
-) -> SuspensionResponseNew:  # todo rename
+) -> SuspensionResponse:
     """Прикрепление файлов к случаям простоев (запись отношения в БД) (только админ)."""
     await suspension_service.set_files_to_suspension(suspension_id, files_ids)
     files_names: Sequence[str] = await file_service.get_names_by_file_ids(files_ids)
@@ -155,7 +202,7 @@ async def set_files_to_suspension(
         suspension_id=suspension_id, files_ids=files_ids, files_names=files_names
     )
     suspension: Suspension = await suspension_service.get(suspension_id)
-    return SuspensionResponseNew(**suspension.__dict__, extra_files=files_names)  # todo rename
+    return SuspensionResponse(**suspension.__dict__, extra_files=files_names)
 
 
 @suspension_router.patch(
@@ -214,7 +261,7 @@ async def partially_update_suspension_by_form(
         ),
     }
     edited_suspension: Suspension = await suspension_service.actualize_object(
-        suspension_id, SuspensionCreateNew(**suspension_object), user
+        suspension_id, SuspensionCreate(**suspension_object), user
     )
     edited_suspension_response: Sequence[dict] = await suspension_service.perform_changed_schema(edited_suspension)
     await check_not_download_and_delete_files_at_one_time(to_unlink_files, file_to_upload)
@@ -284,8 +331,25 @@ async def partially_update_suspension_by_form(
 async def get_all_suspensions(
         suspension_service: SuspensionService = Depends()
 ) -> Sequence[AnalyticSuspensionResponse]:
-    """Возвращает из БД все случаи простоя."""
+    """Все случаи простоя."""
     return await suspension_service.perform_changed_schema(await suspension_service.get_all())  # noqa
+
+
+@suspension_router.get(
+    MY_SUSPENSIONS,
+    response_model_exclude_none=True,
+    description=SUSPENSION_LIST_CURRENT_USER,
+    summary=SUSPENSION_LIST_CURRENT_USER,
+    tags=[SUSPENSIONS_GET]
+)
+async def get_my_suspensions(
+    suspension_service: SuspensionService = Depends(),
+    user: User = Depends(current_user)
+) -> Sequence[AnalyticSuspensionResponse]:
+    """Все случаи простоя, зафиксированные текущим пользователем."""
+    return await suspension_service.perform_changed_schema(  # noqa
+        await suspension_service.get_suspensions_for_user(user.id), user  # noqa
+    )  # noqa
 
 
 @suspension_router.get(
@@ -371,169 +435,3 @@ async def remove_suspension(
     return SuspensionDeletedResponse(
         suspension_deleted=[suspension_to_delete_response], files_ids=files_ids_set_to_suspension
     )
-
-### OLD ENDPOINTS TO DELETE todo
-# @suspension_router.post(
-#     "/form",  # todo в константы
-#     description="Фиксации случая простоя из формы.",  # todo в константы
-#     summary="Фиксации случая простоя из формы.",
-#     tags=["Suspensions POST"]  # todo в константы
-# )
-# async def create_new_suspension_by_form(
-#     *,
-#     datetime_start: str = Query(..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START),
-#     suspension_finish: str = Query(..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH),
-#     # risk_accident: RiskAccidentSource,
-#     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
-#     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
-#     description: str = Query(..., max_length=256, example=CREATE_DESCRIPTION, alias=SUSPENSION_DESCRIPTION),
-#     implementing_measures: str = Query(..., max_length=256, example=MEASURES, alias=IMPLEMENTING_MEASURES),
-#     suspension_service: SuspensionService = Depends(),
-#     users_service: UsersService = Depends(),
-#     user: User = Depends(current_user),
-# ) -> AnalyticResponse:
-#     suspension_start: datetime = datetime.strptime(datetime_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-#     suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-#     suspension_object = {
-#         "suspension_start": suspension_start,
-#         "suspension_finish": suspension_finish,
-#         "risk_accident": risk_accident.value,
-#         "tech_process": tech_process.value,
-#         "description": description,
-#         "implementing_measures": implementing_measures,
-#     }
-#     suspension = await suspension_service.actualize_object(None, suspension_object, user)
-#     user = await users_service.get(suspension.user_id)
-#     return await change_schema_response(suspension, user)
-
-
-# @suspension_router.post(
-#     MAIN_ROUTE,
-#     response_model=SuspensionResponse,
-#     description="Фиксации случая простоя из json.",  # todo в константы
-#     summary="Фиксации случая простоя из json.",
-#     tags=["Suspensions POST"]
-# )
-# async def create_new_suspension(
-#     suspension_schemas: SuspensionRequest,
-#     suspension_service: SuspensionService = Depends(),
-#     user: User = Depends(current_user),
-# ) -> SuspensionResponse:
-#     return await suspension_service.actualize_object(None, suspension_schemas, user)
-
-
-# @suspension_router.patch(
-#     SUSPENSION_ID,
-#     summary="Редактирование простоя из формы.",
-#     dependencies=[Depends(current_user)],
-#     tags=["Suspensions POST"]  # todo в константы
-# )
-# async def partially_update_suspension(
-#     suspension_id: int,
-#     suspension_schemas: SuspensionRequest,
-#     suspension_service: SuspensionService = Depends(),
-#     users_service: UsersService = Depends(),
-#     user: User = Depends(current_user),
-# ) -> AnalyticResponse:
-#     suspension = await suspension_service.get(suspension_id)  # проверяем, что объект для правки существует!
-#     if user.id != suspension.user_id and user.is_superuser is not True:
-#         raise HTTPException(status_code=403, detail=ONLY_AUTHOR)
-#     await suspension_service.actualize_object(suspension_id, suspension_schemas, user)
-#     suspension = await suspension_service.get(suspension_id)
-#     user = await users_service.get(suspension.user_id)
-#     return await change_schema_response(suspension, user)
-
-
-# @suspension_router.get(
-#     MAIN_ROUTE,
-#     response_model_exclude_none=True,
-#     description="Список всех случаев простоя.",  # todo в константы
-#     summary="Список всех случаев простоя.",
-#     tags=["Suspensions GET"]  # todo в константы
-# )
-# async def get_all_suspensions(suspension_service: SuspensionService = Depends()) -> list[SuspensionResponse]:
-#     return await suspension_service.get_all()
-
-
-@suspension_router.get(
-    ANALYTICS,
-    response_model_exclude_none=True,
-    description="Список случаев простоя за период.",  # todo в константы
-    summary="Список случаев простоя за период.",
-    tags=["Suspensions ANALYTICS"]  # todo в константы
-)
-async def get_all_for_period_time(
-    suspension_start: str = Query(..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START),  # для отображения в сваггер
-    suspension_finish: str = Query(..., example=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH),  # для отображения в сваггер
-    user_id: Optional[int] = Query(None, example="", alias=USER_ID),
-    suspension_service: SuspensionService = Depends(),
-    users_service: UsersService = Depends(),
-) -> SuspensionAnalytics:
-    suspension_start: datetime = datetime.strptime(suspension_start, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # обратная конвертация в datetime
-    if user_id is None:
-        suspensions = await suspension_service.get_all_for_period_time(suspension_start, suspension_finish)
-    else:
-        suspensions = await suspension_service.get_suspensions_for_period_for_user(
-            user_id, suspension_start, suspension_finish
-        )
-    suspensions_list = []
-    for suspension in suspensions:  # todo это работа сервиса, перенести
-        user = await users_service.get(suspension.user_id)  # todo избавиться от дергания базы: загружать за 1 раз
-        suspension_to_dict = await change_schema_response(suspension, user)
-        suspensions_list.append(suspension_to_dict)
-    return SuspensionAnalytics(  # todo аналитику тоже придется перенастроить на использование юзера, или нет
-        suspensions_in_mins_total=(
-            await suspension_service.sum_suspensions_time_for_period(user_id, suspension_start, suspension_finish)
-        ),
-        suspensions_total=(
-            await suspension_service.count_suspensions_for_period(user_id, suspension_start, suspension_finish)
-        ),
-        suspension_max_time_for_period=(
-            await suspension_service.suspension_max_time_for_period(user_id, suspension_start, suspension_finish)
-        ),
-        last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
-        last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),
-        # suspensions=suspensions,
-        suspensions_detailed=suspensions_list
-    )
-
-
-@suspension_router.get(
-    MY_SUSPENSIONS,
-    response_model_exclude_none=True,
-    description="Список случаев простоя текущего пользователя.",  # todo в константы
-    summary="Список случаев простоя текущего пользователя.",
-    tags=["Suspensions GET"]  # todo в константы
-)
-async def get_my_suspensions(
-    suspension_service: SuspensionService = Depends(),
-    user: User = Depends(current_user)
-) -> Sequence[SuspensionResponse]:
-    return await suspension_service.get_suspensions_for_user(user.id)
-
-
-# @suspension_router.get(
-#     SUSPENSION_ID,
-#     description="Информация о случае простоя по его id.",  # todo в константы
-#     summary="Информация о случае простоя по его id.",
-#     tags=["Suspensions GET"]  # todo в константы
-# )
-# async def get_suspension_by_id(
-#         suspension_id: int,
-#         suspension_service: SuspensionService = Depends(),
-#         users_service: UsersService = Depends(),
-# ) -> AnalyticResponse:
-#     suspension = await suspension_service.get(suspension_id)
-#     user = await users_service.get(suspension.user_id)
-#     return await change_schema_response(suspension, user)
-
-
-# @suspension_router.delete(
-#     SUSPENSION_ID,
-#     dependencies=[Depends(current_superuser)],
-#     summary="Удалить простой (только админ).",
-#     tags=["Suspensions POST"]
-# )
-# async def remove_suspension(suspension_id: int, suspension_service: SuspensionService = Depends()) -> None:
-#     return await suspension_service.remove(suspension_id)

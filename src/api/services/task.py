@@ -35,7 +35,7 @@ class TaskService:
     async def change_schema_response(self, task: Task) -> dict:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
         user = await self._users_repository.get(task.user_id)  # todo user передавать, а не брать из БД если его нет
-        executor = await self._users_repository.get(task.executor_id)
+        executor = await self._users_repository.get(task.executor_id)  # todo очень затратно!
         task_to_dict = task.__dict__
         task_to_dict["user_email"] = user.email
         task_to_dict["executor_email"] = executor.email

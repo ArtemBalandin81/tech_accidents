@@ -32,7 +32,7 @@ class SuspensionRepository(ContentRepository):
             .where(Suspension.suspension_finish <= suspension_finish)
         )
 
-    async def get_all(self) -> Sequence[Suspension]:
+    async def get_all(self) -> Sequence[Suspension]:  # todo присоединять user, чтобы не делать 1000 запросов к БД
         """Возвращает все объекты модели из базы данных, отсортированные по времени."""
         objects = await self._session.scalars(
             select(Suspension)
