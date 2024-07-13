@@ -1,4 +1,5 @@
 """src/api/services/file_attached.py"""
+
 import io
 import os
 import zipfile
@@ -242,21 +243,10 @@ class FileService:
         ids_from_suspensions: list[int] = [relation.file_id for relation in files_from_suspensions]
         return ids_from_tasks + ids_from_suspensions
 
-    # async def get_all_file_names_from_tasks(self) -> Sequence[str]:   # todo delete - isn't used
-    #     """Отдает имена файлов, привязанных ко всем задачам."""
-    #     files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
-    #     return [file.name for file in files]
-
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
         """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
-        # file_ids_from_tasks = await self.get_all_file_ids_from_tasks()
         all_file_ids: list[int] = await self.get_all_file_ids_from_all_models()
-        # intersection: Sequence[int] = await self.get_arrays_intersection(  # todo множество файлов из всех моделей
-        #     np.array(files), np.array(await self.get_all_file_ids_from_tasks())
-        # )
-        intersection: Sequence[int] = await self.get_arrays_intersection(  # todo множество файлов из всех моделей
-            np.array(files), np.array(all_file_ids)
-        )
+        intersection: Sequence[int] = await self.get_arrays_intersection(np.array(files), np.array(all_file_ids))
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
             details = "{}{}".format(FILES_REMOVE_FORBIDDEN, intersection)
             await log.aerror(details, intersection=intersection)

@@ -1,4 +1,5 @@
 """src/api/endpoints/suspensions.py"""
+
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Optional
@@ -6,19 +7,19 @@ from typing import Optional
 import structlog
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import PositiveInt
-
 from src.api.constants import *
-from src.api.schema import (  # todo "schemas"   # todo rename
-    AnalyticsSuspensions, AnalyticSuspensionResponse, SuspensionCreate, SuspensionDeletedResponse, SuspensionResponse,
-)
+from src.api.schema import (  # rename to "schemas" todo
+    AnalyticsSuspensions, AnalyticSuspensionResponse, SuspensionCreate,
+    SuspensionDeletedResponse, SuspensionResponse)
 from src.api.services import FileService, SuspensionService, UsersService
 from src.api.validators import (
-    check_exist_files_attached, check_not_download_and_delete_files_at_one_time, check_start_not_exceeds_finish
-)
-
+    check_exist_files_attached,
+    check_not_download_and_delete_files_at_one_time,
+    check_start_not_exceeds_finish)
 from src.core.db.models import Suspension, User
 from src.core.db.user import current_superuser, current_user
-from src.core.enums import ChoiceDownloadFiles, RiskAccidentSource, TechProcess, Executor
+from src.core.enums import (ChoiceDownloadFiles, Executor, RiskAccidentSource,
+                            TechProcess)
 
 log = structlog.get_logger()
 suspension_router = APIRouter()
@@ -36,10 +37,10 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
 )
 async def get_all_for_period_time(
     suspension_start: str = Query(
-        ..., example=ANALYTIC_FROM_TIME, description=ANALYTIC_FROM_TIME, alias=SUSPENSION_START
+        ..., example=ANALYTIC_FROM_TIME, alias=SUSPENSION_START,  # description=ANALYTIC_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=ANALYTIC_TO_TIME, description=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH
+        ..., example=ANALYTIC_TO_TIME, alias=SUSPENSION_FINISH,  # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
     suspension_service: SuspensionService = Depends(),
@@ -82,10 +83,10 @@ async def create_new_suspension_by_form(
     *,
     file_to_upload: UploadFile = None,
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, description=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START
+        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START,  # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, description=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH
+        ..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -137,10 +138,10 @@ async def create_new_suspension_by_form_with_files(
     *,
     files_to_upload: list[UploadFile] = File(...),
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, description=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START
+        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=SUSPENSION_START,  # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, description=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH
+        ..., example=CREATE_SUSPENSION_TO_TIME, alias=SUSPENSION_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -253,7 +254,7 @@ async def partially_update_suspension_by_form(
     suspension_object = {
         "suspension_start": suspension_start,
         "suspension_finish": suspension_finish,
-        "risk_accident": suspension_from_db.risk_accident if risk_accident is None else risk_accident,  # todo .value?
+        "risk_accident": suspension_from_db.risk_accident if risk_accident is None else risk_accident,
         "tech_process": str(suspension_from_db.tech_process) if tech_process is None else tech_process,
         "description": suspension_from_db.description if description is None else description,
         "implementing_measures": (
@@ -415,7 +416,7 @@ async def remove_suspension(
             )
         except Exception as e:  # todo кастомизировать и идентифицировать Exception
             await log.ainfo(
-                "{}{}{}{}".format(
+                "{}{}{}{}{}".format(
                     SUSPENSION, suspension_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_suspension
                 ),
                 exception=e,

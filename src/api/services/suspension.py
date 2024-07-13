@@ -1,4 +1,5 @@
 """src/api/services/suspension.py"""
+
 from collections.abc import Sequence
 
 import structlog
@@ -172,29 +173,25 @@ class SuspensionService:
             )
         if total_time_suspensions is None:
             return 0
-        return round(total_time_suspensions * DISPLAY_TIME)
+        return round(total_time_suspensions * settings.SUSPENSION_DISPLAY_TIME)
 
-    async def suspension_max_time_for_period(  # todo needed refactoring and docstrings
+    async def suspension_max_time_for_period(
             self,
-            user_id: int,
+            user_id: int | None,
             suspension_start: datetime = TO_TIME_PERIOD,
             suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        if user_id is None:
-            max_time_for_period = await self._repository.suspension_max_time_for_period(
-                suspension_start, suspension_finish
-            )
-        else:
-            max_time_for_period = await self._repository.suspension_max_time_for_period_for_user(
-                user_id, suspension_start, suspension_finish
-            )
+        """Отдает максимальный простой за период для пользователя, или для всех (если пользователь не передан)."""
+        max_time_for_period = await self._repository.suspension_max_time_for_period_for_user(
+            user_id, suspension_start, suspension_finish
+        )
         if max_time_for_period is None:
             return 0
-        return round(max_time_for_period * DISPLAY_TIME)
+        return round(max_time_for_period * settings.SUSPENSION_DISPLAY_TIME)  # in mins as part of a day
 
-    async def remove(self, suspension_id: int) -> None:  # todo needed refactoring and docstrings
-        suspension = await self._repository.get(suspension_id)
-        return await self._repository.remove(suspension)
+    async def remove(self, suspension_id: int) -> None:
+        """Удаляет объект модели из базы данных."""
+        return await self._repository.remove(await self._repository.get(suspension_id))
 
     async def set_files_to_suspension(self, suspension_id: int, files_ids: list[int]) -> None:
         """Присваивает простою список файлов."""  # move to services/base.py todo

@@ -78,19 +78,21 @@ class SuspensionRepository(ContentRepository):
 
     async def suspension_max_time_for_period_for_user(
             self,
-            user_id: int,
+            user_id: int | None,
             suspension_start: datetime,
             suspension_finish: datetime
     ) -> int:
-        """Считает максимальную разницу между началом и концом за указанный период для пользователя."""
-        return await self._session.scalar(
-            select(func.max(func.julianday(
-                Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
-                   )
-            .where(Suspension.user_id == user_id)
-            .where(Suspension.suspension_start >= suspension_start)
-            .where(Suspension.suspension_finish <= suspension_finish)
+        """Считает максимальный простой за период для пользователя, или для всех (если пользователь не передан)."""
+        max_suspension_for_period = select(
+            func.max(func.julianday(Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
+        ).where(
+            Suspension.suspension_start >= suspension_start
+        ).where(
+            Suspension.suspension_finish <= suspension_finish
         )
+        if user_id is not None:
+            return await self._session.scalar(max_suspension_for_period.where(Suspension.user_id == user_id))
+        return await self._session.scalar(max_suspension_for_period)
 
     async def sum_time_for_period_for_user(
             self,

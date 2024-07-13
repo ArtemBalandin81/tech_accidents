@@ -8,24 +8,27 @@ DATE_PATTERN_FORM = "^([0-2][1-9]|3[0-2])-(0[1-9]|1[0-2])-(202[4-9]|20[3-9][0-9]
 DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
-DISPLAY_TIME = 60 * 24
 FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 
 # Таблица перевода
 TRANSLATION_TABLE = str.maketrans("абвгдеёжзийклмнопрстуфхцчшщъыьэюя", "abvgdeezzijklmnoprstufhccss!y!eui")
 
 TZINFO = timezone(timedelta(hours=settings.TIMEZONE_OFFSET))
-ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=30)).strftime(DATE_TIME_FORMAT)  # todo in settings
+ANALYTIC_FROM_TIME = (datetime.now(TZINFO) - timedelta(days=settings.ANALYTICS_INTERVAL)).strftime(DATE_TIME_FORMAT)
 ANALYTIC_TO_TIME = (datetime.now(TZINFO)).strftime(DATE_TIME_FORMAT)
-CREATE_SUSPENSION_FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).strftime(DATE_TIME_FORMAT)  # todo settings
-CREATE_SUSPENSION_TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).strftime(DATE_TIME_FORMAT)
+CREATE_SUSPENSION_FROM_TIME = (
+    (datetime.now(TZINFO) - timedelta(minutes=settings.CREATE_FROM_TIME)).strftime(DATE_TIME_FORMAT)
+)
+CREATE_SUSPENSION_TO_TIME = (
+    (datetime.now(TZINFO) - timedelta(minutes=settings.CREATE_TO_TIME)).strftime(DATE_TIME_FORMAT)
+)
 CREATE_TASK_START = (datetime.now(TZINFO)).strftime(DATE_FORMAT)
-CREATE_TASK_DEADLINE = (datetime.now(TZINFO) + timedelta(days=7)).strftime(DATE_FORMAT)  # todo in settings
+CREATE_TASK_DEADLINE = (datetime.now(TZINFO) + timedelta(days=settings.DEFAULT_TASK_DEADLINE)).strftime(DATE_FORMAT)
 FILE_NAME_SAVE_FORMAT = (datetime.now(TZINFO)).strftime(FILE_DATETIME_FORMAT)
 FROM_TIME = (datetime.now(TZINFO) - timedelta(minutes=5)).isoformat(timespec='minutes')
 FROM_TIME_NOW = (datetime.now(TZINFO) - timedelta(days=1)).isoformat(timespec='minutes')
 TO_TIME = (datetime.now(TZINFO) - timedelta(minutes=1)).isoformat(timespec='minutes')
-TO_TIME_PERIOD = (datetime.now(TZINFO) - timedelta(minutes=0)).isoformat(timespec='minutes')
+TO_TIME_PERIOD = datetime.now(TZINFO).isoformat(timespec='minutes')
 
 # forms settings
 FILE_NAME_LENGTH = 128
@@ -78,8 +81,6 @@ IS_REGISTERED = " is registered."
 # files_alias
 ARRAYS_DIFFERENCE = "Бесхозные файлы (ids): "
 CHOICE_FORMAT = "Формат представления: "
-# CHOICE_REMOVE = "Удалить бесхозные файлы из каталога?"  # todo delete
-FILES_DELETED = "Files_deleted: "
 FILES_IDS_DELETED = "ids удаленных файлов: "
 FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
@@ -99,7 +100,6 @@ FILES_UPLOADED = "Загруженные файлы"
 FILES_WRITTEN_DB = "Файлы записанные в базу данных"
 GET_FILE_BY_ID = "Получить файл по id: "
 ROUND_FILE_SIZE = 1
-SOME_ID = 1
 SOME_NAME = "dd-mm-2024"  # "could_find_names_and_digits_eng"
 SEARCH_FILES_BY_NAME = "Поиск файлов по имени: "
 SEARCH_FILES_BY_ID = "Поиск файлов по id файлов: "
@@ -112,7 +112,6 @@ FILE_NAME = "Имя файла."
 GET_SEVERAL_FILES = "Получить несколько файлов."
 MANAGE_FILES_UNUSED = "Управление бесхозными файлами (только админ)."
 UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы: "
-
 
 # suspensions_alias
 CREATED = "Дата создания"
@@ -188,7 +187,6 @@ FILES_REMOVE_FORBIDDEN = "Запрещено удалять привязанны
 FIlE_SIZE_EXCEEDED = " Превышен допустимый размер файла к загрузке - "
 FILE_TYPE_DOWNLOAD_NOT_ALLOWED = " - данный тип файла не допустим для закгрузки!"
 FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id или имени файла (не одновременно)!"
-FILE_TASK_DOWNLOAD_NOT_CHOSEN = "Не активирован выбор файлов для загрузки в эндпоинте!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
 NO_USER = "Check USER is not NONE!"
@@ -196,8 +194,6 @@ NOT_FOUND = " - not found!"
 ONLY_AUTHOR = "Только автор и админ могут редактировать!"
 SAME_NAMES = " загружается один файл дважды: "
 START_FINISH_TIME = "Check start_time > finish_time: "
-FINISH_NOW_TIME = "Check finish_time > current_time"
-START_NOW_TIME = "Check start_time < current_time"
 SUSPENSION_FILES_MISMATCH = ". Несоответствие в таблицах SuspensionFiles и Files: "
 TASKS_FILES_MISMATCH = ". Несоответствие в таблицах TasksFiles и Files: "
 TASKS_FILES_REMOVE_AND_SET = "Запрещено одновременно удалять и добавлять файлы. Выберите одно из действий!"

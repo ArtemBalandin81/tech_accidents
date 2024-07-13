@@ -32,10 +32,14 @@ class TaskService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-    async def change_schema_response(self, task: Task) -> dict:
+    async def change_schema_response(self, task: Task, user: User = None, executor: User = None) -> dict:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
-        user = await self._users_repository.get(task.user_id)  # todo user передавать, а не брать из БД если его нет
-        executor = await self._users_repository.get(task.executor_id)  # todo очень затратно!
+        if user is None:
+            user: User = await self._users_repository.get(task.user_id)  # todo очень затратно!
+            await log.ainfo("{}".format(USER_NOT_PROVIDED), user=user)
+        if executor is None:
+            executor: User = await self._users_repository.get(task.executor_id)  # todo очень затратно!
+            await log.ainfo("{}".format(USER_NOT_PROVIDED), executor=executor)
         task_to_dict = task.__dict__
         task_to_dict["user_email"] = user.email
         task_to_dict["executor_email"] = executor.email
@@ -69,18 +73,20 @@ class TaskService:
     async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
             self,
             tasks: Task | Sequence[Task],
+            user: User | None = None,
+            executor: User | None = None
     ) -> Sequence[dict]:
         """Готовит список словарей для отправки в api."""
         list_changed_response = []
         if not isinstance(tasks, Sequence):
             file_names: Sequence[str] = await self.validate_files_exist_and_get_file_names(tasks.id)
-            task_response: dict = await self.change_schema_response(tasks)
+            task_response: dict = await self.change_schema_response(tasks, user, executor)
             task_response["extra_files"]: list[str] = file_names
             list_changed_response.append(task_response)
         else:
             for task in tasks:
                 file_names: Sequence[str] = await self.validate_files_exist_and_get_file_names(task.id)
-                task_response: dict = await self.change_schema_response(task)
+                task_response: dict = await self.change_schema_response(task, user, executor)
                 task_response["extra_files"]: list[str] = file_names
                 list_changed_response.append(task_response)
         return list_changed_response

@@ -118,16 +118,6 @@ class ContentRepository(AbstractRepository, abc.ABC):
             .order_by(self._model.id.desc())
         )
 
-    async def suspension_max_time_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
-        """Считает максимальную разницу между началом и концом за указанный период."""
-        return await self._session.scalar(
-            select(
-                func.max(func.julianday(self._model.suspension_finish) - func.julianday(self._model.suspension_start))
-            )
-            .where(self._model.suspension_start >= suspension_start)
-            .where(self._model.suspension_finish <= suspension_finish)
-        )
-
     async def sum_time_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
         """Считает время в днях за указанный период."""
         return await self._session.scalar(

@@ -64,7 +64,7 @@ async def create_new_task_by_form(
     }
     # 1. Write task in db with pydantic (without attached_files).
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)
-    task_response: dict = await task_service.change_schema_response(new_task)  # todo user передавать, а не брать из БД
+    task_response: dict = await task_service.change_schema_response(new_task, user, executor)
     if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
     # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
@@ -131,7 +131,7 @@ async def create_new_task_by_form_with_files(
         "{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK),
         task_id=task_id, files_ids=files_ids, files_names=files_names
     )
-    task_response: dict = await task_service.change_schema_response(new_task)  # todo user передавать, а не брать из БД
+    task_response: dict = await task_service.change_schema_response(new_task, user, executor)
     task_response["extra_files"]: list[str] = files_names
     return AnalyticTaskResponse(**task_response)
 
@@ -300,7 +300,7 @@ async def get_my_tasks_ordered(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущим пользователем."""
-    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id))  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id), user)  # noqa
 
 
 @task_router.get(
@@ -315,7 +315,7 @@ async def get_my_tasks_todo(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущему пользователю."""
-    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id))  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id), user)  # noqa
 
 
 @task_router.get(
@@ -375,7 +375,7 @@ async def remove_task(
             )
         except Exception as e:  # todo кастомизировать и идентифицировать Exception
             await log.ainfo(
-                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_task),
+                "{}{}{}{}{}".format(TASK, task_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_task),
                 exception=e,
                 task_id=task_id,
                 files=files_to_delete,
