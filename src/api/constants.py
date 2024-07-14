@@ -114,6 +114,8 @@ MANAGE_FILES_UNUSED = "Управление бесхозными файлами 
 UPLOAD_FILES_BY_FORM = "Загрузка файлов из формы: "
 
 # suspensions_alias
+ANALYTICS_START = "Начало периода: "
+ANALYTICS_FINISH = "Окончание периода: "
 CREATED = "Дата создания"
 IMPLEMENTING_MEASURES = "Предпринятые действия"
 MINS_TOTAL = "Сумма простоев в периоде (мин.)"

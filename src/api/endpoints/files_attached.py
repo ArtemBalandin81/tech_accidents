@@ -76,7 +76,7 @@ async def get_files(
     if files_ids_wanted is not None:
         files_to_zip = await file_service.prepare_files_to_work_with(files_ids_wanted, FILES_DIR)
     else:
-        files_db = await file_service.get_all_for_search_word(search_name)  # noqa
+        files_db: Sequence[FileAttached] = await file_service.get_all_for_search_word(search_name)  # noqa
         await log.ainfo("{}{}".format(FILES_RECEIVED, files_db))
         if not files_db:  # if files_db is None - download empty zip-folder instead of raising exception
             await log.aerror("{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))

@@ -174,13 +174,18 @@ class FileService:
         """Удаляет из БД список переданных файлов (файлы удаляются из БД, но остаются физически в каталоге файлов)."""
         return await self._repository.remove_all(FileAttached, files_to_delete)
 
-    async def zip_files(self, files_to_zip: list[Path]) -> Response:
+    async def zip_files(self, files_to_zip: list[Path]) -> Response | dict:
         """Архивирует в zip список переданных файлов."""
         virtual_binary_file = io.BytesIO()  # Open to grab in-memory ZIP contents: virtual binary data file for r & w
         zip_file = zipfile.ZipFile(virtual_binary_file, "w")
         for file_path in files_to_zip:
             file_dir, file_name = os.path.split(file_path)  # Calculate path for file in zip
-            zip_file.write(file_path, file_name)  # Add file, at correct path
+            try:
+                zip_file.write(file_path, file_name)  # Add file, at correct path
+            except FileNotFoundError as e:
+                details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+                await log.aerror(details, files_to_zip=files_to_zip, error=e, file_not_found=file_name)
+                return {"message": e.args, "file_not_found": file_name}
         zip_file.close()  # Must close zip for all contents to be written
         return Response(
             virtual_binary_file.getvalue(),  # Grab ZIP file from in-memory, make response with correct MIME-type
