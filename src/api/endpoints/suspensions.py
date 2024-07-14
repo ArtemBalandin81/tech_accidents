@@ -50,15 +50,12 @@ async def get_all_for_period_time(
     suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # convert in datetime
     if user is None:
         user_id = None
-        suspensions: Sequence[Suspension] = await suspension_service.get_all_for_period_time(
-            suspension_start, suspension_finish
-        )
     else:
         user: User = await users_service.get_by_email(user.value)
         user_id = user.id
-        suspensions: Sequence[Suspension] = await suspension_service.get_suspensions_for_period_for_user(
-            user_id, suspension_start, suspension_finish
-        )
+    suspensions: Sequence[Suspension] = await suspension_service.get_suspensions_for_users(
+        user_id, suspension_start, suspension_finish
+    )
     suspensions_list = await suspension_service.perform_changed_schema(suspensions)
     return AnalyticsSuspensions(
         suspensions_in_mins_total=(
@@ -343,13 +340,13 @@ async def get_all_suspensions(
     summary=SUSPENSION_LIST_CURRENT_USER,
     tags=[SUSPENSIONS_GET]
 )
-async def get_my_suspensions(
+async def get_all_my_suspensions(
     suspension_service: SuspensionService = Depends(),
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticSuspensionResponse]:
     """Все случаи простоя, зафиксированные текущим пользователем."""
     return await suspension_service.perform_changed_schema(  # noqa
-        await suspension_service.get_suspensions_for_user(user.id), user  # noqa
+        await suspension_service.get_all_my_suspensions(user.id), user  # noqa
     )  # noqa
 
 

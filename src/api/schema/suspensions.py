@@ -137,11 +137,11 @@ class SuspensionDeletedResponse(BaseModel):
 class AnalyticsSuspensions(BaseModel):
     """Класс ответа для аналитики случаев простоя за период времени."""
 
-    suspensions_in_mins_total: PositiveInt = Field(..., serialization_alias=MINS_TOTAL)
-    suspensions_total: PositiveInt = Field(..., serialization_alias=SUSPENSION_TOTAl)
-    suspension_max_time_for_period: PositiveInt = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
+    suspensions_in_mins_total: int = Field(..., serialization_alias=MINS_TOTAL)
+    suspensions_total: int = Field(..., serialization_alias=SUSPENSION_TOTAl)
+    suspension_max_time_for_period: int = Field(..., serialization_alias=SUSPENSION_MAX_TIME)
     last_time_suspension: datetime = Field(..., serialization_alias=SUSPENSION_LAST_TIME)
-    last_time_suspension_id: PositiveInt = Field(..., serialization_alias=SUSPENSION_LAST_ID)
+    last_time_suspension_id: int = Field(..., serialization_alias=SUSPENSION_LAST_ID)
     suspensions_list: list[AnalyticSuspensionResponse] = Field(..., serialization_alias=SUSPENSION_LIST)
 
     class Config:

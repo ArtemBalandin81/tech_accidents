@@ -1,6 +1,6 @@
 """src/core/db/repository/base.py"""
+
 import abc
-from datetime import datetime
 from typing import Sequence, TypeVar
 
 from sqlalchemy import delete, func, select, update
@@ -89,41 +89,6 @@ class AbstractRepository(abc.ABC):
 class ContentRepository(AbstractRepository, abc.ABC):
     """Класс контента, для дополнения паттерна Repository."""
 
-    async def count_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
-        """Считает количество случаев за указанные период."""
-        return await self._session.scalar(
-            select(func.count(self._model.suspension_start))
-            .where(self._model.suspension_start >= suspension_start)
-            .where(self._model.suspension_finish <= suspension_finish)
-        )
-
-    async def get_all_for_period_time(
-            self,
-            suspension_start: datetime,
-            suspension_finish: datetime
-    ) -> Sequence[DatabaseModel]:
-        """Возвращает все объекты модели из базы данных за указанный период."""
-        objects = await self._session.scalars(
-            select(self._model)
-            .where(self._model.suspension_start >= suspension_start)
-            .where(self._model.suspension_finish <= suspension_finish)
-            .order_by(self._model.suspension_start.desc())
-        )
-        return objects.all()
-
     async def get_last_id(self) -> int:
-        """Возвращает последний по времени объект модели."""
-        return await self._session.scalar(
-            select(self._model.id)
-            .order_by(self._model.id.desc())
-        )
-
-    async def sum_time_for_period(self, suspension_start: datetime, suspension_finish: datetime) -> int:
-        """Считает время в днях за указанный период."""
-        return await self._session.scalar(
-            select(
-                func.sum(func.julianday(self._model.suspension_finish) - func.julianday(self._model.suspension_start))
-            )
-            .where(self._model.suspension_start >= suspension_start)
-            .where(self._model.suspension_finish <= suspension_finish)
-        )
+        """Возвращает крайний объект модели."""
+        return await self._session.scalar(select(self._model.id).order_by(self._model.id.desc()))

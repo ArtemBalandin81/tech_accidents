@@ -9,7 +9,8 @@ from src.api.constants import *
 from src.api.schema import SuspensionCreate
 from src.core.db import get_session
 from src.core.db.models import FileAttached, Suspension, SuspensionsFiles, User
-from src.core.db.repository import FileRepository, SuspensionRepository, UsersRepository
+from src.core.db.repository import (FileRepository, SuspensionRepository,
+                                    UsersRepository)
 from src.core.enums import TechProcess
 
 log = structlog.get_logger()
@@ -41,7 +42,7 @@ class SuspensionService:
         suspension_to_dict["extra_files"] = []
         return suspension_to_dict
 
-    async def validate_files_exist_and_get_file_names(  # todo сделать универсальный сервис
+    async def validate_files_exist_and_get_file_names(  # move to services/base.py todo
             self,
             suspension_id: int,
     ) -> Sequence[str] | None:
@@ -66,7 +67,7 @@ class SuspensionService:
             raise HTTPException(status_code=206, detail=details)
         return files_names_and_ids_from_file_attached[0]
 
-    async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
+    async def perform_changed_schema(  # move to services/base.py (change_schema_response - своя, а сервис общий) todo
             self,
             suspensions: Suspension | Sequence[Suspension],
             user: User | None = None
@@ -85,7 +86,6 @@ class SuspensionService:
                 suspension_response["extra_files"]: list[str] = file_names
                 list_changed_response.append(suspension_response)
         return list_changed_response
-
 
     async def actualize_object(  # move to services/base.py todo
             self,
@@ -108,13 +108,13 @@ class SuspensionService:
             return await self._repository.create(suspension)
         return await self._repository.update(suspension_id, suspension)
 
-    async def get(self, suspension_id: int) -> Suspension:
+    async def get(self, suspension_id: int) -> Suspension:  # move to services/base.py todo
         """Возвращает объект модели из базы."""
         return await self._repository.get(suspension_id)
 
-    async def get_all(self) -> Sequence[Suspension]:
+    async def get_all(self) -> Sequence[Suspension]:  # move to services/base.py todo
         """Возвращает все объекты модели из базы."""
-        return await self._repository.get_all()  # todo присоединять user, чтобы не делать 1000 запросов к БД
+        return await self._repository.get_all()  # todo сделать новую с user, чтобы не делать 1000 запросов к БД
 
     async def count_suspensions_for_period(
             self,
@@ -122,58 +122,50 @@ class SuspensionService:
             suspension_start: datetime = TO_TIME_PERIOD,
             suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        if user_id is None:
-            return await self._repository.count_for_period(suspension_start, suspension_finish)
-        else:
-            return await self._repository.count_for_period_for_user(user_id, suspension_start, suspension_finish)
+        """Количество простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
+        return await self._repository.count_for_period_for_user(user_id, suspension_start, suspension_finish)
 
-    async def get_all_for_period_time(  # todo needed refactoring and docstrings
-            self,
-            suspension_start: datetime = TO_TIME_PERIOD,
-            suspension_finish: datetime = FROM_TIME_NOW
-    ) -> Sequence[Suspension]:
-        return await self._repository.get_all_for_period_time(suspension_start, suspension_finish)
-
-    async def get_last_suspension_id(self, user_id: int) -> int:  # todo needed refactoring and docstrings
+    async def get_last_suspension_id(self, user_id: int) -> int:
+        """Возвращает id крайнего случая простоя, зафиксированного текущим пользователем (или всех)."""
         if user_id is None:
             return await self._repository.get_last_id()
         else:
             return await self._repository.get_last_id_for_user(user_id)
 
-    async def get_last_suspension_time(self, user_id: int) -> datetime:  # todo needed refactoring and docstrings
+    async def get_last_suspension_time(self, user_id: int) -> datetime:
+        """Возвращает время крайнего случая простоя, зафиксированного текущим пользователем (или всеми)."""
         if user_id is None:
             last_suspension = await self._repository.get(await self._repository.get_last_id())
         else:
             last_suspension = await self._repository.get(await self.get_last_suspension_id(user_id))
         return last_suspension.suspension_start
 
-    async def get_suspensions_for_user(self, user_id: int) -> Sequence[Suspension]:  # todo refactoring and docstrings
+    async def get_all_my_suspensions(self, user_id: int) -> Sequence[Suspension]:
         """Возвращает из БД все случаи простоя, зафиксированные текущим пользователем."""
         return await self._repository.get_suspensions_for_user(user_id)
 
-    async def get_suspensions_for_period_for_user(  # todo needed refactoring and docstrings
+    async def get_suspensions_for_users(
         self,
-        user_id: int,
+        user_id: int | None,
         suspension_start: datetime = TO_TIME_PERIOD,
         suspension_finish: datetime = FROM_TIME_NOW
     ) -> Sequence[Suspension]:
+        """Cписок простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
         return await self._repository.get_suspensions_for_period_for_user(user_id, suspension_start, suspension_finish)
 
-    async def sum_suspensions_time_for_period(  # todo needed refactoring and docstrings
+    async def sum_suspensions_time_for_period(
             self,
-            user_id: int,
+            user_id: int | None,
             suspension_start: datetime = TO_TIME_PERIOD,
             suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        if user_id is None:
-            total_time_suspensions = await self._repository.sum_time_for_period(suspension_start, suspension_finish)
-        else:
-            total_time_suspensions = await self._repository.sum_time_for_period_for_user(
-                user_id, suspension_start, suspension_finish
-            )
+        """Сумма простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
+        total_time_suspensions = await self._repository.sum_time_for_period_for_user(
+            user_id, suspension_start, suspension_finish
+        )
         if total_time_suspensions is None:
             return 0
-        return round(total_time_suspensions * settings.SUSPENSION_DISPLAY_TIME)
+        return round(total_time_suspensions * settings.SUSPENSION_DISPLAY_TIME)  # in mins as part of a day
 
     async def suspension_max_time_for_period(
             self,
@@ -181,7 +173,7 @@ class SuspensionService:
             suspension_start: datetime = TO_TIME_PERIOD,
             suspension_finish: datetime = FROM_TIME_NOW
     ) -> int:
-        """Отдает максимальный простой за период для пользователя, или для всех (если пользователь не передан)."""
+        """Максимальный простой в периоде для пользователя (или для всех, если пользователь не передан)."""
         max_time_for_period = await self._repository.suspension_max_time_for_period_for_user(
             user_id, suspension_start, suspension_finish
         )

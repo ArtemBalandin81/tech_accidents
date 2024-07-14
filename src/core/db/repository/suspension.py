@@ -1,4 +1,5 @@
 """src/core/db/repository/suspension.py"""
+
 from collections.abc import Sequence
 from datetime import datetime
 
@@ -22,15 +23,18 @@ class SuspensionRepository(ContentRepository):
             user_id: int,
             suspension_start: datetime,
             suspension_finish: datetime,
-
     ) -> int:
-        """Считает количество простоев за указанные период для пользователя."""
-        return await self._session.scalar(
-            select(func.count(Suspension.suspension_start))
-            .where(Suspension.user_id == user_id)
-            .where(Suspension.suspension_start >= suspension_start)
-            .where(Suspension.suspension_finish <= suspension_finish)
+        """Считает количество простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
+        total_suspensions_for_period_query = select(
+            func.count(Suspension.suspension_start)
+        ).where(
+            Suspension.suspension_start >= suspension_start
+        ).where(
+            Suspension.suspension_finish <= suspension_finish
         )
+        if user_id is not None:
+            return await self._session.scalar(total_suspensions_for_period_query.where(Suspension.user_id == user_id))
+        return await self._session.scalar(total_suspensions_for_period_query)
 
     async def get_all(self) -> Sequence[Suspension]:  # todo присоединять user, чтобы не делать 1000 запросов к БД
         """Возвращает все объекты модели из базы данных, отсортированные по времени."""
@@ -61,20 +65,25 @@ class SuspensionRepository(ContentRepository):
 
     async def get_suspensions_for_period_for_user(
             self,
-            user_id: int,
+            user_id: int | None,
             suspension_start: datetime,
             suspension_finish: datetime
     ) -> Sequence[Suspension]:
-        """Получить список простоев пользователя за выбранный период времени."""
-        suspensions_for_user_for_period = await self._session.scalars(
-            select(Suspension)
-            .where(Suspension.user_id == user_id)
-            .where(Suspension.suspension_start >= suspension_start)
-            .where(Suspension.suspension_finish <= suspension_finish)
-            .order_by(Suspension.suspension_start.desc())
-            .order_by(Suspension.suspension_start.desc())
+        """Получить список простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
+        suspensions_for_period_query = select(Suspension).where(
+            Suspension.suspension_start >= suspension_start
+        ).where(
+            Suspension.suspension_finish <= suspension_finish
+        ).order_by(
+            Suspension.suspension_start.desc()
         )
-        return suspensions_for_user_for_period.all()
+        if user_id is not None:
+            suspensions_for_period_for_user = await self._session.scalars(
+                suspensions_for_period_query.where(Suspension.user_id == user_id)
+            )
+            return suspensions_for_period_for_user.all()
+        suspensions_for_period_for_users = await self._session.scalars(suspensions_for_period_query)
+        return suspensions_for_period_for_users.all()
 
     async def suspension_max_time_for_period_for_user(
             self,
@@ -82,8 +91,8 @@ class SuspensionRepository(ContentRepository):
             suspension_start: datetime,
             suspension_finish: datetime
     ) -> int:
-        """Считает максимальный простой за период для пользователя, или для всех (если пользователь не передан)."""
-        max_suspension_for_period = select(
+        """Максимальный простой в периоде для пользователя (или для всех, если пользователь не передан)."""
+        max_suspension_for_period_query = select(
             func.max(func.julianday(Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
         ).where(
             Suspension.suspension_start >= suspension_start
@@ -91,8 +100,8 @@ class SuspensionRepository(ContentRepository):
             Suspension.suspension_finish <= suspension_finish
         )
         if user_id is not None:
-            return await self._session.scalar(max_suspension_for_period.where(Suspension.user_id == user_id))
-        return await self._session.scalar(max_suspension_for_period)
+            return await self._session.scalar(max_suspension_for_period_query.where(Suspension.user_id == user_id))
+        return await self._session.scalar(max_suspension_for_period_query)
 
     async def sum_time_for_period_for_user(
             self,
@@ -101,15 +110,19 @@ class SuspensionRepository(ContentRepository):
             suspension_finish: datetime,
 
     ) -> int:
-        """Считает время в днях за указанный период для пользователя."""
-        return await self._session.scalar(
-            select(func.sum(func.julianday(
-                Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
-                   )
-            .where(Suspension.user_id == user_id)
-            .where(Suspension.suspension_start >= suspension_start)
-            .where(Suspension.suspension_finish <= suspension_finish)
+        """Сумма простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
+        sum_time_for_period_query = select(
+            func.sum(
+                func.julianday(Suspension.suspension_finish) - func.julianday(Suspension.suspension_start)
+            )
+        ).where(
+            Suspension.suspension_start >= suspension_start
+        ).where(
+            Suspension.suspension_finish <= suspension_finish
         )
+        if user_id is not None:
+            return await self._session.scalar(sum_time_for_period_query.where(Suspension.user_id == user_id))
+        return await self._session.scalar(sum_time_for_period_query)
 
     async def set_files_to_suspension(self, suspension_id: int, files_ids: list[int]) -> None:
         """Присваивает простою список файлов."""  # in to repository/base.py todo

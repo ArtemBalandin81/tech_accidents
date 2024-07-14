@@ -1,4 +1,5 @@
 """src/api/services/task.py"""
+
 from collections.abc import Sequence
 
 import structlog
@@ -8,10 +9,8 @@ from src.api.constants import *
 from src.api.schema import TaskCreate
 from src.core.db import get_session
 from src.core.db.models import FileAttached, Task, TasksFiles, User
-from src.core.db.repository import FileRepository, TaskRepository, UsersRepository
-# from src.core.db.repository.file_attached import FileRepository  # todo delete
-# from src.core.db.repository.task import TaskRepository  # todo delete
-# from src.core.db.repository.users import UsersRepository  # todo delete
+from src.core.db.repository import (FileRepository, TaskRepository,
+                                    UsersRepository)
 from src.core.enums import TechProcess
 
 log = structlog.get_logger()
@@ -70,7 +69,7 @@ class TaskService:
             raise HTTPException(status_code=206, detail=details)
         return files_names_and_ids_from_file_attached[0]
 
-    async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
+    async def perform_changed_schema(  # move to services/base.py (change_schema_response - своя, а сервис общий) todo
             self,
             tasks: Task | Sequence[Task],
             user: User | None = None,
@@ -116,7 +115,7 @@ class TaskService:
         """Возвращает объект модели из базы."""
         return await self._repository.get(task_id)
 
-    async def get_all(self) -> Sequence[Task]:
+    async def get_all(self) -> Sequence[Task]:  # move to services/base.py todo
         """Возвращает все объекты модели из базы."""
         return await self._repository.get_all()
 

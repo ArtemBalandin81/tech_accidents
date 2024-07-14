@@ -1,4 +1,5 @@
 """src/core/db/repository/task.py"""
+
 from collections.abc import Sequence
 
 from fastapi import Depends
@@ -16,7 +17,7 @@ class TaskRepository(ContentRepository):
     def __init__(self, session: AsyncSession = Depends(get_session)) -> None:
         super().__init__(session, Task)
 
-    async def get_all(self) -> Sequence[Task]:
+    async def get_all(self) -> Sequence[Task]:  # rename and move base.py todo
         """Возвращает все задачи из базы данных, отсортированные по времени."""
         objects = await self._session.scalars(
             select(Task)
@@ -24,7 +25,7 @@ class TaskRepository(ContentRepository):
         )
         return objects.all()
 
-    async def get_all_id_sorted(self) -> Sequence[Task]:
+    async def get_all_id_sorted(self) -> Sequence[Task]:  # rename and move base.py todo
         """Возвращает все задачи из базы данных, отсортированные по id."""
         objects = await self._session.scalars(
             select(Task)
