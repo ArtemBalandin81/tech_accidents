@@ -21,18 +21,23 @@ def get_env_path() -> Path | None:
 
 class Settings(BaseSettings):
     """Настройки проекта."""
+    ANALYTICS_INTERVAL: int = 30  # time shift (in days) to display total suspensions
     APP_TITLE: str = "Учет фактов простоя ИС"
     APP_DESCRIPTION: str = "Журнал учета фактов простоя информационной системы УК ПИФ"
     APPLICATION_URL: str = "localhost"
+    CREATE_FROM_TIME: int = 5  # time shift (in mins) when creating suspensions in forms
+    CREATE_TO_TIME: int = 1  # time shift (in mins) when creating suspensions in forms
+    DEFAULT_TASK_DEADLINE: int = 7  # typical task deadline in days
     DEBUG: bool = False
     FILES_DOWNLOAD_DIR: str = "uploaded_files"
     FILE_TYPE_DOWNLOAD: str | list = ("doc", "docx", "xls", "xlsx", "img", "png", "txt", "pdf", "jpeg")
-    MAX_FILE_SIZE_DOWNLOAD: int = 10000  # Максимальный допустимый к загрузке размер файла в кб
+    MAX_FILE_SIZE_DOWNLOAD: int = 10000  # Max available file size in kb
     ROOT_PATH: str = "/api"
     SECRET_KEY: str = "secret_key"
+    SUSPENSION_DISPLAY_TIME: int = 60 * 24  # in mins as part of a day
     TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
 
-    # Параметры подключения к БД
+    # Database connection preferences
     DATABASE_URL: str = "sqlite+aiosqlite:///./tech_accident_db_local.db"
     DATABASE_NAME: str = "tech_accident_db_local.db"
     DB_BACKUP: bool = True
@@ -46,19 +51,19 @@ class Settings(BaseSettings):
     # DB_HOST: str = "localhost"
     # DB_PORT: int = 5432
 
-    # Настройки логирования
+    # Logging preferences
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str | Path = BASE_DIR.joinpath("logs")
     LOG_FILE: str = "app.log"
     LOG_FILE_SIZE: int = 10 * 2**20
     LOG_FILES_TO_KEEP: int = 5
 
-    # Настройки тестирования доступа к Интернет
+    # Internet access test preferences
     CONNECTION_TEST_URL_BASE: str = "https://www.agidel-am.ru"
     CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
 
-    # Настройки ENUM-класса в форме выбора загрузки и удаления файлов
+    # Download and delete files form ENUM-class preferences
     CHOICE_DOWNLOAD_FILES: str = '{"JSON": "json", "FILES": "files"}'
     CHOICE_REMOVE_FILES_UNUSED: str = (
         '{"DB_UNUSED": "unused_in_db",'
@@ -67,20 +72,20 @@ class Settings(BaseSettings):
         ' "FOLDER_UNUSED_REMOVE": "delete_unused_in_folder"}'
     )
 
-    # Настройки ENUM-класса персонала для постановки задач
+    # Staff ENUM-class preferences for tasks
     BOT_USER: int = 2
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
         ' "100": "error_of_load_users@please_check.env"}'
     )
-    # Настройки ENUM-класса тех.процессов для фиксации простоев
-    INTERNET_ACCESS_TECH_PROCESS: int = 25  # Наиболее критический к отсутствию доступа в Интернет ТП в Организации
+    # Tech-processes suspensions ENUM-class preferences
+    INTERNET_ACCESS_TECH_PROCESS: int = 25
     TECH_PROCESS: str = (
         '{"DU_25": "25",'
         ' "SPEC_DEP_26": "26",'
         ' "CLIENTS_27": "27"}'
     )
-    # Настройки ENUM-класса угроз для фиксации простоев
+    # Risk sources ENUM-class preferences
     RISK_SOURCE: str = (
         '{"99": "unload_risk_source_please_check.env.",'
         ' "100": "error_of_load_risk_accident_source@please_check.env",'

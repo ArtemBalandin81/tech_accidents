@@ -1,6 +1,6 @@
 """src/core/db/repository/base.py"""
+
 import abc
-from datetime import datetime
 from typing import Sequence, TypeVar
 
 from sqlalchemy import delete, func, select, update
@@ -89,47 +89,6 @@ class AbstractRepository(abc.ABC):
 class ContentRepository(AbstractRepository, abc.ABC):
     """Класс контента, для дополнения паттерна Repository."""
 
-    async def count_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает количество случаев за указанные период."""
-        return await self._session.scalar(
-            select(func.count(self._model.datetime_start))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-        )
-
-    async def get_all_for_period_time(
-            self,
-            datetime_start: datetime,
-            datetime_finish: datetime
-    ) -> Sequence[DatabaseModel]:
-        """Возвращает все объекты модели из базы данных за указанный период."""
-        objects = await self._session.scalars(
-            select(self._model)
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-            .order_by(self._model.datetime_start.desc())
-        )
-        return objects.all()
-
     async def get_last_id(self) -> int:
-        """Возвращает последний по времени объект модели."""
-        return await self._session.scalar(
-            select(self._model.id)
-            .order_by(self._model.id.desc())
-        )
-
-    async def suspension_max_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает максимальную разницу между началом и концом за указанный период."""
-        return await self._session.scalar(
-            select(func.max(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-        )
-
-    async def sum_time_for_period(self, datetime_start: datetime, datetime_finish: datetime) -> int:
-        """Считает время в днях за указанный период."""
-        return await self._session.scalar(
-            select(func.sum(func.julianday(self._model.datetime_finish) - func.julianday(self._model.datetime_start)))
-            .where(self._model.datetime_start >= datetime_start)
-            .where(self._model.datetime_finish <= datetime_finish)
-        )
+        """Возвращает крайний объект модели."""
+        return await self._session.scalar(select(self._model.id).order_by(self._model.id.desc()))

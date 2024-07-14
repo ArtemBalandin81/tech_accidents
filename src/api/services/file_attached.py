@@ -1,9 +1,11 @@
 """src/api/services/file_attached.py"""
+
 import io
 import os
 import zipfile
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import structlog
@@ -12,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.api.constants import *
 from src.api.schema import FileCreate
 from src.core.db import get_session
-from src.core.db.models import FileAttached, TasksFiles
+from src.core.db.models import FileAttached, SuspensionsFiles, TasksFiles
 from src.core.db.repository.file_attached import FileRepository
 from src.core.db.repository.task import TaskRepository
 from src.core.db.repository.users import UsersRepository
@@ -154,23 +156,36 @@ class FileService:
             await log.aerror(details)
             raise HTTPException(status_code=406, detail=details)
 
-    async def delete_files_in_folder(self, files_to_delete: Sequence[Path]) -> Sequence[Path]:
+    async def delete_files_in_folder(
+            self, files_to_delete: Sequence[Path]
+    ) -> Sequence[Path] | dict[str, tuple[Any, ...]]:
         """Удаляет из каталога список переданных файлов (физическое удаление файлов)."""
         for file in files_to_delete:
-            file.unlink()
-        return files_to_delete
+            try:
+                file.unlink()
+            except FileNotFoundError as e:
+                details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+                await log.aerror(details, file_to_remove=file)
+                # raise HTTPException(status_code=403, detail=details)
+                return {"message": e.args}
+            return files_to_delete
 
     async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
         """Удаляет из БД список переданных файлов (файлы удаляются из БД, но остаются физически в каталоге файлов)."""
         return await self._repository.remove_all(FileAttached, files_to_delete)
 
-    async def zip_files(self, files_to_zip: list[Path]) -> Response:
+    async def zip_files(self, files_to_zip: list[Path]) -> Response | dict:
         """Архивирует в zip список переданных файлов."""
         virtual_binary_file = io.BytesIO()  # Open to grab in-memory ZIP contents: virtual binary data file for r & w
         zip_file = zipfile.ZipFile(virtual_binary_file, "w")
         for file_path in files_to_zip:
             file_dir, file_name = os.path.split(file_path)  # Calculate path for file in zip
-            zip_file.write(file_path, file_name)  # Add file, at correct path
+            try:
+                zip_file.write(file_path, file_name)  # Add file, at correct path
+            except FileNotFoundError as e:
+                details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+                await log.aerror(details, files_to_zip=files_to_zip, error=e, file_not_found=file_name)
+                return {"message": e.args, "file_not_found": file_name}
         zip_file.close()  # Must close zip for all contents to be written
         return Response(
             virtual_binary_file.getvalue(),  # Grab ZIP file from in-memory, make response with correct MIME-type
@@ -225,16 +240,18 @@ class FileService:
         relations: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
         return [relation.file_id for relation in relations]
 
-    async def get_all_file_names_from_tasks(self) -> Sequence[str]:
-        """Отдает имена файлов, привязанных ко всем задачам."""
-        files: Sequence[FileAttached] = await self._task_repository.get_all_files_from_tasks()
-        return [file.name for file in files]
+    async def get_all_file_ids_from_all_models(self) -> list[int]:  # todo делать одним запросом в БД
+        """Отдает ids файлов, привязанных ко всем моделям."""
+        files_from_tasks: Sequence[TasksFiles] = await self._repository.get_all_files_from_tasks()
+        files_from_suspensions: Sequence[SuspensionsFiles] = await self._repository.get_all_files_from_suspensions()
+        ids_from_tasks: list[int] = [relation.file_id for relation in files_from_tasks]
+        ids_from_suspensions: list[int] = [relation.file_id for relation in files_from_suspensions]
+        return ids_from_tasks + ids_from_suspensions
 
     async def remove_files(self, files: Sequence[int], folder: Path) -> Sequence[Path]:
         """Проверяет привязку файлов к задачам, простоям и удаляет их из каталога, но только если они есть в БД."""
-        intersection: Sequence[int] = await self.get_arrays_intersection(
-            np.array(files), np.array(await self.get_all_file_ids_from_tasks())
-        )
+        all_file_ids: list[int] = await self.get_all_file_ids_from_all_models()
+        intersection: Sequence[int] = await self.get_arrays_intersection(np.array(files), np.array(all_file_ids))
         if any(intersection):  # truth value of an array with more than 1 element is ambiguous. Use a.any() or a.all()
             details = "{}{}".format(FILES_REMOVE_FORBIDDEN, intersection)
             await log.aerror(details, intersection=intersection)

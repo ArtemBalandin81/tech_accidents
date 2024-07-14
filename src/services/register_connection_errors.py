@@ -25,8 +25,8 @@ class ConnectionErrorService:
     def __init__(self, sessionmaker: Generator[AsyncSession, None, None] = get_session) -> None:
         self._sessionmaker = contextlib.asynccontextmanager(sessionmaker)
         self.suspension_example = {
-            "datetime_start": datetime.now(TZINFO) - timedelta(minutes=5),
-            "datetime_finish": datetime.now(TZINFO),
+            "suspension_start": datetime.now(TZINFO) - timedelta(minutes=5),
+            "suspension_finish": datetime.now(TZINFO),
             "risk_accident": ROUTER_ERROR,
             "tech_process": settings.INTERNET_ACCESS_TECH_PROCESS,
             "description": INTERNET_ERROR,
@@ -90,8 +90,8 @@ class ConnectionErrorService:
                         counter=time_counter
                     )
                     suspension = self.suspension_example  # фиксируется время простоя и заносится в БД
-                    suspension["datetime_start"] = suspension_start
-                    suspension["datetime_finish"] = datetime.now(TZINFO)
+                    suspension["suspension_start"] = suspension_start
+                    suspension["suspension_finish"] = datetime.now(TZINFO)
                     await self.run_create_suspension(suspension)
                     time_counter = settings.SLEEP_TEST_CONNECTION  # обнуляем счетчик, если соединение восстановилось
                     suspension_start = None  # обнуляем счетчик времени старта простоя

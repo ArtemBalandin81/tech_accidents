@@ -1,4 +1,5 @@
 """src/api/services/task.py"""
+
 from collections.abc import Sequence
 
 import structlog
@@ -8,9 +9,8 @@ from src.api.constants import *
 from src.api.schema import TaskCreate
 from src.core.db import get_session
 from src.core.db.models import FileAttached, Task, TasksFiles, User
-from src.core.db.repository.file_attached import FileRepository
-from src.core.db.repository.task import TaskRepository
-from src.core.db.repository.users import UsersRepository
+from src.core.db.repository import (FileRepository, TaskRepository,
+                                    UsersRepository)
 from src.core.enums import TechProcess
 
 log = structlog.get_logger()
@@ -31,10 +31,14 @@ class TaskService:
         self._users_repository: UsersRepository = users_repository
         self._session: AsyncSession = session
 
-    async def change_schema_response(self, task: Task) -> dict:
+    async def change_schema_response(self, task: Task, user: User = None, executor: User = None) -> dict:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
-        user = await self._users_repository.get(task.user_id)
-        executor = await self._users_repository.get(task.executor)  # todo поменять на executor_id: в модели и тут
+        if user is None:
+            user: User = await self._users_repository.get(task.user_id)  # todo очень затратно!
+            await log.ainfo("{}".format(USER_NOT_PROVIDED), user=user)
+        if executor is None:
+            executor: User = await self._users_repository.get(task.executor_id)  # todo очень затратно!
+            await log.ainfo("{}".format(USER_NOT_PROVIDED), executor=executor)
         task_to_dict = task.__dict__
         task_to_dict["user_email"] = user.email
         task_to_dict["executor_email"] = executor.email
@@ -65,26 +69,28 @@ class TaskService:
             raise HTTPException(status_code=206, detail=details)
         return files_names_and_ids_from_file_attached[0]
 
-    async def perform_changed_schema(  # todo сделать универсальный сервис под разные модели и перенести в base
+    async def perform_changed_schema(  # move to services/base.py (change_schema_response - своя, а сервис общий) todo
             self,
             tasks: Task | Sequence[Task],
+            user: User | None = None,
+            executor: User | None = None
     ) -> Sequence[dict]:
         """Готовит список словарей для отправки в api."""
         list_changed_response = []
         if not isinstance(tasks, Sequence):
             file_names: Sequence[str] = await self.validate_files_exist_and_get_file_names(tasks.id)
-            task_response: dict = await self.change_schema_response(tasks)
+            task_response: dict = await self.change_schema_response(tasks, user, executor)
             task_response["extra_files"]: list[str] = file_names
             list_changed_response.append(task_response)
         else:
             for task in tasks:
                 file_names: Sequence[str] = await self.validate_files_exist_and_get_file_names(task.id)
-                task_response: dict = await self.change_schema_response(task)
+                task_response: dict = await self.change_schema_response(task, user, executor)
                 task_response["extra_files"]: list[str] = file_names
                 list_changed_response.append(task_response)
         return list_changed_response
 
-    async def actualize_object(
+    async def actualize_object(  # move to services/base.py todo
             self,
             task_id: int | None,
             in_object: TaskCreate | dict,
@@ -109,7 +115,7 @@ class TaskService:
         """Возвращает объект модели из базы."""
         return await self._repository.get(task_id)
 
-    async def get_all(self) -> Sequence[Task]:
+    async def get_all(self) -> Sequence[Task]:  # move to services/base.py todo
         """Возвращает все объекты модели из базы."""
         return await self._repository.get_all()
 
@@ -130,20 +136,20 @@ class TaskService:
         await self._repository.remove(await self._repository.get(task_id))
 
     async def set_files_to_task(self, task_id: int, files_ids: list[int]) -> None:
-        """Присваивает задаче список файлов."""
+        """Присваивает задаче список файлов."""  # move to services/base.py todo
         await self._repository.set_files_to_task(task_id, files_ids)
 
-    async def get_file_ids_from_task(self, task_id: int) -> Sequence[int]:
+    async def get_file_ids_from_task(self, task_id: int) -> Sequence[int]:  # move to services/base.py todo
         """Получить список ids файлов, привязанных к задаче, из таблицы TasksFiles m-t-m."""
         task_files_relations: Sequence[TasksFiles] = await self._repository.get_task_files_relations(task_id)
         return [relation.file_id for relation in task_files_relations]
 
-    async def get_file_names_and_ids_from_task(self, task_id: int) -> tuple[list[str], list[int]]:
+    async def get_file_names_and_ids_from_task(self, task_id: int) -> tuple[list[str], list[int]]:  # todo
         """Отдает кортеж из списка имен и ids файлов, привязанных к задаче из таблицы FileAttached."""
         files: Sequence[FileAttached] = await self._repository.get_files_from_task(task_id)
         return [file.name for file in files], [file.id for file in files]
 
-    async def get_all_file_names_and_ids_from_tasks(self) -> tuple[list[str], list[int]]:
-        """Отдает кортеж из списка имен и ids файлов, привязанных ко всем задачам."""
+    async def get_all_file_names_and_ids_from_tasks(self) -> tuple[list[str], list[int]]:  # todo
+        """Отдает кортеж из списка имен и ids файлов, привязанных ко всем задачам."""  # move to services/base.py todo
         files: Sequence[FileAttached] = await self._repository.get_all_files_from_tasks()
         return [file.name for file in files], [file.id for file in files]

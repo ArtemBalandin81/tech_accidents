@@ -22,8 +22,8 @@ from src.settings import settings
 log = structlog.get_logger()
 file_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
 
 async def file_uploader(files: list[UploadFile]):
@@ -76,7 +76,7 @@ async def get_files(
     if files_ids_wanted is not None:
         files_to_zip = await file_service.prepare_files_to_work_with(files_ids_wanted, FILES_DIR)
     else:
-        files_db = await file_service.get_all_for_search_word(search_name)  # noqa
+        files_db: Sequence[FileAttached] = await file_service.get_all_for_search_word(search_name)  # noqa
         await log.ainfo("{}{}".format(FILES_RECEIVED, files_db))
         if not files_db:  # if files_db is None - download empty zip-folder instead of raising exception
             await log.aerror("{}{}{}".format(SEARCH_FILES_BY_NAME, search_name, NOT_FOUND))
@@ -132,17 +132,17 @@ async def get_files_unused(
     options_for_files_unused = settings.CHOICE_REMOVE_FILES_UNUSED.split('"')
     file_names_and_ids_in_db: tuple[list[str], list[int]] = await file_service.get_all_db_file_names_and_ids()
     if choices_with_files_unused == options_for_files_unused[3]:  # == "unused_in_db"
-        file_ids_in_tasks: Sequence[int] = await file_service.get_all_file_ids_from_tasks()
+        all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
         file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
-            file_names_and_ids_in_db[1], file_ids_in_tasks
+            file_names_and_ids_in_db[1], all_file_ids_attached
         )
         files_unused: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_unused)
         await log.ainfo("{}{}".format(FILES_UNUSED_IN_DB, files_unused))
         return FileDBUnusedResponse(files_unused_in_db=files_unused)
     elif choices_with_files_unused == options_for_files_unused[7]:  # == "remove_unused_in_db"
-        file_ids_in_tasks: Sequence[int] = await file_service.get_all_file_ids_from_tasks()
+        all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
         file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
-            file_names_and_ids_in_db[1], file_ids_in_tasks
+            file_names_and_ids_in_db[1], all_file_ids_attached
         )
         files_unused: Sequence[FileAttached] = await file_service.get_by_ids(file_ids_unused)
         if not files_unused:

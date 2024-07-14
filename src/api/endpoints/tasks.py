@@ -23,8 +23,8 @@ from src.settings import settings
 log = structlog.get_logger()
 task_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
 
 
 @task_router.post(
@@ -60,11 +60,11 @@ async def create_new_task_by_form(
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
-        "executor": executor.id,
+        "executor_id": executor.id,
     }
     # 1. Write task in db with pydantic (without attached_files).
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)
-    task_response: dict = await task_service.change_schema_response(new_task)
+    task_response: dict = await task_service.change_schema_response(new_task, user, executor)
     if file_to_upload is None:
         return AnalyticTaskResponse(**task_response)
     # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
@@ -115,7 +115,7 @@ async def create_new_task_by_form_with_files(
         "task": task,
         "tech_process": tech_process.value,
         "description": description,
-        "executor": executor.id,
+        "executor_id": executor.id,
     }
     new_task: Task = await task_service.actualize_object(None, TaskCreate(**task_object), user)  # 1. Write task in db
     # 2. Download and write files in db and make records in tables "files" & "tasks_files" in db:
@@ -125,13 +125,14 @@ async def create_new_task_by_form_with_files(
     )
     task_id = new_task.id
     files_ids = file_names_and_ids[1]
+    files_names = file_names_and_ids[0]
     await task_service.set_files_to_task(task_id, files_ids)
     await log.ainfo(
         "{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK),
-        task_id=task_id, files_ids=files_ids, files_names=file_names_and_ids[0]
+        task_id=task_id, files_ids=files_ids, files_names=files_names
     )
-    task_response: dict = await task_service.change_schema_response(new_task)
-    task_response["extra_files"]: list[str] = file_names_and_ids[0]
+    task_response: dict = await task_service.change_schema_response(new_task, user, executor)
+    task_response["extra_files"]: list[str] = files_names
     return AnalyticTaskResponse(**task_response)
 
 
@@ -181,7 +182,7 @@ async def partially_update_task_by_form(
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
     executor_email: Executor = Query(None, alias=TASK_EXECUTOR_MAIL),
     file_to_upload: UploadFile = None,
-    to_unlink_files: bool = Query(None, alias=TASK_FILES_UNLINK),
+    to_unlink_files: bool = Query(None, alias=FILES_UNLINK),
     task_service: TaskService = Depends(),
     users_service: UsersService = Depends(),
     file_service: FileService = Depends(),
@@ -202,9 +203,9 @@ async def partially_update_task_by_form(
         "task_start": task_start,
         "deadline": deadline,
         "task": task_from_db.task if task is None else task,
-        "tech_process": task_from_db.tech_process if tech_process is None else tech_process,
+        "tech_process": str(task_from_db.tech_process) if tech_process is None else tech_process,
         "description": task_from_db.description if description is None else description,
-        "executor": task_from_db.executor if executor_email is None else executor.id,  # noqa
+        "executor_id": task_from_db.executor_id if executor_email is None else executor.id,  # noqa
         "is_archived": task_from_db.is_archived if is_archived is None else is_archived
     }
     edited_task: Task = await task_service.actualize_object(task_id, TaskCreate(**task_object), user)
@@ -217,12 +218,15 @@ async def partially_update_task_by_form(
         await task_service.set_files_to_task(task_id, [])
         edited_task_response[0]["extra_files"]: list[str] = []
         if file_names_and_ids_set_to_task[1]:
-            await file_service.remove_files(file_names_and_ids_set_to_task[1], FILES_DIR)
+            all_file_ids_attached: list[int] = await file_service.get_all_file_ids_from_all_models()
+            file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
+                file_names_and_ids_set_to_task[1], all_file_ids_attached
+            )
+            await file_service.remove_files(file_ids_unused, FILES_DIR)
             await log.ainfo(
-                "{}{}{}{}{}".format(TASK_PATCH_FORM, task_id, SPACE, FILES_SET_TO, DELETED_OK),
+                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
                 task_id=task_id,
-                files_ids=file_names_and_ids_set_to_task[1],
-                files_names=file_names_and_ids_set_to_task[0]
+                files=file_ids_unused,
             )
         await log.ainfo(
             "{}{}".format(TASK_PATCH_FORM, task_id),
@@ -252,11 +256,6 @@ async def partially_update_task_by_form(
             files_ids=new_file_ids, files_names=new_file_names
         )
         return AnalyticTaskResponse(**edited_task_response[0])
-    await log.ainfo("{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}{}".format(
-        TASK_PATCH_FORM, task_id, SPACE, TASK, task, SPACE, TASK_DESCRIPTION, description, SPACE, IS_ARCHIVED, SPACE,
-        is_archived, SPACE, TECH_PROCESS, tech_process, SPACE, TASK_FINISH, deadline, SPACE, TASK_EXECUTOR,
-        executor_email)
-    )
     await log.ainfo(
         "{}{}".format(TASK_PATCH_FORM, task_id),
         task_id=task_id, task=task, task_description=description, is_archived=is_archived, deadline=deadline,
@@ -301,7 +300,7 @@ async def get_my_tasks_ordered(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущим пользователем."""
-    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id))  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id), user)  # noqa
 
 
 @task_router.get(
@@ -316,7 +315,7 @@ async def get_my_tasks_todo(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущему пользователю."""
-    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id))  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id), user)  # noqa
 
 
 @task_router.get(
@@ -367,11 +366,25 @@ async def remove_task(
         )
         await task_service.set_files_to_task(task_id, [])
         await log.ainfo("{}{}{}{}".format(TASK, task_id, FILES_ATTACHED_TO_TASK, []), task_id=task_id, files=[])
-        await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
-        await log.ainfo(
-            "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
-            task_id=task_id, files=files_to_delete,
-        )
+        try:  # if files are attached to another models, they won't be deleted!!!
+            await file_service.remove_files(files_ids_set_to_task, FILES_DIR)
+            await log.ainfo(
+                "{}{}{}{}".format(TASK, task_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),
+                task_id=task_id,
+                files=files_to_delete,
+            )
+        except Exception as e:  # todo кастомизировать и идентифицировать Exception
+            await log.ainfo(
+                "{}{}{}{}{}".format(TASK, task_id, SPACE, FILES_IDS_INTERSECTION, files_ids_set_to_task),
+                exception=e,
+                task_id=task_id,
+                files=files_to_delete,
+                intersection=files_ids_set_to_task,
+            )
+            await task_service.remove(task_id)
+            await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
+            task_to_delete_response["extra_files"] = files_to_delete
+            return TaskDeletedResponse(task_deleted=[task_to_delete_response], files_ids=files_ids_set_to_task)
         task_to_delete_response["extra_files"] = files_to_delete
     await task_service.remove(task_id)
     await log.ainfo("{}{}{}".format(TASK, task_id, DELETED_OK))
