@@ -39,9 +39,12 @@ class Settings(BaseSettings):
 
     # Database connection preferences
     DATABASE_URL: str = "sqlite+aiosqlite:///./tech_accident_db_local.db"
+    DATABASE_URL_TEST: str = "sqlite+aiosqlite:///./test_db.db"
     DATABASE_NAME: str = "tech_accident_db_local.db"
     DB_BACKUP: bool = True
     DB_BACKUP_DIR: str = "db_backups"
+    ECHO: bool = False  # echo=True display SQL-queries in console for main DB
+    ECHO_TEST_DB: bool = False  # echo=True display SQL-queries in console for test DB
     MAX_DB_BACKUP_FILES: int = 50
     SLEEP_DB_BACKUP: int = 60 * 60 * 24
     TIMEZONE_OFFSET: int = 5

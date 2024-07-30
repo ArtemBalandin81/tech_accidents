@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from src.settings import settings
 
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)  # echo=True см. SQL-запросы в консоли
+engine = create_async_engine(settings.DATABASE_URL, echo=settings.ECHO)  # echo=True см. SQL-запросы в консоли
 # connect_args={"check_same_thread": False} - только для SQLlite
 # connect_args для create_async_engine не нужен!!!
 
