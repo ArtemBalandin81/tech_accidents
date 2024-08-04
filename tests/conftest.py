@@ -9,6 +9,7 @@ import pytest
 import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -130,7 +131,10 @@ def event_loop():
 @pytest.fixture
 async def super_user_orm(async_db: AsyncSession) -> User:
     """Create super_user in database"""
-    super_user = User(email="super_user_fixture@nofoobar.com", hashed_password="super_testing", is_superuser=True)
+    email = "super_user_fixture@f.com"
+    password = "testings"
+    pwd_context = CryptContext(schemes=["bcrypt"])  # hash password
+    super_user = User(email=email, hashed_password=pwd_context.hash(password), is_superuser=True)
     async_db.add(super_user)
     await async_db.commit()
     await async_db.refresh(super_user)
@@ -140,7 +144,10 @@ async def super_user_orm(async_db: AsyncSession) -> User:
 @pytest.fixture
 async def user_orm(async_db: AsyncSession) -> User:
     """Create user in database"""
-    user = User(email="user_fixture@nofoobar.com", hashed_password="user_testing", is_superuser=False)
+    email = "user_fixture@f.com"
+    password = "testings"
+    pwd_context = CryptContext(schemes=["bcrypt"])  # hash password
+    user = User(email=email, hashed_password=pwd_context.hash(password), is_superuser=False)
     async_db.add(user)
     await async_db.commit()
     await async_db.refresh(user)
