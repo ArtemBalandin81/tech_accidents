@@ -6,6 +6,7 @@ pytest -vs
 https://anyio.readthedocs.io/en/stable/testing.html
 """
 
+import json
 import pytest
 import structlog
 from httpx import AsyncClient
@@ -21,6 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from src.core.db.models import User
 from src.settings import settings
+from tests.conftest import remove_all
 
 pytestmark = pytest.mark.anyio  # make all test mark with `anyio`
 
@@ -53,9 +55,9 @@ async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
     login_url = "/api/auth/jwt/login"
     logout_url = "/api/auth/jwt/logout"
     get_users_id_url = "/api/users/{id}"
-    patch_users_id_url = "/api/users/{id}"  # todo + проверить суперюзером
+    patch_users_id_url = "/api/users/{id}"
     patch_users_me_url = "/api/users/me"
-    e = "/api/users"  # todo + проверить админом!!!
+    get_api_users_url = "/api/users"
 
     # todo сделай красиво в цикле по словарю как было в спринте, постарайся!!!
     # routing = {
@@ -85,6 +87,7 @@ async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
         response_get_users_id_url = await ac.get(get_users_id_url)  # GET "/api/users/{id}"
         response_patch_users_id_url = await ac.patch(get_users_id_url)  # PATCH "/api/users/{id}"
         response_patch_users_me_url = await ac.patch(patch_users_me_url)  # PATCH "/api/users/me"
+        response_get_api_users_url = await ac.get(get_api_users_url)  # GET "/api/users"
 
     assert response_get_users_me.status_code == 401, f"Unauthorized get {users_me_url} but shouldn't"
     await log.ainfo("get_users_me", response=response_get_users_me.json(), url=response_get_users_me.url,
@@ -122,7 +125,12 @@ async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
     await log.ainfo("patch_users_me", response=response_patch_users_me_url.json(), url=patch_users_me_url,
                     status_code=response_patch_users_me_url.status_code)
 
+    assert response_get_api_users_url.status_code == 401, f"Unauthorized get {get_api_users_url} but shouldn't"
+    await log.ainfo("get_api_users", response=response_get_api_users_url.json(), url=get_api_users_url,
+                    status_code=response_get_api_users_url.status_code)
+
 # todo refactorings!!!
+# + todo тесты на разные парольные политики
 async def test_user_create_login_and_logout(async_client: AsyncClient, async_db: AsyncSession) -> None:
     """
     Тестирует эндпоинт регистрации пользователей, логин и логаут:
@@ -204,14 +212,11 @@ async def test_super_user_get_users_id(
     assert response_users_id.json()["email"] == user_orm.email, (
         f"Requested users email: {user_orm.email} doesn't match response {response_users_id.json()['email']}"
     )
-    await log.ainfo("post_users_id_by_super_user", response=response_users_id.json(), url=response_users_id.url,
-                    status_code=response_users_id.status_code, login_data=login_data)
-    users = await async_db.scalars(select(User))  # delete all users to clean the database and isolate tests
-    users_ids = [user.id for user in users.all()]
-    await async_db.execute(delete(User).where(User.id.in_(users_ids)))
-    users = await async_db.scalars(select(User))
-    users_ids_after_remove = [user.id for user in users.all()]
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    await log.ainfo("post_users_id_by_super_user", response=response_users_id.json(), url=response_users_id.url,
+                    status_code=response_users_id.status_code, login_data=login_data,
+                    users_ids_after_remove=users_ids_after_remove)
 
 
 async def test_super_user_patch_users_id(
@@ -256,17 +261,12 @@ async def test_super_user_patch_users_id(
     assert response.json()["email"] == edited_user_data["email"], (
         f"Edited users email: {edited_user_data['email']} doesn't match response {response.json()['email']}"
     )
-    users = await async_db.scalars(select(User))  # delete all users to clean the database and isolate tests
-    all_users = users.all()
-    users_ids = [user.id for user in all_users]
-    users_emails = [user.email for user in all_users]
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+
     await log.ainfo("patch_users_id_by_user", response=response.json(), url=response.url, edited_data=edited_user_data,
                     status_code=response.status_code, login_data=login_data, new_email=response.json()["email"],
-                    id=response.json()["id"], users_ids=users_ids, emails=users_emails)
-    await async_db.execute(delete(User).where(User.id.in_(users_ids)))
-    users = await async_db.scalars(select(User))
-    users_ids_after_remove = [user.id for user in users.all()]
-    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+                    id=response.json()["id"], users_ids_after_remove=users_ids_after_remove)
 
 
 async def test_user_patch_users_me(async_client: AsyncClient, async_db: AsyncSession, user_orm: User) -> None:
@@ -292,21 +292,58 @@ async def test_user_patch_users_me(async_client: AsyncClient, async_db: AsyncSes
         f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
     )
     assert response_login_edited_user.status_code == 200, f"Edited User: {login_edited_data} couldn't login"
-    users = await async_db.scalars(select(User))  # delete all users to clean the database and isolate tests
-    all_users = users.all()
-    users_ids = [user.id for user in all_users]
-    users_emails = [user.email for user in all_users]
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
     await log.ainfo("patch_users_me_by_user", response=response.json(), url=response.url, edited_data=edited_user_data,
                     status_code=response.status_code, login_data=login_data, new_email=response.json()["email"],
-                    id=response.json()["id"], users_ids=users_ids, emails=users_emails)
-    await async_db.execute(delete(User).where(User.id.in_(users_ids)))
-    users = await async_db.scalars(select(User))
-    users_ids_after_remove = [user.id for user in users.all()]
+                    id=response.json()["id"], users_ids_after_remove=users_ids_after_remove)
+
+
+async def test_super_user_get_api_users(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        super_user_orm: User,
+        user_orm: User,
+) -> None:
+    """
+    Тестирует эндпоинт получения информации админом об активных пользователях: __/api/users__
+    pytest -k test_super_user_get_api_users -vs
+    """
+    login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
+    login_url = "/api/auth/jwt/login"
+    api_users_url = "/api/users"
+    async with async_client as ac:
+        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_api_users_by_user = await ac.get(
+            api_users_url,  # GET "/api/users"
+            headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+        )
+        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_api_users = await ac.get(
+            api_users_url,
+            headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
+        )
+    super_user_email_response = json.loads(response_api_users.json())[f"{super_user_orm.id}"]
+    user_email_response = json.loads(response_api_users.json())[f"{user_orm.id}"]
+
+    assert response_api_users_by_user.status_code == 403, f"User: {user_orm.email} get {api_users_url} but mustn't"
+    await log.ainfo("get_api_users_by_user", response=response_api_users_by_user.json(), user=user_orm.email,
+                    url=response_api_users_by_user.url, status_code=response_api_users_by_user.status_code)
+
+    assert response_api_users.status_code == 200, f"Super_user: {login_data} couldn't get {api_users_url}"
+
+    assert super_user_email_response == super_user_orm.email, (
+        f"Super_user response email: {super_user_email_response} doesn't match expectations {super_user_orm.email}"
+    )
+    assert user_email_response == user_orm.email, (
+        f"User response email: {user_email_response} doesn't match expectations {user_orm.email}"
+    )
+
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
-
-
-
-# todo тесты на разные пароли
+    await log.ainfo("get_api_users_by_super_user", response=response_api_users.json(), url=response_api_users.url,
+                    status_code=response_api_users.status_code, login_data=login_data,
+                    users_ids_after_remove=users_ids_after_remove)
 
 
 # def test_authorized_get_db_backup(async_client: AsyncClient):  # todo нужен авторизованный пользователь

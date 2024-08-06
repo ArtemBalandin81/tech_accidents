@@ -3,13 +3,14 @@
 import asyncio
 import os
 import sys
-from typing import Any, Generator
+from typing import Any, Generator, Sequence, TypeVar
 
 import pytest
 import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
 from passlib.context import CryptContext
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -23,6 +24,7 @@ from src.core.db.models import (Base, FileAttached, Suspension,
 from src.settings import settings
 
 log = structlog.get_logger().bind(file_name=__file__)
+DatabaseModel = TypeVar("DatabaseModel")
 
 def start_application():
     app = FastAPI()
@@ -66,6 +68,7 @@ async def async_db_engine():
 # truncate all table to isolate tests
 @pytest.fixture(scope='function')
 async def async_db(async_db_engine):
+    """Create connection to database."""
     async_session = sessionmaker(
         expire_on_commit=False,
         autocommit=False,
@@ -130,7 +133,7 @@ def event_loop():
 
 @pytest.fixture
 async def super_user_orm(async_db: AsyncSession) -> User:
-    """Create super_user in database"""
+    """Create super_user in database."""
     email = "super_user_fixture@f.com"
     password = "testings"
     pwd_context = CryptContext(schemes=["bcrypt"])  # hash password
@@ -143,7 +146,7 @@ async def super_user_orm(async_db: AsyncSession) -> User:
 
 @pytest.fixture
 async def user_orm(async_db: AsyncSession) -> User:
-    """Create user in database"""
+    """Create user in database."""
     email = "user_fixture@f.com"
     password = "testings"
     pwd_context = CryptContext(schemes=["bcrypt"])  # hash password
@@ -153,3 +156,14 @@ async def user_orm(async_db: AsyncSession) -> User:
     await async_db.refresh(user)
     await log.ainfo("user_orm_created:", user_orm=user)
     return user
+
+
+async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:
+    """Remove data in database and return the result in ids."""
+    if instances is not None:
+        await async_db.execute(delete(instance).where(instance.id.in_(instances)))
+    else:
+        await async_db.execute(delete(instance))  # delete all users to clean the database and isolate tests
+    await async_db.commit()
+    cleaned_item = await async_db.scalars(select(instance))
+    return [cleaned_item.id for cleaned_item in cleaned_item.all()]
