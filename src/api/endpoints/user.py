@@ -1,5 +1,6 @@
 """src/api/endpoints/user.py"""
 from fastapi import APIRouter, Depends, HTTPException, status
+from src.api.constants import *
 from src.api.schemas import UserCreate, UserRead, UserUpdate
 from src.api.services import UsersService
 from src.core.db.user import auth_backend, current_superuser, fastapi_users
@@ -30,12 +31,8 @@ router.include_router(
     summary="Список всех активных пользователей (только админ).",
     tags=['users'],  # todo в константы
     responses={
-        status.HTTP_401_UNAUTHORIZED: {
-            "description": "Missing token or inactive user.",
-        },
-        status.HTTP_403_FORBIDDEN: {
-            "description": "Not a superuser.",
-        },
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
     },
 )
 async def get_all_active(

@@ -2,7 +2,7 @@
 
 import requests
 import structlog
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from requests.exceptions import SSLError
 
 from src.api.constants import *
@@ -29,7 +29,15 @@ async def get_url(
         return {"error": str(error), "time": ANALYTIC_TO_TIME, "url": url}
 
 
-@service_router.get(DB_BACKUP, description=DB_BACKUP_DESCRIPTION, dependencies=[Depends(current_superuser)],)
+@service_router.get(
+    DB_BACKUP,
+    description=DB_BACKUP_DESCRIPTION,
+    dependencies=[Depends(current_superuser)],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
+)
 async def db_backup(
     backup_service: DBBackupService = Depends(),
 ) -> DBBackupResponse:
@@ -38,7 +46,9 @@ async def db_backup(
     list_of_files_names = await backup_service.get_list_of_names_in_dir()
     total_backups = len(list_of_files_names)
     if total_backups == 0:
-        await log.aerror("{}".format(DIR_CREATED_ERROR), list_of_files=list_of_files_names, folder=settings.DB_BACKUP_DIR)
+        await log.aerror(
+            "{}".format(DIR_CREATED_ERROR), list_of_files=list_of_files_names, folder=settings.DB_BACKUP_DIR
+        )
         last_backup, first_backup = None, None
     else:
         last_backup = max(list_of_files_names)[0]

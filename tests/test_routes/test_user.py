@@ -5,136 +5,77 @@ pytest -k test_unauthorized_get_urls -vs
 pytest -vs
 https://anyio.readthedocs.io/en/stable/testing.html
 """
-
 import json
+import os
+import sys
+from datetime import date
+
 import pytest
 import structlog
 from httpx import AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-log = structlog.get_logger().bind(file_name=__file__)
-
-import os
-import sys
-
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
 from src.core.db.models import User
-from src.settings import settings
 from tests.conftest import remove_all
 
-pytestmark = pytest.mark.anyio  # make all test mark with `anyio`
+log = structlog.get_logger().bind(file_name=__file__)
+pytestmark = pytest.mark.anyio  # make all test mark with `anyio` or use decorator: # @pytest.mark.anyio
 
 
-# @pytest.mark.anyio  # pytestmark = pytest.mark.anyio  == make all test mark with `anyio`
-async def test_test_url(async_client):
-    """
-    Тестирует сервисный эндпоинт проверки доступности сайтов: __/api/services/test_url__
-    pytest -k test_test_url -vs
-    """
-    url = "https://agidel-am.ru/"
-    api_url = "/api/services/test_url"
-    async with async_client as ac:
-        response = await ac.get(api_url, params={"url": url})
-    assert response.status_code == 200, f"api: test_url status code {response.status_code} is not 200"
-    await log.ainfo("test_info:", response=response.json(), url=response.url)
-
-# todo в цикле, словаре сделать тест нескольких эндпоинтов неавторизованным пользователем
-# todo сделай красиво в цикле по словарю как было в спринте, постарайся!!!
 async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
     """
     Тестирует доступ к пользовательским эндпоинтам неавторизованным пользователем:
     pytest -k test_unauthorized_get_urls -vs
     """
-    data_patch = {"email": "testuser@nofoobar.com", "password": "testing_testing"}
-    login_data = {"username": "some_unknown@username.com", "password": "unknown_password"}
-    users_me_url = "/api/users/me"
-    test_url = "/api/services/test_url"
-    db_backups_url = "/api/services/db_backup"
-    login_url = "/api/auth/jwt/login"
-    logout_url = "/api/auth/jwt/logout"
-    get_users_id_url = "/api/users/{id}"
-    patch_users_id_url = "/api/users/{id}"
-    patch_users_me_url = "/api/users/me"
-    get_api_users_url = "/api/users"
+    get_params_urls = (
+        ("/api/services/test_url", {"url": "https://agidel-am.ru/"}, 200),
+        ("/api/users/me", {}, 401),
+        ("/api/services/db_backup", {}, 401),
+        ("/api/users/{id}", {}, 401),
+        ("/api/users", {}, 401)
+    )
 
-    # todo сделай красиво в цикле по словарю как было в спринте, постарайся!!!
-    # routing = {
-    #     INDEX: 'posts/index.html',
-    #     CREATE: 'posts/create_post.html',
-    #     GROUP_POSTS: 'posts/group_list.html',
-    #     PROFILE: 'posts/profile.html',
-    #     self.POST_DETAIL: 'posts/post_detail.html',
-    #     self.POST_EDIT: 'posts/create_post.html'
-    # }
-    # for address, template in routing.items():
-    #     with self.subTest(address=address):
-    #         self.assertTemplateUsed(
-    #             self.author.get(address), template
-    #         )
+    patch_json_urls = (
+        ("/api/users/me", {"email": "testuser@nofoobar.com", "password": "testing_testing"}, 401),
+        ("/api/users/me", {}, 401),
+        ("/api/users/{id}", {}, 401),
+    )
+
+    post_data_urls = (
+        ("/api/auth/jwt/login", {"username": "some_unknown@username.com", "password": "unknown_password"}, 400),
+        ("/api/auth/jwt/logout", {}, 401),
+    )
 
     async with async_client as ac:
-        # response = await ac.patch(api_url, json=data_patch)
-        response_get_users_me = await ac.get(users_me_url)  # GET "/api/users/me"
-        response_patch_users_me = await ac.patch(users_me_url, json=data_patch)  # PATCH "/api/users/me"
-        response_get_test_url = await ac.get(  # GET "/api/services/test_url"
-            test_url, params={"url": "https://agidel-am.ru/"}
-        )
-        response_db_backups = await ac.get(db_backups_url)  # GET "/api/services/db_backup"
-        response_post_login = await ac.post(login_url, data=login_data)  # POST "/api/auth/jwt/login"
-        response_post_logout = await ac.post(logout_url)  # POST "/api/auth/jwt/logout"
-        response_get_users_id_url = await ac.get(get_users_id_url)  # GET "/api/users/{id}"
-        response_patch_users_id_url = await ac.patch(get_users_id_url)  # PATCH "/api/users/{id}"
-        response_patch_users_me_url = await ac.patch(patch_users_me_url)  # PATCH "/api/users/me"
-        response_get_api_users_url = await ac.get(get_api_users_url)  # GET "/api/users"
+        for api_url, params, status in get_params_urls:
+            response = await ac.get(api_url, params=params)
+            assert response.status_code == status, f"test_url: {api_url} with params: {params} is not {status}"
+            await log.ainfo(
+                "{}".format(api_url), response=response.json(), status=response.status_code, request=response._request
+            )
+        for api_url, json_data, status in patch_json_urls:
+            response = await ac.patch(api_url, json=json_data)
+            assert response.status_code == status, f"test_url: {api_url} with json_data: {json_data} is not {status}"
+            await log.ainfo(
+                "{}".format(api_url), json=json_data, response=response.json(), status=response.status_code,
+                request=response._request,
+            )
+        for api_url, data, status in post_data_urls:
+            response = await ac.post(api_url, data=data)
+            assert response.status_code == status, f"test_url: {api_url} with json_data: {json_data} is not {status}"
+            await log.ainfo(
+                "{}".format(api_url), json=json_data, response=response.json(), status=response.status_code,
+                request=response._request,
+            )
+            # print(f'response: {dir(response)}')
 
-    assert response_get_users_me.status_code == 401, f"Unauthorized get {users_me_url} but shouldn't"
-    await log.ainfo("get_users_me", response=response_get_users_me.json(), url=response_get_users_me.url,
-                    status_code=response_get_users_me.status_code)
 
-    assert response_patch_users_me.status_code == 401, f"Unauthorized patch {users_me_url} but shouldn't"
-    await log.ainfo("patch_users_me", response=response_patch_users_me.json(), url=response_patch_users_me.url,
-                    status_code=response_patch_users_me.status_code)
-
-    assert response_get_test_url.status_code == 200, f"Unauthorized couldn't get {test_url} but should"
-    await log.ainfo("get_test_url", response=response_get_test_url.json(), url=response_get_test_url.url,
-                    status_code=response_get_test_url.status_code)
-
-    assert response_db_backups.status_code == 401, f"Unauthorized get {db_backups_url} but shouldn't"
-    await log.ainfo("get_db_backups", response=response_db_backups.json(), url=response_db_backups.url,
-                    status_code=response_db_backups.status_code)
-
-    assert response_post_login.status_code == 400, f"Unauthorized post {login_url} but shouldn't"
-    await log.ainfo("post_login", response=response_post_login.json(), url=response_post_login.url,
-                    status_code=response_post_login.status_code)
-
-    assert response_post_logout.status_code == 401, f"Unauthorized post {logout_url} but shouldn't"
-    await log.ainfo("post_logout", response=response_post_logout.json(), url=response_post_logout.url,
-                    status_code=response_post_logout.status_code)
-
-    assert response_get_users_id_url.status_code == 401, f"Unauthorized get {get_users_id_url} but shouldn't"
-    await log.ainfo("get_users_id", response=response_get_users_id_url.json(), url=get_users_id_url,
-                    status_code=response_get_users_id_url.status_code)
-
-    assert response_patch_users_id_url.status_code == 401, f"Unauthorized get {patch_users_id_url} but shouldn't"
-    await log.ainfo("patch_users_id", response=response_patch_users_id_url.json(), url=patch_users_id_url,
-                    status_code=response_patch_users_id_url.status_code)
-
-    assert response_patch_users_me_url.status_code == 401, f"Unauthorized get {patch_users_me_url} but shouldn't"
-    await log.ainfo("patch_users_me", response=response_patch_users_me_url.json(), url=patch_users_me_url,
-                    status_code=response_patch_users_me_url.status_code)
-
-    assert response_get_api_users_url.status_code == 401, f"Unauthorized get {get_api_users_url} but shouldn't"
-    await log.ainfo("get_api_users", response=response_get_api_users_url.json(), url=get_api_users_url,
-                    status_code=response_get_api_users_url.status_code)
-
-# todo refactorings!!!
-# + todo тесты на разные парольные политики
-async def test_user_create_login_and_logout(async_client: AsyncClient, async_db: AsyncSession) -> None:
+async def test_user_register_login_and_logout(async_client: AsyncClient, async_db: AsyncSession) -> None:
     """
-    Тестирует эндпоинт регистрации пользователей, логин и логаут:
-    pytest -k test_user_create_login_and_logout -vs
+    Тестирует эндпоинт регистрации пользователей и их последующего логин и логаут:
+    pytest -k test_user_register_login_and_logout -vs
     """
     register_url = "/api/auth/register"
     login_url = "/api/auth/jwt/login"
@@ -151,16 +92,15 @@ async def test_user_create_login_and_logout(async_client: AsyncClient, async_db:
             headers={"Authorization": f"Bearer {response_post_login.json()['access_token']}"}
         )
 
-    assert response_register.status_code == 201, (
-        f"api: user register status code {response_register.status_code} is not 201"
-    )
+    assert response_register.status_code == 201, f"Unsuccessful register status code: {response_register.status_code}"
+
     user_created = await async_db.scalar(select(User).where(User.email == email))
-    assert email == user_created.email, f"created user {user_created.email} doesn't meet expectations: {email}"
+    assert email == user_created.email, f"Created user {user_created.email} doesn't meet expectations: {email}"
     assert response_register.json()["id"] == user_created.id, (
-        f"user id {user_created.id} doesn't meet {response_register.json()['id']}"
+        f"User's id {user_created.id} doesn't meet expectations: {response_register.json()['id']}"
     )
     assert response_register.json()["is_superuser"] == user_created.is_superuser, (
-        "user is_superuser doesn't meet expectations"
+        f"User's status of super_user: {user_created.is_superuser} doesn't meet expectations: {False}"
     )
     assert user_created.is_superuser is False, f"user_created.is_superuser: {user_created.is_superuser} is not False"
     await log.ainfo(
@@ -175,6 +115,34 @@ async def test_user_create_login_and_logout(async_client: AsyncClient, async_db:
     assert response_post_logout.status_code == 204, f"Just registered user: {login_data} couldn't get {logout_url}"
     await log.ainfo("post_logout", response=response_post_logout, url=response_post_logout.url,
                     status_code=response_post_logout.status_code)
+
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    await log.ainfo("clean the database", users_ids_after_remove=users_ids_after_remove)
+
+
+async def test_user_register_password_policy(async_client: AsyncClient, async_db: AsyncSession) -> None:
+    """
+    Тестирует эндпоинт регистрации пользователей и соблюдение требований политики парольной безопасности:
+    pytest -k test_user_register_password_policy -vs
+    """
+    register_url = "/api/auth/register"
+    email = "test_create_user@nofoobar.com"
+    register_data_scenarios = (
+        ({"email": email, "password": "testing_testing"}, 201),
+        ({"email": email, "password": "test"}, 400),  # if len(password) < 6
+        ({"email": email, "password": email}, 400)  # if user.email in password
+    )
+    async with async_client as ac:
+        for register_data, status in register_data_scenarios:
+            response = await ac.post(register_url, json=register_data)  # POST "/api/auth/register"
+            assert response.status_code == status, (
+                f"Status code: {response.status_code} doesn't match expectations: {status}"
+            )
+            # await log.ainfo("register user scenario:", register_data=register_data, response=response.json())
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    await log.ainfo("clean the database", users_ids_after_remove=users_ids_after_remove)
 
 
 async def test_super_user_get_users_id(
@@ -278,7 +246,7 @@ async def test_user_patch_users_me(async_client: AsyncClient, async_db: AsyncSes
     edited_user_data = {"email": "user_edited@f.com", "password": "testings_edited"}
     login_edited_data = {"username": "user_edited@f.com", "password": "testings_edited"}
     login_url = "/api/auth/jwt/login"
-    users_me_url = f"/api/users/me"
+    users_me_url = "/api/users/me"
     async with async_client as ac:
         response_login_user = await ac.post(login_url, data=login_data)
         response = await ac.patch(
@@ -346,10 +314,47 @@ async def test_super_user_get_api_users(
                     users_ids_after_remove=users_ids_after_remove)
 
 
-# def test_authorized_get_db_backup(async_client: AsyncClient):  # todo нужен авторизованный пользователь
-#     """Тестирует сервисный эндпоинт бэкапа БД авторизованным пользователем: __/api/services/db_backup__"""
-#     api_url = "/api/services/db_backup"
-#     # response = client.get(api_url)
-#     async with async_client as ac:
-#         response = await ac.get(api_url)
-#     # assert response.status_code == 200
+async def test_super_user_get_db_backup(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        super_user_orm: User,
+        user_orm: User,
+) -> None:
+    """
+    Тестирует эндпоинт мануального бэкапа БД: __/api/services/db_backup__
+    pytest -k test_super_user_get_db_backup -vs
+    """
+    login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
+    login_url = "/api/auth/jwt/login"
+    db_backup_url = "/api/services/db_backup"
+    async with async_client as ac:
+        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_db_backup_by_user = await ac.get(
+            db_backup_url,  # GET "/api/services/db_backup"
+            headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+        )
+        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_db_backup = await ac.get(
+            db_backup_url,  # GET "/api/services/db_backup"
+            headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
+        )
+
+    assert response_db_backup_by_user.status_code == 403, f"User: {user_orm.email} get {db_backup_url} but mustn't"
+    await log.ainfo("get_api_users_by_user", response=response_db_backup_by_user.json(), user=user_orm.email,
+                    url=response_db_backup_by_user.url, status_code=response_db_backup_by_user.status_code)
+
+    assert response_db_backup.status_code == 200, f"Super_user: {login_data} couldn't get {db_backup_url}"
+
+    assert response_db_backup.json()["total_backups"] > 0, (
+        f"Total_backups: {response_db_backup.json()['total_backups']} should be positive int"
+    )
+
+    assert str(response_db_backup.json()["last_backup"]) == str(date.today()), (
+        f"Last_backup: {response_db_backup.json()['last_backup']} should be today: {date.today()}"
+    )
+
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    await log.ainfo("get_api_users_by_super_user", response=response_db_backup.json(), url=response_db_backup.url,
+                    status_code=response_db_backup.status_code, login_data=login_data,
+                    users_ids_after_remove=users_ids_after_remove)
