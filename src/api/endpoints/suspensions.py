@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Query, Response, status, UploadFile
 from pydantic import PositiveInt
 from src.api.constants import *
 from src.api.schema import (  # rename to "schemas" todo
@@ -33,7 +33,11 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
     response_model_exclude_none=True,
     description=ANALYTICS_SUSPENSION_LIST,
     summary=ANALYTICS_SUSPENSION_LIST,
-    tags=[ANALYTICS_SUSPENSION]
+    dependencies=[Depends(current_user)],
+    tags=[ANALYTICS_SUSPENSION],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_all_for_period_time(
     suspension_start: str = Query(
@@ -74,7 +78,13 @@ async def get_all_for_period_time(
 
 
 @suspension_router.post(
-    POST_SUSPENSION_FORM, description=SUSPENSION_CREATE_FORM, summary=SUSPENSION_CREATE_FORM, tags=[SUSPENSIONS_POST]
+    POST_SUSPENSION_FORM,
+    description=SUSPENSION_CREATE_FORM,
+    summary=SUSPENSION_CREATE_FORM,
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def create_new_suspension_by_form(
     *,
@@ -129,7 +139,10 @@ async def create_new_suspension_by_form(
     POST_SUSPENSION_FILES_FORM,
     description=SUSPENSION_FILES_CREATE_FORM,
     summary=SUSPENSION_FILES_CREATE_FORM,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def create_new_suspension_by_form_with_files(
     *,
@@ -183,7 +196,11 @@ async def create_new_suspension_by_form_with_files(
     description=SET_FILES_LIST_TO_SUSPENSION,
     summary=SET_FILES_LIST_TO_SUSPENSION,
     dependencies=[Depends(current_superuser)],
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def set_files_to_suspension(
     *,
@@ -208,7 +225,10 @@ async def set_files_to_suspension(
     dependencies=[Depends(current_user)],
     description=SUSPENSION_PATCH_FORM,
     summary=SUSPENSION_PATCH_FORM,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def partially_update_suspension_by_form(
     suspension_id: PositiveInt,
@@ -321,10 +341,14 @@ async def partially_update_suspension_by_form(
 
 @suspension_router.get(
     MAIN_ROUTE,
+    dependencies=[Depends(current_user)],
     response_model_exclude_none=True,
     description=SUSPENSION_LIST,
     summary=SUSPENSION_LIST,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_all_suspensions(
         suspension_service: SuspensionService = Depends()
@@ -338,7 +362,10 @@ async def get_all_suspensions(
     response_model_exclude_none=True,
     description=SUSPENSION_LIST_CURRENT_USER,
     summary=SUSPENSION_LIST_CURRENT_USER,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_all_my_suspensions(
     suspension_service: SuspensionService = Depends(),
@@ -356,7 +383,10 @@ async def get_all_my_suspensions(
     dependencies=[Depends(current_user)],
     description=SUSPENSION_DESCRIPTION,
     summary=SUSPENSION_DESCRIPTION,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_suspension_by_id(
     suspension_id: PositiveInt,
@@ -382,7 +412,11 @@ async def get_suspension_by_id(
     description=SUSPENSION_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=SUSPENSION_DELETE,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def remove_suspension(
         suspension_id: PositiveInt,

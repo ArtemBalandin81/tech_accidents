@@ -1,5 +1,5 @@
 """
-Асинхронных тесты сервисных эндпоинтов и работы с пользователями: tests/test_routes/test_2.py
+Асинхронных тесты сервисных эндпоинтов и работы с пользователями: tests/test_routes/test_user.py
 pytest -s -W ignore::DeprecationWarning
 pytest -k test_unauthorized_get_urls -vs
 pytest -vs
@@ -24,10 +24,10 @@ log = structlog.get_logger().bind(file_name=__file__)
 pytestmark = pytest.mark.anyio  # make all test mark with `anyio` or use decorator: # @pytest.mark.anyio
 
 
-async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
+async def test_unauthorized_tries_service_and_auth_urls(async_client: AsyncClient) -> None:
     """
-    Тестирует доступ к пользовательским эндпоинтам неавторизованным пользователем:
-    pytest -k test_unauthorized_get_urls -vs
+    Тестирует доступ к сервисным и аутентификационным апи неавторизованным пользователем:
+    pytest -k test_unauthorized_tries_service_and_auth_urls -vs
     """
     get_params_urls = (
         ("/api/services/test_url", {"url": "https://agidel-am.ru/"}, 200),
@@ -64,9 +64,9 @@ async def test_unauthorized_get_urls(async_client: AsyncClient) -> None:
             )
         for api_url, data, status in post_data_urls:
             response = await ac.post(api_url, data=data)
-            assert response.status_code == status, f"test_url: {api_url} with json_data: {json_data} is not {status}"
+            assert response.status_code == status, f"test_url: {api_url} with data: {data} is not {status}"
             await log.ainfo(
-                "{}".format(api_url), json=json_data, response=response.json(), status=response.status_code,
+                "{}".format(api_url), data=data, response=response.json(), status=response.status_code,
                 request=response._request,
             )
             # print(f'response: {dir(response)}')

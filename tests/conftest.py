@@ -1,6 +1,7 @@
 """Конфигурационный файл для тестов: tests/conftest.py"""
 
 import asyncio
+import json
 import os
 import sys
 from typing import Any, Generator, Sequence, TypeVar
@@ -16,7 +17,7 @@ from sqlalchemy.orm import sessionmaker
 
 #this is to include backend dir in sys.path so that we can import from db,main.py
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from src.api.constants import *
 from src.api.router import api_router
 from src.core.db.db import get_session
 from src.core.db.models import (Base, FileAttached, Suspension,
@@ -157,6 +158,37 @@ async def user_orm(async_db: AsyncSession) -> User:
     await log.ainfo("user_orm_created:", user_orm=user)
     return user
 
+@pytest.fixture
+async def user_from_settings(async_db: AsyncSession) -> User:
+    """Create user_from_settings in database in order to satisfy ENUM STAFF validations in api."""
+    user_settings_email = json.loads(settings.STAFF)['1']
+    password = "testings"
+    pwd_context = CryptContext(schemes=["bcrypt"])  # hash password
+    user = User(email=user_settings_email, hashed_password=pwd_context.hash(password), is_superuser=False)
+    async_db.add(user)
+    await async_db.commit()
+    await async_db.refresh(user)
+    await log.ainfo("user_from_settings_created:", email=user.email)
+    return user
+
+@pytest.fixture
+async def suspension_orm(async_db: AsyncSession) -> Suspension:
+    """Create a suspension in database."""
+    suspension = Suspension(
+        risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
+        description=CREATE_DESCRIPTION,
+        suspension_start=datetime.now() - timedelta(minutes=settings.CREATE_FROM_TIME),  # CREATE_SUSPENSION_FROM_TIME,
+        suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
+        tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
+        implementing_measures=MEASURES,
+        user_id=1
+
+    )
+    async_db.add(suspension)
+    await async_db.commit()
+    await async_db.refresh(suspension)
+    await log.ainfo("suspension_orm_created:", suspension_orm=suspension)
+    return suspension
 
 async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:
     """Remove data in database and return the result in ids."""
