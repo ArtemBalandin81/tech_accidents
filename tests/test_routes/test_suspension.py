@@ -75,8 +75,8 @@ async def test_unauthorized_tries_suspension_urls(async_client: AsyncClient) -> 
 async def test_user_get_suspension_analytics_url(
         async_client: AsyncClient,
         async_db: AsyncSession,
-        user_from_settings: User,
-        suspension_orm: Suspension
+        # user_from_settings: User,
+        suspensions_orm: Suspension
 ) -> None:
     """
     Тестирует доступ пользователя к эндпоинту аналитики:
@@ -86,23 +86,59 @@ async def test_user_get_suspension_analytics_url(
     test_url = SUSPENSIONS_PATH+ANALYTICS  # /api/suspensions/analytics
     user_settings_email = json.loads(settings.STAFF)['1']
     login_data = {"username": user_settings_email, "password": "testings"}
-    params = {ANALYTICS_START: ANALYTIC_FROM_TIME, ANALYTICS_FINISH: ANALYTIC_TO_TIME, USER_MAIL: user_settings_email}
+    search_params = {
+        ANALYTICS_START: (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT),
+        # ANALYTICS_FINISH: (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT),
+        ANALYTICS_FINISH: (datetime.now(TZINFO)).strftime(DATE_TIME_FORMAT),
+        # USER_MAIL: user_settings_email
+    }
 
     # await log.ainfo("suspension_orm", suspension_start=suspension_orm.suspension_start)
     async with async_client as ac:
         response_login_user = await ac.post(login_url, data=login_data)
         response = await ac.get(
             test_url,
-            params=params,
+            params=search_params,
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
+    assert response.status_code == 200, f"User: {login_data} couldn't get {test_url}"
+
 
 # todo разные проверки тут!!!
-    assert response.status_code == 200, f"User: {login_data} couldn't get {test_url}"
+    # Нужны 4 простоя для 4х сценариев и подсчет каждого сценария:  # todo
+    # 1 до окна поиска начинается и заканчивается (1 мин),  # todo
+    # 2 до окна поиска начинается и заканчивается в окне поиска (5 мин),  # todo
+    # 3 в окне начинается и заканчивается (10 мин),  # todo
+    # 4 начинается в окне и заканчивается за окном (60 мин), # todo
+    # Проверить подсчет суммы в каждом из 4х сценариев  # todo
+    # Левое окно запроса после начала простоя # todo
+    # Правовое окно запроса до окончания простоя  # todo
+    # Правое окно раньше левого  # todo
+    # Левое окно позже правого  # todo
+    # Леовое окно равно правому  # todo
+    # Несуществующий id пользователя  # todo
+    # Несуществующий email пользователя  # todo
+    # Простои от разных пользователей - не должно быть простоев от чужих пользователей при включении фильтра # todo
+    # Нарушение формата ввода данных  # todo
+    #   # todo
+    #   # todo
+    #   # todo
+
     # assert edited_user_data["email"] == response.json()["email"], (
     #     f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
     # )
-
+    # print(f'response: {response.json()}')
+    suspensions_list = response.json()['Список всех случаев простоя.']
+    await log.ainfo(
+        "info: ",
+        params=search_params,
+        suspensions_in_mins_total=response.json()['Сумма простоев в периоде (мин.)'],
+        suspensions_total=response.json()['Количество простоев в периоде'],
+        suspension_start=suspensions_list[0]['Начало простоя'] if suspensions_list != [] else [],
+        suspension_finish=suspensions_list[0]['Окончание простоя'] if suspensions_list != [] else [],
+        # suspension_risk_accident=suspensions_list[0]['Риск-инцидент'] if suspensions_list != [] else [],
+        measures=suspensions_list[0]['Предпринятые действия'] if suspensions_list != [] else [],
+    )
 
     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"

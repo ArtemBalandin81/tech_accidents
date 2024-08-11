@@ -168,27 +168,63 @@ async def user_from_settings(async_db: AsyncSession) -> User:
     async_db.add(user)
     await async_db.commit()
     await async_db.refresh(user)
-    await log.ainfo("user_from_settings_created:", email=user.email)
+    await log.ainfo("user_from_settings_created:", email=user.email, id=user.id)
     return user
 
 @pytest.fixture
-async def suspension_orm(async_db: AsyncSession) -> Suspension:
-    """Create a suspension in database."""
-    suspension = Suspension(
-        risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
-        description=CREATE_DESCRIPTION,
-        suspension_start=datetime.now() - timedelta(minutes=settings.CREATE_FROM_TIME),  # CREATE_SUSPENSION_FROM_TIME,
-        suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
-        tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
-        implementing_measures=MEASURES,
-        user_id=1
-
+async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Suspension]:
+    """
+    Create a suspension in database.
+    for testing intervals: starts = (now - 1 day), finish = now
+    """
+    now = datetime.now()
+    scenarios = (
+        ("_1_[]", now - timedelta(days=2), now - timedelta(days=1, hours=23, minutes=59), "1", user_from_settings.id),
+        ("_[5_]", now - timedelta(days=1), now - timedelta(minutes=60), "2", user_orm.id),
+        # ("[_10_]", datetime.now() - timedelta(days=1), datetime.now(), "3", user_from_settings.id),
+        # ("[_60]_", datetime.now() - timedelta(days=1), datetime.now(), "4", user_orm.id)
     )
-    async_db.add(suspension)
+    suspensions_list = []
+    for description, suspension_start, suspension_finish, measures, user_id in scenarios:
+        suspension = Suspension(
+            risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
+            description=description,
+            suspension_start=suspension_start,  # CREATE_SUSPENSION_FROM_TIME,
+            suspension_finish=suspension_finish,  # CREATE_SUSPENSION_TO_TIME,
+            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
+            implementing_measures=measures,
+            user_id=user_id
+        )
+        suspensions_list.append(suspension)
+
+
+    # suspension = Suspension(
+    #     risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
+    #     description=CREATE_DESCRIPTION,
+    #     suspension_start=datetime.now() - timedelta(days=1),  # CREATE_SUSPENSION_FROM_TIME,
+    #     suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
+    #     tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
+    #     implementing_measures=MEASURES,
+    #     user_id=user_from_settings.id
+    # )
+    # suspension2 = Suspension(
+    #     risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
+    #     description=CREATE_DESCRIPTION,
+    #     suspension_start=datetime.now() - timedelta(days=1),  # CREATE_SUSPENSION_FROM_TIME,
+    #     suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
+    #     tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
+    #     implementing_measures=MEASURES,
+    #     user_id=user_orm.id
+    #
+    # )
+    # async_db.add(suspension)
+    # async_db.add_all([suspension, suspension2])
+    async_db.add_all(suspensions_list)
     await async_db.commit()
-    await async_db.refresh(suspension)
-    await log.ainfo("suspension_orm_created:", suspension_orm=suspension)
-    return suspension
+    # await async_db.refresh(suspensions_list)
+    # await log.ainfo("suspension_orm_created:", suspension_orm=suspension, user=suspension.user_id)
+    await log.ainfo("suspensions_orm_created:", suspensions_orm=suspensions_list)
+    return suspensions_list
 
 async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:
     """Remove data in database and return the result in ids."""
