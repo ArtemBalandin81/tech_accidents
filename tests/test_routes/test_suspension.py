@@ -20,10 +20,17 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from src.api.constants import *
 from src.api.endpoints import file_router, suspension_router
 from src.core.db.models import User, Suspension
+from src.settings import settings
 
 from tests.conftest import remove_all
 
-log = structlog.get_logger().bind(file_name=__file__)
+# cf = structlog.testing.CapturingLoggerFactory()  # https://www.structlog.org/en/stable/testing.html
+# structlog.configure(logger_factory=cf, processors=[structlog.processors.JSONRenderer()])
+# log = get_logger()
+# cf.logger.calls
+
+log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
+# log = structlog.stdlib.get_logger("api.access")
 pytestmark = pytest.mark.anyio  # make all test mark with `anyio` or use decorator: # @pytest.mark.anyio
 
 SUSPENSIONS_PATH = settings.ROOT_PATH + "/suspensions"  # /api/suspensions/
@@ -145,7 +152,7 @@ async def test_user_get_suspension_analytics_url(
     suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
     assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
 
-    await log.ainfo("get_suspension_analytics", response=response.json(), url=response.url, login_data=login_data,
+    await log.ainfo("test_suspension_analytics", response=response.json(), url=response.url, login_data=login_data,
                     status_code=response.status_code, users_ids_after_remove=users_ids_after_remove,
                     suspensions_ids_after_remove=suspensions_ids_after_remove)
 

@@ -23,8 +23,11 @@ from src.core.db.db import get_session
 from src.core.db.models import (Base, FileAttached, Suspension,
                                 SuspensionsFiles, Task, TasksFiles, User)
 from src.settings import settings
+from src.core.logging.setup import setup_logging
 
-log = structlog.get_logger().bind(file_name=__file__)
+setup_logging()  # Procharity example of pytest settings (comment this for standard logging)
+
+log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 DatabaseModel = TypeVar("DatabaseModel")
 
 def start_application():
@@ -179,6 +182,7 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     """
     now = datetime.now()
     scenarios = (
+        # description, suspension_start, suspension_finish, measures, user_id:
         ("_1_[]", now - timedelta(days=2), now - timedelta(days=1, hours=23, minutes=59), "1", user_from_settings.id),
         ("_[5_]", now - timedelta(days=1), now - timedelta(minutes=60), "2", user_orm.id),
         # ("[_10_]", datetime.now() - timedelta(days=1), datetime.now(), "3", user_from_settings.id),

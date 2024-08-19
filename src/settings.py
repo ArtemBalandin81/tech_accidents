@@ -55,6 +55,8 @@ class Settings(BaseSettings):
     # DB_PORT: int = 5432
 
     # Logging preferences
+    FILE_NAME_IN_LOG: bool = False  # If true: structlog.get_logger().bind(file_name=__file__)
+    JSON_LOGS: bool = False  # true: logs in json with JSONRenderer | false: colored logs with ConsoleRenderer
     LOG_LEVEL: str = "INFO"
     LOG_DIR: str | Path = BASE_DIR.joinpath("logs")
     LOG_FILE: str = "app.log"

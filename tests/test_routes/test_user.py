@@ -18,9 +18,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.core.db.models import User
+from src.settings import settings
 from tests.conftest import remove_all
 
-log = structlog.get_logger().bind(file_name=__file__)
+log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 pytestmark = pytest.mark.anyio  # make all test mark with `anyio` or use decorator: # @pytest.mark.anyio
 
 

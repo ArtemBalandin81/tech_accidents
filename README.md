@@ -188,7 +188,9 @@
     DATABASE_NAME=tech_accident_db_local.db  # Имя БД
     DATABASE_URL=sqlite+aiosqlite:///./tech_accident_db_local.db
 
-    # Настройки логирования
+    # Настройки логирования    
+    FILE_NAME_IN_LOG=False  # If true: structlog.get_logger().bind(file_name=__file__)
+    JSON_LOGS=True  # true: logs in json with JSONRenderer | false: colored logs with ConsoleRenderer
     LOG_LEVEL=INFO  # Уровень логирования
     LOG_DIR=logs  # Директория для сохранения логов. По умолчанию - logs в корневой директории
     LOG_FILE=app.log  # Название файла с логами
@@ -408,6 +410,15 @@
   и применить изменения, нажав кнопку `обновить` в `dbeaver`.
 
   7. Далее можно работать с приложением, изучив примеры: <a href="#использование">Использование</a>
+
+  > **Note**
+  > 
+  > ! Настройки приложения в первую очередь зависят от настроек переменных окружения.
+  > 
+  > !!! Если при изменеии каких-либо переменных в `settings` приложение не реагирует должным образом
+  > проверьте настройки `.env`
+  > 
+  > Изменения в `.env` применяются лишь после перезапуска приложения.
 
 </details>
 

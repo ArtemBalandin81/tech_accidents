@@ -17,7 +17,7 @@ from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
 from src.settings import settings
 
-log = structlog.get_logger().bind(file_name=__file__)
+log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 
 
 class ConnectionErrorService:
@@ -53,6 +53,7 @@ class ConnectionErrorService:
                 TIME_INFO: datetime.now(TZINFO).isoformat(timespec='seconds')
             }
             await log.ainfo(INFO_CONNECTIONS, info_connections=info_connections)
+            # await log.ainfo(INFO_CONNECTIONS, url_base=URL_CONNECTION_ERROR, url_2=status_code_url_ya)
             return info_connections
         info_connections = {
             CONNECTION_TEST_URL_BASE: status_code_base_url,
@@ -60,6 +61,7 @@ class ConnectionErrorService:
             TIME_INFO: datetime.now(TZINFO).isoformat(timespec='seconds')
         }
         await log.ainfo(INFO_CONNECTIONS, info_connections=info_connections)
+        # await log.ainfo(INFO_CONNECTIONS, url_base=status_code_base_url, url_2=SUPPOSE_OK)
         return info_connections
 
     async def run_create_suspension(self, suspension_object: dict | None) -> None:

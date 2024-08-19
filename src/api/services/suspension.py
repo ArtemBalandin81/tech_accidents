@@ -35,7 +35,7 @@ class SuspensionService:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
         if user is None:
             user: User = await self._users_repository.get(suspension.user_id)  # todo очень затратно!
-            await log.ainfo("{}".format(USER_NOT_PROVIDED), user=user)
+            await log.adebug("{}".format(USER_NOT_PROVIDED), user=user)
         suspension_to_dict = suspension.__dict__
         suspension_to_dict["user_email"] = user.email
         suspension_to_dict["business_process"] = TechProcess(str(suspension.tech_process)).name

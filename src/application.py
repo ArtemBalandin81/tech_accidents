@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.core.logging.middleware import LoggingMiddleware
 from src.core.logging.setup import setup_logging
+from src.core.logging.setup_structlog import setup_structlog  # todo new to delete if is not needed
 from src.core.logging.utils import logger_decor
 from src.services.db_backup import DBBackupService
 from src.services.register_connection_errors import ConnectionErrorService
@@ -32,8 +33,9 @@ def add_middleware(app: FastAPI):  # todo логгируется только с
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    setup_logging()
-    app.add_middleware(LoggingMiddleware)
+    setup_logging()  # Procharity example of pytest settings
+    # setup_structlog()  # alternative structlog setup with json logs
+    app.add_middleware(LoggingMiddleware)  # creates api logs
     app.add_middleware(CorrelationIdMiddleware)
 
 
