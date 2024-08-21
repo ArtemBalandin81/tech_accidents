@@ -92,23 +92,57 @@ async def test_user_get_suspension_analytics_url(
     login_url = "/api/auth/jwt/login"
     test_url = SUSPENSIONS_PATH+ANALYTICS  # /api/suspensions/analytics
     user_settings_email = json.loads(settings.STAFF)['1']
-    login_data = {"username": user_settings_email, "password": "testings"}
-    search_params = {
-        ANALYTICS_START: (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT),
-        # ANALYTICS_FINISH: (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT),
-        ANALYTICS_FINISH: (datetime.now(TZINFO)).strftime(DATE_TIME_FORMAT),
-        # USER_MAIL: user_settings_email
-    }
+    login_data = {"username": user_settings_email, "password": "testings"}  # users are created in suspensions_orm
+    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
+    day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+
+    all_users_search_scenarios = (
+        # login, params, status, count, ids, minutes  # todo
+        (login_data, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200, 2),
+    )
+    # ({"username": user_settings_email, "password": "testings"}, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now})
+    # ({ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200)
+
+    async with async_client as ac:
+        for login, search_params, status, count in all_users_search_scenarios:  # todo
+            response_login_user = await ac.post(login_url, data=login)
+            response = await ac.get(
+                test_url,
+                params=search_params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+            )
+            suspensions_list = response.json()['Список всех случаев простоя.']
+            total_suspensions = len(suspensions_list)
+            assert response.status_code == status, f"User: {login} couldn't get {test_url}"
+            assert total_suspensions == count, (
+                f"Suspensions total: {total_suspensions} doesn't match expectations: {count}"
+            )
+            # кол-во минут простоев  # todo
+            # id простоев  # todo
+            await log.ainfo(
+                "info: ",
+                params=search_params,
+                suspensions_in_mins_total=response.json()['Сумма простоев в периоде (мин.)'],
+                suspensions_total=response.json()['Количество простоев в периоде'],
+                suspensions_list=suspensions_list
+            )
+
+    # search_params = {
+    #     ANALYTICS_START: day_ago,
+    #     # ANALYTICS_FINISH: (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT),
+    #     ANALYTICS_FINISH: now,
+    #     # USER_MAIL: user_settings_email
+    # }
 
     # await log.ainfo("suspension_orm", suspension_start=suspension_orm.suspension_start)
-    async with async_client as ac:
-        response_login_user = await ac.post(login_url, data=login_data)
-        response = await ac.get(
-            test_url,
-            params=search_params,
-            headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
-        )
-    assert response.status_code == 200, f"User: {login_data} couldn't get {test_url}"
+    # async with async_client as ac:
+    #     response_login_user = await ac.post(login_url, data=login_data)
+    #     response = await ac.get(
+    #         test_url,
+    #         params=search_params,
+    #         headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+    #     )
+    # assert response.status_code == 200, f"User: {login_data} couldn't get {test_url}"
 
 
 # todo разные проверки тут!!!
@@ -135,26 +169,26 @@ async def test_user_get_suspension_analytics_url(
     #     f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
     # )
     # print(f'response: {response.json()}')
-    suspensions_list = response.json()['Список всех случаев простоя.']
-    await log.ainfo(
-        "info: ",
-        params=search_params,
-        suspensions_in_mins_total=response.json()['Сумма простоев в периоде (мин.)'],
-        suspensions_total=response.json()['Количество простоев в периоде'],
-        suspension_start=suspensions_list[0]['Начало простоя'] if suspensions_list != [] else [],
-        suspension_finish=suspensions_list[0]['Окончание простоя'] if suspensions_list != [] else [],
-        # suspension_risk_accident=suspensions_list[0]['Риск-инцидент'] if suspensions_list != [] else [],
-        measures=suspensions_list[0]['Предпринятые действия'] if suspensions_list != [] else [],
-    )
+    # suspensions_list = response.json()['Список всех случаев простоя.']
+    # await log.ainfo(
+    #     "info: ",
+    #     params=search_params,
+    #     suspensions_in_mins_total=response.json()['Сумма простоев в периоде (мин.)'],
+    #     suspensions_total=response.json()['Количество простоев в периоде'],
+    #     suspension_start=suspensions_list[0]['Начало простоя'] if suspensions_list != [] else [],
+    #     suspension_finish=suspensions_list[0]['Окончание простоя'] if suspensions_list != [] else [],
+    #     # suspension_risk_accident=suspensions_list[0]['Риск-инцидент'] if suspensions_list != [] else [],
+    #     measures=suspensions_list[0]['Предпринятые действия'] if suspensions_list != [] else [],
+    # )
 
     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
     suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
     assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
 
-    await log.ainfo("test_suspension_analytics", response=response.json(), url=response.url, login_data=login_data,
-                    status_code=response.status_code, users_ids_after_remove=users_ids_after_remove,
-                    suspensions_ids_after_remove=suspensions_ids_after_remove)
+    # await log.ainfo("test_suspension_analytics", response=response.json(), url=response.url, login_data=login_data,
+    #                 status_code=response.status_code, users_ids_after_remove=users_ids_after_remove,
+    #                 suspensions_ids_after_remove=suspensions_ids_after_remove)
 
 
     # print(f"user_orm_email: {user_orm.email}")

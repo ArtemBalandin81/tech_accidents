@@ -177,16 +177,16 @@ async def user_from_settings(async_db: AsyncSession) -> User:
 @pytest.fixture
 async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Suspension]:
     """
-    Create a suspension in database.
+    Create a suspension in database by user from settings and by test user from orm.
     for testing intervals: starts = (now - 1 day), finish = now
     """
     now = datetime.now()
     scenarios = (
         # description, suspension_start, suspension_finish, measures, user_id:
         ("_1_[]", now - timedelta(days=2), now - timedelta(days=1, hours=23, minutes=59), "1", user_from_settings.id),
-        ("_[5_]", now - timedelta(days=1), now - timedelta(minutes=60), "2", user_orm.id),
-        # ("[_10_]", datetime.now() - timedelta(days=1), datetime.now(), "3", user_from_settings.id),
-        # ("[_60]_", datetime.now() - timedelta(days=1), datetime.now(), "4", user_orm.id)
+        ("_[5_]", now - timedelta(days=2), now - timedelta(minutes=5), "2", user_orm.id),
+        ("[_10_]", now - timedelta(minutes=15), now - timedelta(minutes=5), "3", user_from_settings.id),
+        ("[_60]_", now - timedelta(minutes=30), datetime.now() + timedelta(minutes=30), "4", user_orm.id)
     )
     suspensions_list = []
     for description, suspension_start, suspension_finish, measures, user_id in scenarios:

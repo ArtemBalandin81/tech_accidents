@@ -40,36 +40,36 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
     },
 )
 async def get_all_for_period_time(
-    suspension_start: str = Query(
+    start_sample: str = Query(
         ..., example=ANALYTIC_FROM_TIME, alias=ANALYTICS_START,  # description=ANALYTIC_FROM_TIME,
     ),
-    suspension_finish: str = Query(
+    finish_sample: str = Query(
         ..., example=ANALYTIC_TO_TIME, alias=ANALYTICS_FINISH,  # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> AnalyticsSuspensions:
-    suspension_start: datetime = datetime.strptime(suspension_start, DATE_TIME_FORMAT)  # convert in datetime
-    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # convert in datetime
+    start_sample: datetime = datetime.strptime(start_sample, DATE_TIME_FORMAT)  # convert in datetime
+    finish_sample: datetime = datetime.strptime(finish_sample, DATE_TIME_FORMAT)  # convert in datetime
     if user is None:
         user_id = None
     else:
         user: User = await users_service.get_by_email(user.value)
         user_id = user.id
     suspensions: Sequence[Suspension] = await suspension_service.get_suspensions_for_users(
-        user_id, suspension_start, suspension_finish
+        user_id, start_sample, finish_sample
     )
     suspensions_list = await suspension_service.perform_changed_schema(suspensions)
     return AnalyticsSuspensions(
         suspensions_in_mins_total=(
-            await suspension_service.sum_suspensions_time_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.sum_suspensions_time_for_period(user_id, start_sample, finish_sample)
         ),
         suspensions_total=(
-            await suspension_service.count_suspensions_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.count_suspensions_for_period(user_id, start_sample, finish_sample)
         ),
         suspension_max_time_for_period=(
-            await suspension_service.suspension_max_time_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.suspension_max_time_for_period(user_id, start_sample, finish_sample)
         ),
         last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
         last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),
