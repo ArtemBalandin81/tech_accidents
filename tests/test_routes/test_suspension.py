@@ -82,7 +82,6 @@ async def test_unauthorized_tries_suspension_urls(async_client: AsyncClient) -> 
 async def test_user_get_suspension_analytics_url(
         async_client: AsyncClient,
         async_db: AsyncSession,
-        # user_from_settings: User,
         suspensions_orm: Suspension
 ) -> None:
     """
@@ -96,31 +95,58 @@ async def test_user_get_suspension_analytics_url(
     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
     now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+    two_days_ago = (datetime.now(TZINFO) - timedelta(days=2)).strftime(DATE_TIME_FORMAT)
+    future_1_day = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+    last_time_suspension_expected = (datetime.now() - timedelta(minutes=15)).strftime(DATE_TIME_FORMAT)
+    # we need to correct last_time_suspension_expected for 1 min in ANALYTICS_FINISH because of time tests running:
+    last_time_suspension_exp_corrections = (datetime.now() - timedelta(minutes=14)).strftime(DATE_TIME_FORMAT)
     scenario_number = 0
     search_scenarios = (
-        # login, params, status, count, minutes, measures, users_ids   # todo
-        (user_settings_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200, 2, 70, ["3", "4"], [1, 2]),
+        # login, params, status, count, minutes, measures, users_ids
+        (user_settings_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200, 2, 70, ["3", "4"], [1, 2]),  # 1
         (user_orm_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now, USER_MAIL: user_settings_email}, 200,
-         1, 10, ["3"], [1]),
+         1, 10, ["3"], [1]),  # 2 filter by user_settings_email
+        (user_orm_login, {ANALYTICS_START: now, ANALYTICS_FINISH: future_1_day}, 200, 0, 0, [], []),  # 3
+        (user_orm_login, {ANALYTICS_START: last_time_suspension_expected, ANALYTICS_FINISH: future_1_day}, 200,
+         1, 10, ["3"], [1]),  # 4
+        (user_orm_login, {ANALYTICS_START: two_days_ago, ANALYTICS_FINISH: now}, 200,
+         4, 2946, ["1", "2", "3", "4"], [1, 2]),  # 5  test all suspensions: 2946 mins and 4 suspensions
+        (user_orm_login, {ANALYTICS_START: two_days_ago, ANALYTICS_FINISH: last_time_suspension_expected}, 200,
+         3, 2936, ["1", "2", "4"], [1, 2]),  # 6  problem is in seconds: don't include last_time_suspension
+        (user_orm_login, {ANALYTICS_START: two_days_ago, ANALYTICS_FINISH: last_time_suspension_exp_corrections}, 200,
+         4, 2946, ["1", "2", "3", "4"], [1, 2]),  # 7  corrects the 6th scenario for time needed for tests running
+        (user_orm_login, {ANALYTICS_START: now, ANALYTICS_FINISH: now}, 200, 0, 0, [], []),  # 8
+        (user_orm_login, {ANALYTICS_START: now, ANALYTICS_FINISH: day_ago}, 422, None, None, [], []),  # 9 left>right
+        (user_orm_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now, USER_MAIL: "unknown_user@f.com"}, 422,
+         None, None, [], []),  # 10 filter by unknown_user
     )
-    # ({"username": user_settings_email, "password": "testings"}, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now})
-    # ({ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200)
+
+    # Нарушение формата ввода данных 23-07-20245: 18:45  # todo - обрабатывать ошибку с помощью regex, сейчас 500!
+
 
     async with async_client as ac:
-        for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:  # todo
+        for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:
             response_login_user = await ac.post(login_url, data=login)
             response = await ac.get(
                 test_url,
                 params=search_params,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            suspensions_list = response.json()['Список всех случаев простоя.']
-            total_suspensions = len(suspensions_list)
-            total_minutes = response.json()['Сумма простоев в периоде (мин.)']
+            suspensions_list = response.json().get(SUSPENSION_LIST)
+            total_suspensions = len(suspensions_list) if suspensions_list is not None else None
+            total_minutes = response.json().get(MINS_TOTAL)
+            last_time_suspension_id = response.json().get(SUSPENSION_LAST_ID)
+            last_time_suspension = (
+                response.json().get(SUSPENSION_LAST_TIME)
+                if suspensions_list is not None else last_time_suspension_expected
+            )
             implementing_measures = []
             users_ids = []
-            [implementing_measures.append(suspension["Предпринятые действия"]) for suspension in suspensions_list]
-            [users_ids.append(suspension["id пользователя"]) for suspension in suspensions_list]
+            last_time_suspension_id_expected = None
+            if suspensions_list is not None:
+                [implementing_measures.append(suspension[IMPLEMENTING_MEASURES]) for suspension in suspensions_list]
+                [users_ids.append(suspension[USER_ID]) for suspension in suspensions_list]
+                last_time_suspension_id_expected = 3  # Now it's = 3 - !!! FRANGIBLE depends on suspensions_orm
             assert response.status_code == status, f"User: {login} couldn't get {test_url}"
             assert total_suspensions == count, (
                 f"Suspensions_total: {total_suspensions} doesn't match expectations: {count}"
@@ -129,86 +155,31 @@ async def test_user_get_suspension_analytics_url(
                 f"Suspensions_in_mins_total: {total_minutes} doesn't match expectations: {minutes}"
             )
             assert set(implementing_measures) == set(measures), (
-                f"Implementing_measures_(==ids): {implementing_measures} don't match expectations: {measures}"
+                f"Implementing_measures_(means ids): {implementing_measures} don't match expectations: {measures}"
             )
             assert set(users_ids) == set(ids_users), f"Users_ids: {users_ids} don't match expectations: {ids_users}"
+            assert last_time_suspension_id == last_time_suspension_id_expected, (
+                f"Last  stimeuspension id: {last_time_suspension_id} is not: {last_time_suspension_id_expected}"
+            )
+            assert last_time_suspension == last_time_suspension_expected, (
+                f"Last time suspension: {last_time_suspension} doesn't match: {last_time_suspension_expected}"
+            )
             scenario_number += 1
             await log.ainfo(
                 f"scenario_number: {scenario_number} ",
                 login_data=login,
                 params=search_params,
                 suspensions_in_mins_total=total_minutes,
-                suspensions_total=response.json()['Количество простоев в периоде'],
+                suspensions_total=response.json().get(SUSPENSION_TOTAl),
+                last_time_suspension_id=last_time_suspension_id,
+                last_time_suspension=last_time_suspension,
                 measures=implementing_measures,
                 users_ids=users_ids,
                 suspensions_list=suspensions_list
             )
-
-    # search_params = {
-    #     ANALYTICS_START: day_ago,
-    #     # ANALYTICS_FINISH: (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT),
-    #     ANALYTICS_FINISH: now,
-    #     # USER_MAIL: user_settings_email
-    # }
-
-    # await log.ainfo("suspension_orm", suspension_start=suspension_orm.suspension_start)
-    # async with async_client as ac:
-    #     response_login_user = await ac.post(login_url, data=login_data)
-    #     response = await ac.get(
-    #         test_url,
-    #         params=search_params,
-    #         headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
-    #     )
-    # assert response.status_code == 200, f"User: {login_data} couldn't get {test_url}"
-
-
-# todo разные проверки тут!!!
-    # Нужны 4 простоя для 4х сценариев и подсчет каждого сценария:  # todo
-    # 1 до окна поиска начинается и заканчивается (1 мин),  # todo
-    # 2 до окна поиска начинается и заканчивается в окне поиска (5 мин),  # todo
-    # 3 в окне начинается и заканчивается (10 мин),  # todo
-    # 4 начинается в окне и заканчивается за окном (60 мин), # todo
-    # Проверить подсчет суммы в каждом из 4х сценариев  # todo
-    # Левое окно запроса после начала простоя # todo
-    # Правовое окно запроса до окончания простоя  # todo
-    # Правое окно раньше левого  # todo
-    # Левое окно позже правого  # todo
-    # Леовое окно равно правому  # todo
-    # Несуществующий id пользователя  # todo
-    # Несуществующий email пользователя  # todo
-    # Простои от разных пользователей - не должно быть простоев от чужих пользователей при включении фильтра # todo
-    # Нарушение формата ввода данных  # todo
-    #   # todo
-    #   # todo
-    #   # todo
-
-    # assert edited_user_data["email"] == response.json()["email"], (
-    #     f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
-    # )
-    # print(f'response: {response.json()}')
-    # suspensions_list = response.json()['Список всех случаев простоя.']
-    # await log.ainfo(
-    #     "info: ",
-    #     params=search_params,
-    #     suspensions_in_mins_total=response.json()['Сумма простоев в периоде (мин.)'],
-    #     suspensions_total=response.json()['Количество простоев в периоде'],
-    #     suspension_start=suspensions_list[0]['Начало простоя'] if suspensions_list != [] else [],
-    #     suspension_finish=suspensions_list[0]['Окончание простоя'] if suspensions_list != [] else [],
-    #     # suspension_risk_accident=suspensions_list[0]['Риск-инцидент'] if suspensions_list != [] else [],
-    #     measures=suspensions_list[0]['Предпринятые действия'] if suspensions_list != [] else [],
-    # )
-
     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
     suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
     assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
-
     await log.ainfo("test_suspension_analytics", users_ids_after_remove=users_ids_after_remove,
                     suspensions_ids_after_remove=suspensions_ids_after_remove)
-
-
-    # print(f"user_orm_email: {user_orm.email}")
-    # print(f"user_from_settings: {json.loads(settings.STAFF)['1']}")
-    # print(f"tech_process: {next(iter(json.loads(settings.TECH_PROCESS).values()))}")
-    # print(f"risk_accident: {next(iter(json.loads(settings.RISK_SOURCE).values()))}")
-    # print(f"tech_process: {settings.TECH_PROCESS.values()}")

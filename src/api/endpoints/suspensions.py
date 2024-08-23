@@ -37,6 +37,7 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
     tags=[ANALYTICS_SUSPENSION],
     responses={
         status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
     },
 )
 async def get_all_for_period_time(
@@ -50,6 +51,7 @@ async def get_all_for_period_time(
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> AnalyticsSuspensions:
+    await check_start_not_exceeds_finish(start_sample, finish_sample, DATE_TIME_FORMAT)
     start_sample: datetime = datetime.strptime(start_sample, DATE_TIME_FORMAT)  # convert in datetime
     finish_sample: datetime = datetime.strptime(finish_sample, DATE_TIME_FORMAT)  # convert in datetime
     if user is None:
@@ -84,6 +86,7 @@ async def get_all_for_period_time(
     tags=[SUSPENSIONS_POST],
     responses={
         status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
     },
 )
 async def create_new_suspension_by_form(
@@ -142,6 +145,7 @@ async def create_new_suspension_by_form(
     tags=[SUSPENSIONS_POST],
     responses={
         status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
     },
 )
 async def create_new_suspension_by_form_with_files(
@@ -228,6 +232,7 @@ async def set_files_to_suspension(
     tags=[SUSPENSIONS_POST],
     responses={
         status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
     },
 )
 async def partially_update_suspension_by_form(

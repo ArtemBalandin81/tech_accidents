@@ -24,7 +24,7 @@ async def check_start_not_exceeds_finish(
     if start_process > finish_process:
         await log.aerror(START_FINISH_TIME, start_process=start_process, finish_process=finish_process)
         raise HTTPException(
-            status_code=422, detail="{}{}{}{}".format(START_FINISH_TIME, start_process, SPACE, finish_process)
+            status_code=422, detail="{}{}{}{}{}".format(START_FINISH_TIME, SPACE, start_process, SPACE, finish_process)
         )
 
 

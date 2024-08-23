@@ -184,7 +184,7 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     scenarios = (
         # description, suspension_start, suspension_finish, measures, user_id:
         ("_1_[]", now - timedelta(days=2), now - timedelta(days=1, hours=23, minutes=59), "1", user_from_settings.id),
-        ("_[5_]", now - timedelta(days=2), now - timedelta(minutes=5), "2", user_orm.id),
+        ("_[2875_]", now - timedelta(days=2), now - timedelta(minutes=5), "2", user_orm.id),
         ("[_10_]", now - timedelta(minutes=15), now - timedelta(minutes=5), "3", user_from_settings.id),
         ("[_60]_", now - timedelta(minutes=30), datetime.now() + timedelta(minutes=30), "4", user_orm.id)
     )
