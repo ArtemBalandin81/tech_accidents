@@ -3,10 +3,11 @@ from datetime import datetime, timedelta, timezone
 
 from src.settings import settings
 
-DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"
-DATE_PATTERN_FORM = "^([0-2][1-9]|3[0-2])-(0[1-9]|1[0-2])-(202[4-9]|20[3-9][0-9])$"  # 01-01-2024
-DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"
 DATE_FORMAT = "%d-%m-%Y"
+DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"  # with months and days: ^(0[1-9]|[12]\d|3[01])-(0[1-9]|1[0-2])-((19|20)\d{2})$
+TASK_PATTERN_FORM = "^([0-2][1-9]|3[0-1])-(0[1-9]|1[0-2])-(202[4-9]|20[3-9][0-9])$"  # 01-01-2024
+DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"  # 23-07-2024: 18:45
+DATE_TIME_PATTERN_FORM = "^([0-2][1-9]|3[0-1])-(0[1-9]|1[0-2])-(20[0-9][0-9]): ([0-1][0-9]|2[0-3]):([0-5][0-9])$"
 DATE_TODAY_FORMAT = "%Y-%m-%d"
 FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 

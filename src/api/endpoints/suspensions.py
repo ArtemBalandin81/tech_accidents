@@ -42,10 +42,18 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
 )
 async def get_all_for_period_time(
     start_sample: str = Query(
-        ..., example=ANALYTIC_FROM_TIME, alias=ANALYTICS_START,  # description=ANALYTIC_FROM_TIME,
+        ...,
+        example=ANALYTIC_FROM_TIME,
+        alias=ANALYTICS_START,
+        regex=DATE_TIME_PATTERN_FORM,  # todo
+        # description=ANALYTIC_FROM_TIME,
     ),
     finish_sample: str = Query(
-        ..., example=ANALYTIC_TO_TIME, alias=ANALYTICS_FINISH,  # description=ANALYTIC_TO_TIME,
+        ...,
+        example=ANALYTIC_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        regex=DATE_TIME_PATTERN_FORM,  # todo
+        # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
     suspension_service: SuspensionService = Depends(),
@@ -93,10 +101,18 @@ async def create_new_suspension_by_form(
     *,
     file_to_upload: UploadFile = None,
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=ANALYTICS_START,  # description=CREATE_SUSPENSION_FROM_TIME,
+        ...,
+        example=CREATE_SUSPENSION_FROM_TIME,
+        alias=ANALYTICS_START,
+        regex=DATE_TIME_PATTERN_FORM,
+        # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, alias=ANALYTICS_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
+        ...,
+        example=CREATE_SUSPENSION_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        regex=DATE_TIME_PATTERN_FORM,
+        # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -152,10 +168,18 @@ async def create_new_suspension_by_form_with_files(
     *,
     files_to_upload: list[UploadFile] = File(...),
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=ANALYTICS_START,  # description=CREATE_SUSPENSION_FROM_TIME,
+        ...,
+        example=CREATE_SUSPENSION_FROM_TIME,
+        alias=ANALYTICS_START,
+        regex=DATE_TIME_PATTERN_FORM,
+        # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, alias=ANALYTICS_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
+        ...,
+        example=CREATE_SUSPENSION_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        regex=DATE_TIME_PATTERN_FORM,
+        # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -241,13 +265,13 @@ async def partially_update_suspension_by_form(
         None,
         description=CREATE_SUSPENSION_FROM_TIME,
         alias=ANALYTICS_START,
-        # regex=  # todo
+        regex=DATE_TIME_PATTERN_FORM,
     ),
     suspension_finish: Optional[str] = Query(
         None,
         description=CREATE_SUSPENSION_TO_TIME,
         alias=ANALYTICS_FINISH,
-        # regex=  # todo
+        regex=DATE_TIME_PATTERN_FORM,
     ),
     risk_accident: RiskAccidentSource = Query(None, alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),

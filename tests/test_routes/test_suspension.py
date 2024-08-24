@@ -98,6 +98,8 @@ async def test_user_get_suspension_analytics_url(
     two_days_ago = (datetime.now(TZINFO) - timedelta(days=2)).strftime(DATE_TIME_FORMAT)
     future_1_day = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_TIME_FORMAT)
     last_time_suspension_expected = (datetime.now() - timedelta(minutes=15)).strftime(DATE_TIME_FORMAT)
+    error_in_date = "11-07-20244: 18:45"
+    error_in_time = "11-07-2024: 45:18"
     # we need to correct last_time_suspension_expected for 1 min in ANALYTICS_FINISH because of time tests running:
     last_time_suspension_exp_corrections = (datetime.now() - timedelta(minutes=14)).strftime(DATE_TIME_FORMAT)
     scenario_number = 0
@@ -119,11 +121,9 @@ async def test_user_get_suspension_analytics_url(
         (user_orm_login, {ANALYTICS_START: now, ANALYTICS_FINISH: day_ago}, 422, None, None, [], []),  # 9 left>right
         (user_orm_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now, USER_MAIL: "unknown_user@f.com"}, 422,
          None, None, [], []),  # 10 filter by unknown_user
+        (user_orm_login, {ANALYTICS_START: error_in_date, ANALYTICS_FINISH: now}, 422, None, None, [], []),  # 11 regex
+        (user_orm_login, {ANALYTICS_START: error_in_time, ANALYTICS_FINISH: now}, 422, None, None, [], []),  # 12 regex
     )
-
-    # Нарушение формата ввода данных 23-07-20245: 18:45  # todo - обрабатывать ошибку с помощью regex, сейчас 500!
-
-
     async with async_client as ac:
         for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:
             response_login_user = await ac.post(login_url, data=login)
@@ -169,6 +169,7 @@ async def test_user_get_suspension_analytics_url(
                 f"scenario_number: {scenario_number} ",
                 login_data=login,
                 params=search_params,
+                status=response.status_code,
                 suspensions_in_mins_total=total_minutes,
                 suspensions_total=response.json().get(SUSPENSION_TOTAl),
                 last_time_suspension_id=last_time_suspension_id,

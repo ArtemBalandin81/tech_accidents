@@ -174,7 +174,7 @@ async def partially_update_task_by_form(
         None,
         description=CREATE_TASK_DEADLINE,
         alias=TASK_FINISH,
-        regex=DATE_PATTERN_FORM
+        regex=TASK_PATTERN_FORM
     ),
     task: Optional[str] = Query(None, max_length=256, alias=TASK),
     description: Optional[str] = Query(None, max_length=256, alias=TASK_DESCRIPTION),
