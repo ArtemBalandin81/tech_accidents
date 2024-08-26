@@ -11,6 +11,7 @@ import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
 from passlib.context import CryptContext
+from pathlib import Path
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
@@ -230,6 +231,7 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     await log.ainfo("suspensions_orm_created:", suspensions_orm=suspensions_list)
     return suspensions_list
 
+
 async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:
     """Remove data in database and return the result in ids."""
     if instances is not None:
@@ -239,3 +241,26 @@ async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int]
     await async_db.commit()
     cleaned_item = await async_db.scalars(select(instance))
     return [cleaned_item.id for cleaned_item in cleaned_item.all()]
+
+
+async def get_files_for_model_db(async_db, instance: DatabaseModel, instance_id: int) -> Sequence[FileAttached]:
+    """Get list of files attached to Model."""
+    files = await async_db.scalars(
+        select(FileAttached)
+        .join(instance.files)
+        .where(instance.id == instance_id)
+    )
+    return files.all()
+
+
+async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Path] | dict[str, tuple[Any, ...]]:
+    """Удаляет из каталога список переданных файлов (физическое удаление файлов)."""
+    for file in files_to_delete:
+        try:
+            file.unlink()
+        except FileNotFoundError as e:
+            details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+            await log.aerror(details, file_to_remove=file)
+            # raise HTTPException(status_code=403, detail=details)
+            return {"message": e.args}
+        return files_to_delete

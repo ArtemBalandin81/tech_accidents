@@ -45,20 +45,21 @@ async def get_all_for_period_time(
         ...,
         example=ANALYTIC_FROM_TIME,
         alias=ANALYTICS_START,
-        regex=DATE_TIME_PATTERN_FORM,  # todo
+        regex=DATE_TIME_PATTERN_FORM,
         # description=ANALYTIC_FROM_TIME,
     ),
     finish_sample: str = Query(
         ...,
         example=ANALYTIC_TO_TIME,
         alias=ANALYTICS_FINISH,
-        regex=DATE_TIME_PATTERN_FORM,  # todo
+        regex=DATE_TIME_PATTERN_FORM,
         # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> AnalyticsSuspensions:
+    """Получение аналитики по простоям."""
     await check_start_not_exceeds_finish(start_sample, finish_sample, DATE_TIME_FORMAT)
     start_sample: datetime = datetime.strptime(start_sample, DATE_TIME_FORMAT)  # convert in datetime
     finish_sample: datetime = datetime.strptime(finish_sample, DATE_TIME_FORMAT)  # convert in datetime

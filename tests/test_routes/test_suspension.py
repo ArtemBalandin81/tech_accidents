@@ -9,7 +9,7 @@ import json
 import os
 import sys
 from datetime import date
-
+from pathlib import Path
 import pytest
 import structlog
 from httpx import AsyncClient
@@ -19,21 +19,23 @@ from sqlalchemy.ext.asyncio import AsyncSession
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.api.constants import *
 from src.api.endpoints import file_router, suspension_router
-from src.core.db.models import User, Suspension
+from src.core.db.models import FileAttached, User, Suspension
+from src.core.enums import TechProcess
 from src.settings import settings
 
-from tests.conftest import remove_all
+from tests.conftest import delete_files_in_folder, get_files_for_model_db, remove_all
 
-# cf = structlog.testing.CapturingLoggerFactory()  # https://www.structlog.org/en/stable/testing.html
-# structlog.configure(logger_factory=cf, processors=[structlog.processors.JSONRenderer()])
-# log = get_logger()
-# cf.logger.calls
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
-# log = structlog.stdlib.get_logger("api.access")
 pytestmark = pytest.mark.anyio  # make all test mark with `anyio` or use decorator: # @pytest.mark.anyio
 
 SUSPENSIONS_PATH = settings.ROOT_PATH + "/suspensions"  # /api/suspensions/
+FILES_PATH = settings.ROOT_PATH + "/files"  # /api/files/  # todo удалить / перенести
+
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
+TEST_ROUTES_DIR = Path(__file__).resolve().parent  # todo
+
 
 async def test_unauthorized_tries_suspension_urls(async_client: AsyncClient) -> None:
     """
@@ -90,7 +92,7 @@ async def test_user_get_suspension_analytics_url(
     """
     login_url = "/api/auth/jwt/login"
     test_url = SUSPENSIONS_PATH+ANALYTICS  # /api/suspensions/analytics
-    user_settings_email = json.loads(settings.STAFF)['1']
+    user_settings_email = json.loads(settings.STAFF)["1"]
     user_settings_login = {"username": user_settings_email, "password": "testings"}
     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
     now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
@@ -184,3 +186,230 @@ async def test_user_get_suspension_analytics_url(
     assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
     await log.ainfo("test_suspension_analytics", users_ids_after_remove=users_ids_after_remove,
                     suspensions_ids_after_remove=suspensions_ids_after_remove)
+
+
+async def test_user_post_suspension_form_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        user_orm: User,
+        # suspensions_orm: Suspension
+) -> None:
+    """
+    Тестирует фиксацию случая простоя из формы с возможностью загрузки 1 файла:
+    pytest -k test_user_post_suspension_form_url -vs
+    """
+    login_url = "/api/auth/jwt/login"
+    test_url = SUSPENSIONS_PATH+POST_SUSPENSION_FORM  # /api/suspensions/post_suspension_form
+    user_settings_email = json.loads(settings.STAFF)["1"]
+    user_settings_login = {"username": user_settings_email, "password": "testings"}
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
+    day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+    last_time_suspension_expected = (datetime.now() - timedelta(minutes=15)).strftime(DATE_TIME_FORMAT)
+    params = {
+        ANALYTICS_START: day_ago,
+        ANALYTICS_FINISH: now,
+        RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"],
+        TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        SUSPENSION_DESCRIPTION: "test_description",
+        IMPLEMENTING_MEASURES: "test_measures",
+    }
+    scenario_number = 0
+    search_scenarios = (
+        # login, params, status,
+        (user_orm_login, params, 200),
+    )
+    async with async_client as ac:
+        for login, create_params, status in search_scenarios:
+            response_login_user = await ac.post(login_url, data=login)
+            response = await ac.post(
+                test_url,
+                params=create_params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                # files={"file": open(TEST_ROUTES_DIR.joinpath("testfile.txt"), "wb")},  # TODO somehow!!!
+            )
+            suspensions = await async_db.scalars(select(Suspension))
+            suspensions_list = suspensions.all()
+            new_object = suspensions_list[0]
+            total_suspensions = len(suspensions_list) if suspensions_list is not None else None
+            total_suspensions_expected = 1
+            files_attached = await get_files_for_model_db(async_db, Suspension, new_object.id)
+            duration_db = new_object.suspension_finish - new_object.suspension_start
+            duration_params = (
+                    datetime.strptime(create_params[ANALYTICS_FINISH], DATE_TIME_FORMAT)
+                    - datetime.strptime(create_params[ANALYTICS_START], DATE_TIME_FORMAT)
+            )
+            assert response.status_code == status, f"User: {login} couldn't get {test_url}"
+            assert total_suspensions == total_suspensions_expected, (
+                f"Total suspensions: {total_suspensions} are not as expected: {total_suspensions_expected}"
+            )
+            assert new_object.id == response.json().get("id"), (
+                f"Suspension id: {new_object.id} is not as expected: {response.json().get('id')}"
+            )
+            assert new_object.user_id == response.json().get(USER_ID), (
+                f"Suspension user_id: {new_object.user_id} is not as expected: {response.json().get(USER_ID)}"
+            )
+            assert new_object.suspension_start.strftime(DATE_TIME_FORMAT) == response.json().get(SUSPENSION_START), (
+                f"Suspension start: {new_object.suspension_start.strftime(DATE_TIME_FORMAT)}"
+                f" is not: {response.json().get(SUSPENSION_START)}"
+            )
+            assert new_object.suspension_finish.strftime(DATE_TIME_FORMAT) == response.json().get(SUSPENSION_FINISH), (
+                f"Suspension finish: {new_object.suspension_finish.strftime(DATE_TIME_FORMAT)}"
+                f" is not: {response.json().get(SUSPENSION_FINISH)}"
+            )
+            assert new_object.implementing_measures == response.json().get(IMPLEMENTING_MEASURES), (
+                f"Measures: {new_object.implementing_measures} are not: {response.json().get(IMPLEMENTING_MEASURES)}"
+            )
+            assert files_attached == response.json().get(FILES_SET_TO), (
+                f"Attached files: {files_attached} are not as expected: {response.json().get(FILES_SET_TO)}"
+            )
+            assert new_object.risk_accident == response.json().get(RISK_ACCIDENT), (
+                f"Risk_accident: {new_object.risk_accident} is not as expected: {response.json().get(RISK_ACCIDENT)}"
+            )
+            assert TechProcess(str(new_object.tech_process)).name == response.json().get(TECH_PROCESS), (
+                f"Tech_process: {TechProcess(str(new_object.tech_process)).name}"
+                f" is not: {response.json().get(TECH_PROCESS)}"
+            )
+            assert duration_db == duration_params, f"Duration db: {duration_db} is not as expected: {duration_params}"
+
+            scenario_number += 1
+
+
+            # FILES_DIR = TESTS_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
+            print(f'TEST_ROUTES_DIR: {TEST_ROUTES_DIR.joinpath("testfile.txt")}')
+            await log.ainfo(
+                f"scenario_number: {scenario_number} ",
+                login_data=login,
+                duration_db=duration_db,
+                duration_params=duration_params,
+                params=create_params,
+                response=response.json()
+            )
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
+    assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
+    await log.ainfo("test_user_post_suspension_form_url", users_ids_after_remove=users_ids_after_remove,
+                    suspensions_ids_after_remove=suspensions_ids_after_remove)
+
+
+
+
+
+# TODO endpoints suspensions
+ADD_FILES_TO_SUSPENSION = "/add_files_to_suspension"
+# ANALYTICS = "/analytics"  # is done!
+MY_SUSPENSIONS = "/my_suspensions"
+# POST_SUSPENSION_FORM = "/post_suspension_form"  # todo now
+POST_SUSPENSION_FILES_FORM = "/post_suspension_with_files_form"
+SUSPENSION_ID = "/{suspension_id}"
+
+
+async def test_user_post_download_files_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        super_user_orm: User,
+        # suspensions_orm: Suspension
+) -> None:
+    """
+    Тестирует возможность загрузки 1 файла:
+    pytest -k test_user_post_download_files_url -vs
+    """
+    login_url = "/api/auth/jwt/login"
+    test_url = FILES_PATH+DOWNLOAD_FILES  # /api/files/download_files
+    super_user_orm_login = {"username": "super_user_fixture@f.com", "password": "testings"}
+    scenario_number = 0
+    async with async_client as ac:
+        response_login_user = await ac.post(login_url, data=super_user_orm_login)
+        assert response_login_user.status_code == 200, f"User: {super_user_orm_login} couldn't get {login_url}"
+        response = await ac.post(
+            test_url,
+            # params=search_params,
+            files={"files": open(TEST_ROUTES_DIR.joinpath("testfile.txt"), "rb")},  # TODO somehow!!!
+            headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+        )
+        assert response.status_code == 200, f"User: {super_user_orm_login} couldn't get {test_url}"
+        objects = await async_db.scalars(select(FileAttached))
+        files_in_db = objects.all()
+        file_name_saved_in_folder = response.json().get(FILES_WRITTEN_DB)[0].get("Имя файла.")
+
+        await log.ainfo(
+            f"scenario_number: {scenario_number} ",
+            login_data=super_user_orm_login,
+            # params=search_params,
+            status=response.status_code,
+            response=response.json(),
+            files_in_db=files_in_db,
+            files_dir=FILES_DIR,
+            # file_name=response.json().get(FILES_WRITTEN_DB)[0].get("Имя файла.")
+        )
+
+    # todo а файл-то называется по-другому, там в нем метка есть
+    await delete_files_in_folder([FILES_DIR.joinpath(file_name_saved_in_folder)])
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    files_ids_after_remove = await remove_all(async_db, FileAttached)  # delete all to clean the database
+    assert files_ids_after_remove == [], f"Files haven't been deleted: {files_ids_after_remove}"
+    await log.ainfo("test_suspension_analytics", users_ids_after_remove=users_ids_after_remove,
+                    files_ids_after_remove=files_ids_after_remove, file_removed_in_folder=file_name_saved_in_folder)
+
+
+
+
+
+
+
+# async def test_user_post_suspension_form_url(
+#         async_client: AsyncClient,
+#         async_db: AsyncSession,
+#         user_orm: User,
+        # suspensions_orm: Suspension
+# ) -> None:
+#     """
+#     Тестирует фиксацию случая простоя из формы с возможностью загрузки 1 файла:
+#     pytest -k test_user_post_suspension_form_url -vs
+#     """
+#     login_url = "/api/auth/jwt/login"
+#     test_url = SUSPENSIONS_PATH+POST_SUSPENSION_FORM  # /api/suspensions/post_suspension_form
+#     user_settings_email = json.loads(settings.STAFF)["1"]
+#     user_settings_login = {"username": user_settings_email, "password": "testings"}
+#     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
+#     now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
+#     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+#     scenario_number = 0
+#     search_scenarios = (
+#         # login, params, status, count, minutes, measures, users_ids
+#         (user_settings_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now}, 200, 2, 70, ["3", "4"], [1, 2]),  # 1
+#     )
+#     async with async_client as ac:
+#         for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:
+#             response_login_user = await ac.post(login_url, data=login)
+#             response = await ac.get(
+#                 test_url,
+#                 params=search_params,
+#                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+#             )
+#             assert response.status_code == status, f"User: {login} couldn't get {test_url}"
+#
+#             scenario_number += 1
+#             await log.ainfo(
+#                 f"scenario_number: {scenario_number} ",
+#                 login_data=login,
+#                 # params=search_params,
+#                 # status=response.status_code,
+#                 # suspensions_in_mins_total=total_minutes,
+#                 # suspensions_total=response.json().get(SUSPENSION_TOTAl),
+#                 # last_time_suspension_id=last_time_suspension_id,
+#                 # last_time_suspension=last_time_suspension,
+#                 # measures=implementing_measures,
+#                 # users_ids=users_ids,
+#                 # suspensions_list=suspensions_list,
+#                 # response=response.json(),
+#             )
+#     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+#     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+#     suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
+#     assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
+#     await log.ainfo("test_suspension_analytics", users_ids_after_remove=users_ids_after_remove,
+#                     suspensions_ids_after_remove=suspensions_ids_after_remove)
