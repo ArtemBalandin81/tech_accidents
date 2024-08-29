@@ -243,14 +243,15 @@ async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int]
     return [cleaned_item.id for cleaned_item in cleaned_item.all()]
 
 
-async def get_files_for_model_db(async_db, instance: DatabaseModel, instance_id: int) -> Sequence[FileAttached]:
-    """Get list of files attached to Model."""
-    files = await async_db.scalars(
+async def get_file_names_for_model_db(async_db, instance: DatabaseModel, instance_id: int) -> Sequence[FileAttached]:
+    """Get list of file names attached to a Model."""
+    objects = await async_db.scalars(
         select(FileAttached)
         .join(instance.files)
         .where(instance.id == instance_id)
     )
-    return files.all()
+    files = objects.all()
+    return [file.name for file in files]
 
 
 async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Path] | dict[str, tuple[Any, ...]]:
