@@ -264,4 +264,4 @@ async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Pa
             await log.aerror(details, file_to_remove=file)
             # raise HTTPException(status_code=403, detail=details)
             return {"message": e.args}
-        return files_to_delete
+    return files_to_delete

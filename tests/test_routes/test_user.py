@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.core.db.models import User
+from src.api.constants import *
 from src.settings import settings
 from tests.conftest import remove_all
 
@@ -79,7 +80,6 @@ async def test_user_register_login_and_logout(async_client: AsyncClient, async_d
     pytest -k test_user_register_login_and_logout -vs
     """
     register_url = "/api/auth/register"
-    login_url = "/api/auth/jwt/login"
     logout_url = "/api/auth/jwt/logout"
     email = "test_create_user@nofoobar.com"
     password = "testing_testing"
@@ -87,7 +87,7 @@ async def test_user_register_login_and_logout(async_client: AsyncClient, async_d
     login_data = {"username": email, "password": password}
     async with async_client as ac:
         response_register = await ac.post(register_url, json=register_data)  # POST "/api/auth/register"
-        response_post_login = await ac.post(login_url, data=login_data)  # POST "/api/auth/jwt/login"
+        response_post_login = await ac.post(LOGIN, data=login_data)  # POST "/api/auth/jwt/login"
         response_post_logout = await ac.post(
             logout_url,  # POST "/api/auth/jwt/logout"
             headers={"Authorization": f"Bearer {response_post_login.json()['access_token']}"}
@@ -109,7 +109,7 @@ async def test_user_register_login_and_logout(async_client: AsyncClient, async_d
         user_email=user_created.email, user_id=user_created.id, super_user=user_created.is_superuser,
     )
 
-    assert response_post_login.status_code == 200, f"Just registered user: {login_data} couldn't get {login_url}"
+    assert response_post_login.status_code == 200, f"Just registered user: {login_data} couldn't get {LOGIN}"
     await log.ainfo("post_login", response=response_post_login.json(), url=response_post_login.url,
                     status_code=response_post_login.status_code, login_data=login_data)
 
@@ -157,15 +157,14 @@ async def test_super_user_get_users_id(
     pytest -k test_super_user_get_users_id -vs
     """
     login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
-    login_url = "/api/auth/jwt/login"
     users_id_url = f"/api/users/{user_orm.id}"
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_login_user = await ac.post(LOGIN, data={"username": "user_fixture@f.com", "password": "testings"})
         response_users_id_by_user = await ac.get(
             users_id_url,  # POST "/api/users/{id}"
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_login_super_user = await ac.post(LOGIN, data=login_data)
         response_users_id = await ac.get(
             users_id_url,
             headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
@@ -201,22 +200,21 @@ async def test_super_user_patch_users_id(
     login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
     login_edited_data = {"username": "user_edited@f.com", "password": "testings_edited"}
     edited_user_data = {"email": "user_edited@f.com", "password": "testings_edited"}
-    login_url = "/api/auth/jwt/login"
     users_id_url = f"/api/users/{user_orm.id}"
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_login_user = await ac.post(LOGIN, data={"username": "user_fixture@f.com", "password": "testings"})
         response_patch_users_id_by_user = await ac.patch(
             users_id_url,  # POST "/api/users/{id}"
             json=edited_user_data,
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_login_super_user = await ac.post(LOGIN, data=login_data)
         response = await ac.patch(
             users_id_url,
             json=edited_user_data,
             headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
         )
-        response_login_edited_user = await ac.post(login_url, data=login_edited_data)
+        response_login_edited_user = await ac.post(LOGIN, data=login_edited_data)
     assert response_patch_users_id_by_user.status_code == 403, f"User: {user_orm.email} get {users_id_url} but mustn't"
     await log.ainfo("patch_users_id_by_user", response=response_patch_users_id_by_user.json(), user=user_orm.email,
                     url=response_patch_users_id_by_user.url, status_code=response_patch_users_id_by_user.status_code)
@@ -246,16 +244,15 @@ async def test_user_patch_users_me(async_client: AsyncClient, async_db: AsyncSes
     login_data = {"username": "user_fixture@f.com", "password": "testings"}
     edited_user_data = {"email": "user_edited@f.com", "password": "testings_edited"}
     login_edited_data = {"username": "user_edited@f.com", "password": "testings_edited"}
-    login_url = "/api/auth/jwt/login"
     users_me_url = "/api/users/me"
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data=login_data)
+        response_login_user = await ac.post(LOGIN, data=login_data)
         response = await ac.patch(
             users_me_url,  # POST "/api/users/me"
             json=edited_user_data,
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        response_login_edited_user = await ac.post(login_url, data=login_edited_data)
+        response_login_edited_user = await ac.post(LOGIN, data=login_edited_data)
     assert response.status_code == 200, f"User: {login_data} couldn't get {users_me_url}"
     assert edited_user_data["email"] == response.json()["email"], (
         f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
@@ -279,15 +276,14 @@ async def test_super_user_get_api_users(
     pytest -k test_super_user_get_api_users -vs
     """
     login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
-    login_url = "/api/auth/jwt/login"
     api_users_url = "/api/users"
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_login_user = await ac.post(LOGIN, data={"username": "user_fixture@f.com", "password": "testings"})
         response_api_users_by_user = await ac.get(
             api_users_url,  # GET "/api/users"
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_login_super_user = await ac.post(LOGIN, data=login_data)
         response_api_users = await ac.get(
             api_users_url,
             headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
@@ -326,15 +322,14 @@ async def test_super_user_get_db_backup(
     pytest -k test_super_user_get_db_backup -vs
     """
     login_data = {"username": "super_user_fixture@f.com", "password": "testings"}
-    login_url = "/api/auth/jwt/login"
     db_backup_url = "/api/services/db_backup"
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data={"username": "user_fixture@f.com", "password": "testings"})
+        response_login_user = await ac.post(LOGIN, data={"username": "user_fixture@f.com", "password": "testings"})
         response_db_backup_by_user = await ac.get(
             db_backup_url,  # GET "/api/services/db_backup"
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        response_login_super_user = await ac.post(login_url, data=login_data)
+        response_login_super_user = await ac.post(LOGIN, data=login_data)
         response_db_backup = await ac.get(
             db_backup_url,  # GET "/api/services/db_backup"
             headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},

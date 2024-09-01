@@ -103,17 +103,23 @@ async def test_user_post_download_files_url(
     Тестирует возможность загрузки 1 файла:
     pytest -k test_user_post_download_files_url -vs
     """
-    login_url = "/api/auth/jwt/login"
     test_url = FILES_PATH+DOWNLOAD_FILES  # /api/files/download_files
+    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
     super_user_orm_login = {"username": "super_user_fixture@f.com", "password": "testings"}
     scenario_number = 0
+    test_files = ["testfile.txt"]
+    for file_name in test_files:
+        if not os.path.exists(TEST_ROUTES_DIR.joinpath(file_name)):
+            with open(TEST_ROUTES_DIR.joinpath(file_name), "w") as file:
+                file.write(f"{file_name} has been created: {now}")
+
     async with async_client as ac:
-        response_login_user = await ac.post(login_url, data=super_user_orm_login)
-        assert response_login_user.status_code == 200, f"User: {super_user_orm_login} couldn't get {login_url}"
+        response_login_user = await ac.post(LOGIN, data=super_user_orm_login)
+        assert response_login_user.status_code == 200, f"User: {super_user_orm_login} couldn't get {LOGIN}"
         response = await ac.post(
             test_url,
             # params=search_params,
-            files={"files": open(TEST_ROUTES_DIR.joinpath("testfile.txt"), "rb")},
+            files={"files": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")},
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
         assert response.status_code == 200, f"User: {super_user_orm_login} couldn't get {test_url}"
@@ -156,7 +162,6 @@ async def test_user_post_download_files_url(
 #     Тестирует фиксацию случая простоя из формы с возможностью загрузки 1 файла:
 #     pytest -k test_user_post_suspension_form_url -vs
 #     """
-#     login_url = "/api/auth/jwt/login"
 #     test_url = SUSPENSIONS_PATH+POST_SUSPENSION_FORM  # /api/suspensions/post_suspension_form
 #     user_settings_email = json.loads(settings.STAFF)["1"]
 #     user_settings_login = {"username": user_settings_email, "password": "testings"}
@@ -170,7 +175,7 @@ async def test_user_post_download_files_url(
 #     )
 #     async with async_client as ac:
 #         for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:
-#             response_login_user = await ac.post(login_url, data=login)
+#             response_login_user = await ac.post(LOGIN, data=login)
 #             response = await ac.get(
 #                 test_url,
 #                 params=search_params,
