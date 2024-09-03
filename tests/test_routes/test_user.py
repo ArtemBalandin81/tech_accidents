@@ -122,10 +122,10 @@ async def test_user_register_login_and_logout(async_client: AsyncClient, async_d
     await log.ainfo("clean the database", users_ids_after_remove=users_ids_after_remove)
 
 
-async def test_user_register_password_policy(async_client: AsyncClient, async_db: AsyncSession) -> None:
+async def test_password_policy(async_client: AsyncClient, async_db: AsyncSession) -> None:
     """
     Тестирует эндпоинт регистрации пользователей и соблюдение требований политики парольной безопасности:
-    pytest -k test_user_register_password_policy -vs
+    pytest -k test_password_policy -vs
     """
     register_url = "/api/auth/register"
     email = "test_create_user@nofoobar.com"

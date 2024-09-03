@@ -127,7 +127,7 @@ async def test_user_post_download_files_url(
         files_in_db = objects.all()
         file_name_saved_in_folder = response.json().get(FILES_WRITTEN_DB)[0].get("Имя файла.")
 
-        await log.ainfo(
+        await log.awarning(
             f"scenario_number: {scenario_number} ",
             login_data=super_user_orm_login,
             # params=search_params,

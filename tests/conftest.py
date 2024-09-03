@@ -201,29 +201,6 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
             user_id=user_id
         )
         suspensions_list.append(suspension)
-
-
-    # suspension = Suspension(
-    #     risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
-    #     description=CREATE_DESCRIPTION,
-    #     suspension_start=datetime.now() - timedelta(days=1),  # CREATE_SUSPENSION_FROM_TIME,
-    #     suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
-    #     tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
-    #     implementing_measures=MEASURES,
-    #     user_id=user_from_settings.id
-    # )
-    # suspension2 = Suspension(
-    #     risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
-    #     description=CREATE_DESCRIPTION,
-    #     suspension_start=datetime.now() - timedelta(days=1),  # CREATE_SUSPENSION_FROM_TIME,
-    #     suspension_finish=datetime.now(),  # CREATE_SUSPENSION_TO_TIME,
-    #     tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
-    #     implementing_measures=MEASURES,
-    #     user_id=user_orm.id
-    #
-    # )
-    # async_db.add(suspension)
-    # async_db.add_all([suspension, suspension2])
     async_db.add_all(suspensions_list)
     await async_db.commit()
     # await async_db.refresh(suspensions_list)

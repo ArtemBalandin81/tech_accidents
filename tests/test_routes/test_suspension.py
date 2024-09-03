@@ -166,7 +166,7 @@ async def test_user_get_suspension_analytics_url(
                 f"Last time suspension: {last_time_suspension} doesn't match: {last_time_suspension_expected}"
             )
             scenario_number += 1
-            await log.ainfo(
+            await log.awarning(
                 f"scenario_number: {scenario_number} ",
                 login_data=login,
                 params=search_params,
@@ -333,7 +333,7 @@ async def test_user_post_suspension_form_url(
                 assert suspension_files_data[0].suspension_id == suspension_files_data[0].file_id, (
                     f"Can't find record: {suspension_files_data[0]} in SuspensionsFiles: {suspension_files_data}"
                 )  # record in SuspensionsFiles has been written
-            await log.ainfo(
+            await log.awarning(
                 f"scenario_number: {scenario_number} ",
                 login_data=login,
                 params=create_params,
@@ -516,7 +516,7 @@ async def test_user_post_suspension_with_files_form_url(
                     )  # check record in SuspensionsFiles has been written
                     i += 1
 
-            await log.ainfo(
+            await log.awarning(
                 f"scenario_number: {scenario_number} ",
                 login_data=login,
                 params=create_params,
@@ -542,6 +542,223 @@ async def test_user_post_suspension_with_files_form_url(
                     files_ids_after_remove=files_ids_after_remove)
 
 
+async def test_user_patch_suspension_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        # user_orm: User,  # todo delete
+        suspensions_orm: Suspension
+) -> None:
+    """
+    Тестирует редактирование случая простоя из формы с возможностью дозагрузки файла:
+    pytest -k test_user_patch_suspension_url -vs
+    """
+    test_url = SUSPENSIONS_PATH+"/"  # /api/suspensions/{suspension_id}
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
+    day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+    error_in_date = "11-07-20244: 18:45"
+    error_in_time = "11-07-2024: 45:18"
+    test_files = ["testfile.txt", "testfile2.txt"]
+    for file_name in test_files:
+        if not os.path.exists(TEST_ROUTES_DIR.joinpath(file_name)):
+            with open(TEST_ROUTES_DIR.joinpath(file_name), "w") as file:
+                file.write(f"{file_name} has been created: {now}")
+    files = [
+        ("files_to_upload", open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")),
+        ("files_to_upload", open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb"))
+    ]
+    file_to_upload = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
+    suspensions_before_patched = (
+        (
+            "_1_[]",  # description - [0],
+            datetime.now() - timedelta(days=2),  # suspension_start - [1],
+            datetime.now() - timedelta(days=1, hours=23, minutes=59),  # suspension_finish - [2],
+            "1",  # measures - [3],
+            1,  # user_id - [4],
+        ),
+        ("_[2875_]", datetime.now() - timedelta(days=2), datetime.now() - timedelta(minutes=5), "2", 2),
+        ("[_10_]", datetime.now() - timedelta(minutes=15), datetime.now() - timedelta(minutes=5), "3", 1),
+        ("[_60]_", datetime.now() - timedelta(minutes=30), datetime.now() + timedelta(minutes=30), "4", 2)
+    )
+    total_suspensions_expected = 4
+    # suspensions_expected_id = 1
+    scenario_number = 0
+    create_scenarios = (
+        # login, params, status, file_to_upload, suspension_id
+        # (user_orm_login, {
+        #     ANALYTICS_START: error_in_time,
+        #     ANALYTICS_FINISH: day_ago,
+        #     SUSPENSION_DESCRIPTION: "test_description",
+        #     IMPLEMENTING_MEASURES: "test_measures",
+        #     TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        #     RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
+        # }, 422, file_to_upload, 1),  # 1 error_in_time
+        # (user_orm_login, {
+        #     ANALYTICS_START: error_in_date,
+        #     ANALYTICS_FINISH: day_ago,
+        #     SUSPENSION_DESCRIPTION: "test_description",
+        #     IMPLEMENTING_MEASURES: "test_measures",
+        #     TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        #     RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
+        # }, 422, file_to_upload, 1),  # 2 error_in_date
+        # (user_orm_login, {
+        #     ANALYTICS_START: now,
+        #     ANALYTICS_FINISH: day_ago,
+        #     SUSPENSION_DESCRIPTION: "test_description",
+        #     IMPLEMENTING_MEASURES: "test_measures",
+        #     TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        #     RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
+        # }, 422, file_to_upload, 1),  # 3 L > R
+        # (user_orm_login, {
+        #     ANALYTICS_START: day_ago,
+        #     ANALYTICS_FINISH: now,
+        #     SUSPENSION_DESCRIPTION: "test_description",
+        #     IMPLEMENTING_MEASURES: "test_measures",
+        #     TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        #     RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
+        # }, 422, None, 1),  # 4
+        # (user_orm_login, {
+        #     ANALYTICS_START: day_ago,
+        #     ANALYTICS_FINISH: now,
+        #     SUSPENSION_DESCRIPTION: "test_description",
+        #     IMPLEMENTING_MEASURES: "test_measures",
+        #     TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+        #     RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
+        # }, 422, [], 1),  # 5
+        (user_orm_login, {
+            ANALYTICS_START: day_ago,
+            ANALYTICS_FINISH: now,
+            SUSPENSION_DESCRIPTION: "test_description_patched",
+            # IMPLEMENTING_MEASURES: "test_measures",
+            # TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
+            # RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"],
+            FILES_UNLINK: False
+        }, 200, None, 1),  # 6
+    )
+    async with async_client as ac:
+        for login, create_params, status, file_to_upload, suspension_id in create_scenarios:
+            scenario_number += 1
+            response_login_user = await ac.post(LOGIN, data=login)
+            response = await ac.patch(
+                test_url + f"{suspension_id}",
+                params=create_params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                files=file_to_upload
+            )
+            # print(f'response: {response}')
+            assert response.status_code == status, f"User: {login} couldn't get {test_url}"
+            # suspensions:
+            suspensions_object = await async_db.scalars(select(Suspension))
+            suspensions_list = suspensions_object.all()
+            total_suspensions = len(suspensions_list) if suspensions_list is not None else None
+            patched_suspension = suspensions_list[suspension_id-1] if suspensions_list is not None else None
+            start_expected = (
+                create_params.get(ANALYTICS_START) if create_params.get(ANALYTICS_START) is not None
+                else suspensions_before_patched[suspension_id-1][1].strftime(DATE_TIME_FORMAT)
+            )
+            finish_expected = (
+                create_params.get(ANALYTICS_FINISH) if create_params.get(ANALYTICS_FINISH) is not None
+                else suspensions_before_patched[suspension_id-1][2].strftime(DATE_TIME_FORMAT)
+            )
+            description_expected = (
+                create_params.get(SUSPENSION_DESCRIPTION) if create_params.get(SUSPENSION_DESCRIPTION) is not None
+                else suspensions_before_patched[suspension_id-1][0]
+            )
+
+            # files attached to suspensions:
+            suspension_files_object = await async_db.scalars(select(SuspensionsFiles))
+            suspension_files_all = suspension_files_object.all()
+            suspension_files_data = [record for record in suspension_files_all]
+            file_objects = await async_db.scalars(select(FileAttached))
+            files_in_db = file_objects.all()
+            files_attached = await get_file_names_for_model_db(async_db, Suspension, patched_suspension.id)
+            all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+            files_in_response = response.json().get(FILES_SET_TO)
+            if files_in_response is not None:
+                file_paths = [FILES_DIR.joinpath(file_name) for file_name in files_in_response]
+
+            duration_db = patched_suspension.suspension_finish - patched_suspension.suspension_start
+            # duration_params = (
+            #         datetime.strptime(create_params[ANALYTICS_FINISH], DATE_TIME_FORMAT)
+            #         - datetime.strptime(create_params[ANALYTICS_START], DATE_TIME_FORMAT)
+            # )
+            user_from_db = await async_db.scalar(select(User).where(User.email == user_orm_email))
+            assert total_suspensions == total_suspensions_expected, (
+                f"Total suspensions: {total_suspensions} are not as expected: {total_suspensions_expected}"
+            )
+            assert patched_suspension.id == suspension_id, (
+                f"Suspension id: {patched_suspension.id} is not as expected: {suspension_id}"
+            )
+            assert patched_suspension.user_id == user_from_db.id, (
+                f"Suspension user_id: {patched_suspension.user_id} is not as expected: {user_from_db.id}"
+            )
+            # assert patched_suspension.suspension_start.strftime(DATE_TIME_FORMAT) == start_expected, (
+            #     f"Suspension start: {patched_suspension.suspension_start.strftime(DATE_TIME_FORMAT)}"
+            #     f" is not as expected: {start_expected}"
+            # )
+            # assert new_object.suspension_finish.strftime(DATE_TIME_FORMAT) == create_params.get(ANALYTICS_FINISH), (
+            #     f"Suspension finish: {new_object.suspension_finish.strftime(DATE_TIME_FORMAT)}"
+            #     f" is not: {create_params.get(ANALYTICS_FINISH)}"
+            # )
+            # assert new_object.implementing_measures == create_params.get(IMPLEMENTING_MEASURES), (
+            #     f"Measures: {new_object.implementing_measures} are not: {create_params.get(IMPLEMENTING_MEASURES)}"
+            # )
+            # assert files_attached == files_in_response, (
+            #     f"Attached files: {files_attached} are not as expected: {files_in_response}"
+            # )
+            # assert new_object.risk_accident == create_params.get(RISK_ACCIDENT_SOURCE), (
+            #     f"Risk_accident: {new_object.risk_accident} "
+            #     f"is not as expected: {create_params.get(RISK_ACCIDENT_SOURCE)}"
+            # )
+            # assert new_object.tech_process == int(create_params.get(TECH_PROCESS)), (
+            #     f"Tech_process: {new_object.tech_process}"  # TechProcess(str(new_object.tech_process)).name = DU_25
+            #     f" is not: {int(create_params.get(TECH_PROCESS))}"
+            # )
+            # assert duration_db == duration_params, f"Duration db: {duration_db} is not as expected: {duration_params}"
+            #
+            # if files is not None:
+            #     i = 0
+            #     for file in files_in_response:
+            #         # print(f'File in response: {file.split("_")[2]} /// expected: {test_files[i]}')
+            #         assert file.split("_")[2] == test_files[i], (
+            #             f"File in response: {file} is not as expected: {test_files[i]}"
+            #         )
+            #         assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+            #         assert [suspension_files_data[i].suspension_id, suspension_files_data[i].file_id] == [1, i+1], (
+            #             f"No record: {suspension_files_data[i]} in SuspensionsFiles: {suspension_files_data}"
+            #         )  # check record in SuspensionsFiles has been written
+            #         i += 1
+
+            await log.awarning(
+                f"scenario_number: {scenario_number} ",
+                files_in_db=files_in_db,
+                # files_attached=files_attached,
+                # files_in_response=files_in_response,
+                files_dir=FILES_DIR,
+                login_data=login,
+                orm_suspensions_before_patched={
+                    "orm_description": suspensions_before_patched[suspension_id - 1][0],
+                    "orm_start": suspensions_before_patched[suspension_id - 1][1].strftime(DATE_TIME_FORMAT),
+                    "orm_finish": suspensions_before_patched[suspension_id - 1][2].strftime(DATE_TIME_FORMAT),
+                },
+                params=create_params,
+                response=response.json(),
+                suspension_files_data=suspension_files_data,
+            )
+            # await delete_files_in_folder(file_paths)  # delete test files in folder
+            # suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
+            # assert suspensions_ids_after_remove == [], f"Suspensions are still in db: {suspensions_ids_after_remove}"
+
+    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
+    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
+    suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
+    assert suspensions_ids_after_remove == [], f"Suspensions haven't been deleted: {suspensions_ids_after_remove}"
+    files_ids_after_remove = await remove_all(async_db, FileAttached)  # delete files to clean the database
+    assert files_ids_after_remove == [], f"Files attached haven't been deleted: {files_ids_after_remove}"
+    await log.ainfo("test_user_post_suspension_form_url", users_ids_after_remove=users_ids_after_remove,
+                    suspensions_ids_after_remove=suspensions_ids_after_remove,
+                    files_ids_after_remove=files_ids_after_remove)
 
 # TODO endpoints suspensions
 
