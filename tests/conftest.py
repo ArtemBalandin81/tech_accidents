@@ -196,7 +196,7 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
             description=description,
             suspension_start=suspension_start,  # CREATE_SUSPENSION_FROM_TIME,
             suspension_finish=suspension_finish,  # CREATE_SUSPENSION_TO_TIME,
-            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 - first item in dictionary
+            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 -first item in dictionary
             implementing_measures=measures,
             user_id=user_id
         )

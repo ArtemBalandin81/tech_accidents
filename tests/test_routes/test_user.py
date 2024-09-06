@@ -2,7 +2,8 @@
 Асинхронных тесты сервисных эндпоинтов и работы с пользователями: tests/test_routes/test_user.py
 pytest -s -W ignore::DeprecationWarning
 pytest -k test_unauthorized_get_urls -vs
-pytest -vs
+pytest -k test_user.py -vs  # тесты только из этого файла
+pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
 """
 import json
@@ -53,20 +54,26 @@ async def test_unauthorized_tries_service_and_auth_urls(async_client: AsyncClien
     async with async_client as ac:
         for api_url, params, status in get_params_urls:
             response = await ac.get(api_url, params=params)
-            assert response.status_code == status, f"test_url: {api_url} with params: {params} is not {status}"
+            assert response.status_code == status, (
+                f"test_url: {api_url} with params: {params} is not {status}. Response: {response}"
+            )
             await log.ainfo(
                 "{}".format(api_url), response=response.json(), status=response.status_code, request=response._request
             )
         for api_url, json_data, status in patch_json_urls:
             response = await ac.patch(api_url, json=json_data)
-            assert response.status_code == status, f"test_url: {api_url} with json_data: {json_data} is not {status}"
+            assert response.status_code == status, (
+                f"test_url: {api_url} with json_data: {json_data} is not {status}. Response: {response}"
+            )
             await log.ainfo(
                 "{}".format(api_url), json=json_data, response=response.json(), status=response.status_code,
                 request=response._request,
             )
         for api_url, data, status in post_data_urls:
             response = await ac.post(api_url, data=data)
-            assert response.status_code == status, f"test_url: {api_url} with data: {data} is not {status}"
+            assert response.status_code == status, (
+                f"test_url: {api_url} with data: {data} is not {status}. Response: {response}"
+            )
             await log.ainfo(
                 "{}".format(api_url), data=data, response=response.json(), status=response.status_code,
                 request=response._request,
@@ -138,7 +145,7 @@ async def test_password_policy(async_client: AsyncClient, async_db: AsyncSession
         for register_data, status in register_data_scenarios:
             response = await ac.post(register_url, json=register_data)  # POST "/api/auth/register"
             assert response.status_code == status, (
-                f"Status code: {response.status_code} doesn't match expectations: {status}"
+                f"Status code: {response.status_code} is not as expected: {status}. Response: {response}"
             )
             # await log.ainfo("register user scenario:", register_data=register_data, response=response.json())
     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
@@ -221,7 +228,7 @@ async def test_super_user_patch_users_id(
 
     assert response_login_edited_user.status_code == 200, f"Edited User: {login_edited_data} couldn't login"
 
-    assert response.status_code == 200, f"Super_user: {login_data} couldn't get {users_id_url}"
+    assert response.status_code == 200, f"Super_user: {login_data} couldn't get {users_id_url}. Response: {response}"
     assert response.json()["id"] == user_orm.id, (
         f"Requested users id: {user_orm.id} doesn't match response {response.json()['id']}"
     )
@@ -253,7 +260,7 @@ async def test_user_patch_users_me(async_client: AsyncClient, async_db: AsyncSes
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
         response_login_edited_user = await ac.post(LOGIN, data=login_edited_data)
-    assert response.status_code == 200, f"User: {login_data} couldn't get {users_me_url}"
+    assert response.status_code == 200, f"User: {login_data} couldn't get {users_me_url}. Response: {response}"
     assert edited_user_data["email"] == response.json()["email"], (
         f"Edited user's email: {response.json()['email']} doesn't meet expectations: {edited_user_data['email']}"
     )

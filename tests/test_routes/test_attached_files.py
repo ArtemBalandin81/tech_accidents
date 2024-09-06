@@ -2,7 +2,8 @@
 Асинхронные тесты работы эндпоинтов работы с файлами: tests/test_routes/test_attached_files.py
 pytest -s -W ignore::DeprecationWarning
 pytest -k test_unauthorized_get_urls -vs
-pytest -vs
+pytest -k test_attached_files.py -vs  # тесты только из этого файла
+pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
 """
 import json
@@ -122,12 +123,14 @@ async def test_user_post_download_files_url(
             files={"files": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")},
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
-        assert response.status_code == 200, f"User: {super_user_orm_login} couldn't get {test_url}"
+        assert response.status_code == 200, (
+            f"User: {super_user_orm_login} couldn't get {test_url}. Response: {response}"
+        )
         objects = await async_db.scalars(select(FileAttached))
         files_in_db = objects.all()
         file_name_saved_in_folder = response.json().get(FILES_WRITTEN_DB)[0].get("Имя файла.")
 
-        await log.awarning(
+        await log.ainfo(
             f"scenario_number: {scenario_number} ",
             login_data=super_user_orm_login,
             # params=search_params,
