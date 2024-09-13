@@ -7,7 +7,10 @@ DATE_FORMAT = "%d-%m-%Y"
 DATE_PATTERN = r"(\d{4}-\d{2}-\d{2})"  # with months and days: ^(0[1-9]|[12]\d|3[01])-(0[1-9]|1[0-2])-((19|20)\d{2})$
 TASK_PATTERN_FORM = "^([0-2][1-9]|3[0-1])-(0[1-9]|1[0-2])-(202[4-9]|20[3-9][0-9])$"  # 01-01-2024
 DATE_TIME_FORMAT = "%d-%m-%Y: %H:%M"  # 23-07-2024: 18:45
-DATE_TIME_PATTERN_FORM = "^([0-2][1-9]|3[0-1])-(0[1-9]|1[0-2])-(20[0-9][0-9]): ([0-1][0-9]|2[0-3]):([0-5][0-9])$"
+# DATE_TIME_PATTERN_FORM = "^([0-2][1-9]|3[0-1])-(0[1-9]|1[0-2])-(20[0-9][0-9]): ([0-1][0-9]|2[0-3]):([0-5][0-9])$"
+DATE_TIME_PATTERN_FORM = (
+    "^(0[1-9]|[1-2][0-9]|3[0-1])-(0[1-9]|1[0-2])-(20[0-9][0-9]): ([0-1][0-9]|2[0-3]):([0-5][0-9])$"
+)
 DATE_TODAY_FORMAT = "%Y-%m-%d"
 FILE_DATETIME_FORMAT = "%d-%m-%Y_%H%M%S"
 
@@ -87,6 +90,7 @@ FILES_IDS_INTERSECTION = "Общие ids множеств: "
 FILES_IDS_UNUSED_IN_DB = "ids бесхозных файлов в БД: "
 FILES_IDS_WRITTEN_DB = "id файлов, записанных в базу данных"
 FILES_IN_FOLDER = "Файлы в каталоге файлов: "
+FILE_IS_UNLINKED_IN_FOLDER = "Из каталога файлов удален файл: "
 FILES_UNLINK = "Удалить все прикрепленные файлы"
 FILES_UNUSED_IN_DB = "Бесхозные файлы в БД: "
 FILES_UNUSED_IN_DB_REMOVED = "Из БД удалены бесхозные файлы: "
@@ -95,6 +99,7 @@ FILES_SET_TO = "Привязанные файлы: "
 FILE_SIZE_ENCODE = "utf-8"
 FILE_SIZE_IN = 1000  # in kb
 FILE_SIZE_VOLUME = " kb."
+FILES_TO_REMOVE = "Удаляемые файлы: "
 FILES_UNUSED_IN_FOLDER = "Бесхозные файлы в каталоге файлов: "
 FILES_UNUSED_IN_FOLDER_REMOVED = "Из каталога удалены бесхозные файлы: "
 FILES_UPLOADED = "Загруженные файлы"

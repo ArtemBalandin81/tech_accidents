@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # Logging preferences
     FILE_NAME_IN_LOG: bool = False  # If true: structlog.get_logger().bind(file_name=__file__)
     JSON_LOGS: bool = False  # true: logs in json with JSONRenderer | false: colored logs with ConsoleRenderer
-    LOG_LEVEL: str = "INFO"  # .env in priority: (WARN, INFO, DEBUG)
+    LOG_LEVEL: str = "WARN"  # .env in priority: (WARN, INFO, DEBUG)
     LOG_DIR: str | Path = BASE_DIR.joinpath("logs")
     LOG_FILE: str = "app.log"
     LOG_FILE_SIZE: int = 10 * 2**20

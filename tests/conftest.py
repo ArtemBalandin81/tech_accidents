@@ -240,5 +240,5 @@ async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Pa
             details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
             await log.aerror(details, file_to_remove=file)
             # raise HTTPException(status_code=403, detail=details)
-            return {"message": e.args}
+            # return {"message": e.args}  # files in folder will not be deleted cause of exception return
     return files_to_delete

@@ -324,6 +324,7 @@ async def partially_update_suspension_by_form(
             file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
                 file_names_and_ids_set_to_suspension[1], all_file_ids_attached
             )
+            print(f'file_ids_unused: {file_ids_unused}')  # todo delete
             await file_service.remove_files(file_ids_unused, FILES_DIR)
             await log.ainfo(
                 "{}{}{}{}".format(SUSPENSION, suspension_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),

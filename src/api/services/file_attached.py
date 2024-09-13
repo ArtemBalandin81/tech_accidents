@@ -163,12 +163,13 @@ class FileService:
         for file in files_to_delete:
             try:
                 file.unlink()
+                await log.ainfo("{}".format(FILE_IS_UNLINKED_IN_FOLDER), file_to_unlink=file)
             except FileNotFoundError as e:
                 details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
                 await log.aerror(details, file_to_remove=file)
                 # raise HTTPException(status_code=403, detail=details)
                 return {"message": e.args}
-            return files_to_delete
+        return files_to_delete
 
     async def delete_files_in_db(self, files_to_delete: Sequence[int]) -> None:
         """Удаляет из БД список переданных файлов (файлы удаляются из БД, но остаются физически в каталоге файлов)."""
@@ -257,6 +258,7 @@ class FileService:
             await log.aerror(details, intersection=intersection)
             raise HTTPException(status_code=403, detail=details)
         files_to_remove: Sequence[Path] = await self.prepare_files_to_work_with(files, folder)
+        await log.ainfo("{}".format(FILES_TO_REMOVE), files_to_remove=files_to_remove)
         await self.delete_files_in_folder(files_to_remove)
         await self.delete_files_in_db(files)
         return files_to_remove
