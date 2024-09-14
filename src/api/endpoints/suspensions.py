@@ -45,14 +45,14 @@ async def get_all_for_period_time(
         ...,
         example=ANALYTIC_FROM_TIME,
         alias=ANALYTICS_START,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=ANALYTIC_FROM_TIME,
     ),
     finish_sample: str = Query(
         ...,
         example=ANALYTIC_TO_TIME,
         alias=ANALYTICS_FINISH,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
@@ -105,14 +105,14 @@ async def create_new_suspension_by_form(
         ...,
         example=CREATE_SUSPENSION_FROM_TIME,
         alias=ANALYTICS_START,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
         ...,
         example=CREATE_SUSPENSION_TO_TIME,
         alias=ANALYTICS_FINISH,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
@@ -172,14 +172,14 @@ async def create_new_suspension_by_form_with_files(
         ...,
         example=CREATE_SUSPENSION_FROM_TIME,
         alias=ANALYTICS_START,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
         ...,
         example=CREATE_SUSPENSION_TO_TIME,
         alias=ANALYTICS_FINISH,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
         # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
@@ -266,13 +266,13 @@ async def partially_update_suspension_by_form(
         None,
         description=CREATE_SUSPENSION_FROM_TIME,
         alias=ANALYTICS_START,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
     ),
     suspension_finish: Optional[str] = Query(
         None,
         description=CREATE_SUSPENSION_TO_TIME,
         alias=ANALYTICS_FINISH,
-        regex=DATE_TIME_PATTERN_FORM,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
     ),
     risk_accident: RiskAccidentSource = Query(None, alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
@@ -285,6 +285,7 @@ async def partially_update_suspension_by_form(
     user: User = Depends(current_user),
 ) -> AnalyticSuspensionResponse:
     """Редактирование случая простоя с возможностью очистки прикрепленных файлов, или добавления нового файла."""
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)  # из формы
     suspension_from_db = await suspension_service.get(suspension_id)  # get obj from db and fill in changed fields
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
     suspension_start: datetime = (
@@ -297,7 +298,7 @@ async def partially_update_suspension_by_form(
         if suspension_finish is not None
         else datetime.strptime(suspension_from_db.suspension_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
     )
-    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_FORMAT)
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)  # из формы и бд
     suspension_object = {
         "suspension_start": suspension_start,
         "suspension_finish": suspension_finish,
@@ -324,7 +325,6 @@ async def partially_update_suspension_by_form(
             file_ids_unused: Sequence[int] = await file_service.get_arrays_difference(
                 file_names_and_ids_set_to_suspension[1], all_file_ids_attached
             )
-            print(f'file_ids_unused: {file_ids_unused}')  # todo delete
             await file_service.remove_files(file_ids_unused, FILES_DIR)
             await log.ainfo(
                 "{}{}{}{}".format(SUSPENSION, suspension_id, SPACE, FILES_UNUSED_IN_FOLDER_REMOVED),

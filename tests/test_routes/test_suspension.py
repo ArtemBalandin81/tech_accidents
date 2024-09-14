@@ -136,7 +136,7 @@ async def test_user_get_suspension_analytics_url(  # TODO - in this test an erro
         (user_orm_login, {ANALYTICS_START: day_ago, ANALYTICS_FINISH: now, USER_MAIL: "unknown_user@f.com"}, 422,
          None, None, [], []),  # 10 filter by unknown_user
         (user_orm_login, {ANALYTICS_START: error_in_date, ANALYTICS_FINISH: now}, 422, None, None, [], []),  # 11 regex
-        (user_orm_login, {ANALYTICS_START: error_in_time, ANALYTICS_FINISH: now}, 422, None, None, [], []),  # 12 regex
+        (user_orm_login, {ANALYTICS_START: now, ANALYTICS_FINISH: error_in_time}, 422, None, None, [], []),  # 12 regex
     )
     async with async_client as ac:
         for login, search_params, status, count, minutes, measures, ids_users in search_scenarios:
@@ -236,8 +236,8 @@ async def test_user_post_suspension_form_url(
             RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
         }, 422, None),  # 1 error_in_time
         (user_orm_login, {
-            ANALYTICS_START: error_in_date,
-            ANALYTICS_FINISH: day_ago,
+            ANALYTICS_START: now,
+            ANALYTICS_FINISH: error_in_date,
             SUSPENSION_DESCRIPTION: "test_description",
             IMPLEMENTING_MEASURES: "test_measures",
             TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
@@ -413,8 +413,8 @@ async def test_user_post_suspension_with_files_form_url(  # todo  Несоотв
             RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"]
         }, 422, files),  # 1 error_in_time
         (user_orm_login, {
-            ANALYTICS_START: error_in_date,
-            ANALYTICS_FINISH: day_ago,
+            ANALYTICS_START: now,
+            ANALYTICS_FINISH: error_in_date,
             SUSPENSION_DESCRIPTION: "test_description",
             IMPLEMENTING_MEASURES: "test_measures",
             TECH_PROCESS: json.loads(settings.TECH_PROCESS)["DU_25"],
@@ -673,7 +673,7 @@ async def test_user_patch_suspension_url(
     async with async_client as ac:
         for login, create_params, status, uploaded_file, suspension_id in create_scenarios:
             scenario_number += 1
-            await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  *******************************")
+            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *******************************")
             # gather info of objects in db before testing:
             objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
             objects_in_db_before = objects_before.all()  # сколько объектов до сценария
@@ -707,7 +707,7 @@ async def test_user_patch_suspension_url(
             assert response.status_code == status, f"User: {login} couldn't get {test_url}. Response: {response}"
             # print(f'Response: {response}')
             if response.status_code != 200:
-                await log.awarning(
+                await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: ",
                     login_data=login,
                     orm_before_patched={
@@ -815,7 +815,7 @@ async def test_user_patch_suspension_url(
                 for file in attached_files_paths_before:
                     assert file.name not in all_files_in_folder, f"File: {file} is not deleted in folder: {FILES_DIR}"
 
-            await log.awarning(
+            await log.ainfo(
                 f"SCENARIO: _{scenario_number}_ info: ",
                 files_attached_before=attached_files_paths_before,
                 files_attached_expected=expected.get("files_attached"),
@@ -835,8 +835,7 @@ async def test_user_patch_suspension_url(
                 wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
             )
 
-    # cleaning the db and folders after test: TODO delete files in folder
-    # await delete_files_in_folder(attached_files_paths_before if len(file_paths) == 0 else file_paths)  # clean folder
+    # cleaning the db and folders after test:
     users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
     assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
     suspensions_ids_after_remove = await remove_all(async_db, Suspension)  # delete all to clean the database
@@ -847,7 +846,7 @@ async def test_user_patch_suspension_url(
     assert suspension_files_data_after_remove == [], (
         f"SuspensionsFiles are still in db: {suspension_files_data_after_remove}"
     )
-    await log.awarning(
+    await log.ainfo(
         "patch_suspension_form_url",
         users_ids_after_remove=users_ids_after_remove,
         suspensions_ids_after_remove=suspensions_ids_after_remove,
@@ -855,7 +854,8 @@ async def test_user_patch_suspension_url(
         suspension_files_after_remove=suspension_files_data_after_remove
     )
 
-# TODO ошибка в pytest -vs   !!!!!!!!!!!!!!!!!!!
+# TODO вместо regex использовать валидатор преобразования введенной даты тхт в дату: если не может - бросать ислючение
+
 
 # TODO endpoints suspensions
 

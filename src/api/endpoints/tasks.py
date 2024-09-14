@@ -174,7 +174,7 @@ async def partially_update_task_by_form(
         None,
         description=CREATE_TASK_DEADLINE,
         alias=TASK_FINISH,
-        regex=TASK_PATTERN_FORM
+        regex=TASK_PATTERN_FORM  # todo убрать regex в пользу валидатора
     ),
     task: Optional[str] = Query(None, max_length=256, alias=TASK),
     description: Optional[str] = Query(None, max_length=256, alias=TASK_DESCRIPTION),
@@ -191,6 +191,7 @@ async def partially_update_task_by_form(
     """Редактирование задачи с возможностью очистки прикрепленных файлов, или добавления нового файла."""
     task_from_db = await task_service.get(task_id)  # get obj from db and fill in changed fields
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
+    # await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)  # todo
     deadline: date = (
         datetime.strptime(str(deadline), DATE_FORMAT)
         if deadline is not None

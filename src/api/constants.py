@@ -198,6 +198,7 @@ FILE_TYPE_DOWNLOAD_NOT_ALLOWED = " - данный тип файла не доп�
 FILE_SEARCH_DOWNLOAD_OPTION = "Выберите тип поиска: по id или имени файла (не одновременно)!"
 FUNCTION_STARTS = "Запущенна функция: "
 MISS_LOGGING_UPDATES = "Следующие Updates не были пойманы ни одним из обработчиков"
+NOT_DATETIME_FORMAT = "Ошибка ввода даты и (или) времени! "
 NO_USER = "Check USER is not NONE!"
 NOT_FOUND = " - not found!"
 NOT_SUPER_USER_WARNING = {"description": "Not a superuser."}
