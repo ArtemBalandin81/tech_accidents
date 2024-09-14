@@ -13,6 +13,7 @@ from src.api.schema import (  # rename to "schemas" todo
     SuspensionDeletedResponse, SuspensionResponse)
 from src.api.services import FileService, SuspensionService, UsersService
 from src.api.validators import (
+    check_author_or_super_user,
     check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_start_not_exceeds_finish)
@@ -251,7 +252,7 @@ async def set_files_to_suspension(
 
 @suspension_router.patch(
     SUSPENSION_ID,
-    dependencies=[Depends(current_user)],
+    # dependencies=[Depends(current_user)],  # delete todo
     description=SUSPENSION_PATCH_FORM,
     summary=SUSPENSION_PATCH_FORM,
     tags=[SUSPENSIONS_POST],
@@ -287,6 +288,7 @@ async def partially_update_suspension_by_form(
     """Редактирование случая простоя с возможностью очистки прикрепленных файлов, или добавления нового файла."""
     await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)  # из формы
     suspension_from_db = await suspension_service.get(suspension_id)  # get obj from db and fill in changed fields
+    await check_author_or_super_user(user, suspension_from_db)
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
     suspension_start: datetime = (
         datetime.strptime(str(suspension_start), DATE_TIME_FORMAT)

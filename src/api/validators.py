@@ -4,11 +4,25 @@ from collections.abc import Sequence
 from datetime import date
 
 import structlog
+from typing import TypeVar
 from fastapi import HTTPException, UploadFile
 from pydantic import PositiveInt
 from src.api.constants import *
+from src.core.db.models import User
 
+DatabaseModel = TypeVar("DatabaseModel")
 log = structlog.get_logger()
+
+
+async def check_author_or_super_user(
+        user: User,
+        instance: DatabaseModel,
+) -> None:
+    """Проверяет пользователя на авторство, или наличие прав админа."""
+    if user.id != instance.user_id and not user.is_superuser:
+        details = "{}".format(ONLY_AUTHOR)
+        await log.aerror(ONLY_AUTHOR, author=instance.user_id, current_user=user.id, is_super_user=user.is_superuser)
+        raise HTTPException(status_code=403, detail=details)
 
 
 async def check_start_not_exceeds_finish(

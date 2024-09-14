@@ -12,6 +12,7 @@ from src.api.schema import (AnalyticTaskResponse, TaskCreate,  # todo "schemas"
                             TaskDeletedResponse, TaskResponse)
 from src.api.services import FileService, TaskService, UsersService
 from src.api.validators import (
+    check_author_or_super_user,
     check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_same_files_not_to_download, check_start_not_exceeds_finish)
@@ -190,6 +191,7 @@ async def partially_update_task_by_form(
 ) -> AnalyticTaskResponse:
     """Редактирование задачи с возможностью очистки прикрепленных файлов, или добавления нового файла."""
     task_from_db = await task_service.get(task_id)  # get obj from db and fill in changed fields
+    await check_author_or_super_user(user, task_from_db)
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
     # await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)  # todo
     deadline: date = (
