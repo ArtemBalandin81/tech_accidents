@@ -24,7 +24,7 @@ from src.core.db.models import FileAttached, User, Suspension
 from src.core.enums import TechProcess
 from src.settings import settings
 
-from tests.conftest import delete_files_in_folder, get_file_names_for_model_db, remove_all
+from tests.conftest import clean_test_database, delete_files_in_folder, get_file_names_for_model_db, remove_all
 
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
@@ -140,18 +140,8 @@ async def test_user_post_download_files_url(
             files_dir=FILES_DIR,
             # file_name=response.json().get(FILES_WRITTEN_DB)[0].get("Имя файла.")
         )
-
     await delete_files_in_folder([FILES_DIR.joinpath(file_name_saved_in_folder)])
-    users_ids_after_remove = await remove_all(async_db, User)  # delete all to clean the database and isolate tests
-    assert users_ids_after_remove == [], f"Users haven't been deleted: {users_ids_after_remove}"
-    files_ids_after_remove = await remove_all(async_db, FileAttached)  # delete all to clean the database
-    assert files_ids_after_remove == [], f"Files haven't been deleted: {files_ids_after_remove}"
-    await log.ainfo("test_suspension_analytics", users_ids_after_remove=users_ids_after_remove,
-                    files_ids_after_remove=files_ids_after_remove, file_removed_in_folder=file_name_saved_in_folder)
-
-
-
-
+    await clean_test_database(async_db, User, FileAttached)
 
 
 

@@ -220,6 +220,18 @@ async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int]
     return [cleaned_item.id for cleaned_item in cleaned_item.all()]
 
 
+async def clean_test_database(async_db, *args) -> structlog:
+    """Clean all model data in database and return the result in logs."""
+    clean_log_dict = {}
+    for arg in args:
+        ids_after_remove = await remove_all(async_db, arg)
+        model_name = arg.__tablename__
+        details = f"{model_name} ids: {ids_after_remove}"
+        assert ids_after_remove == [], f"ids of {model_name} haven't been deleted. {details}"
+        clean_log_dict[model_name] = ids_after_remove
+    await log.ainfo("Clean_test_database_and_files_folder", info=clean_log_dict)
+
+
 async def get_file_names_for_model_db(async_db, instance: DatabaseModel, instance_id: int) -> Sequence[FileAttached]:
     """Get list of file names attached to a Model."""
     objects = await async_db.scalars(
