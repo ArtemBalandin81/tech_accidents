@@ -8,6 +8,7 @@ https://anyio.readthedocs.io/en/stable/testing.html
 
 pytest -k test_unauthorized_tries_suspension_urls -vs
 pytest -k test_user_get_suspension_analytics_url -vs
+pytest -k test_user_get_suspension_url -vs
 pytest -k test_user_post_suspension_form_url -vs
 pytest -k test_user_post_suspension_with_files_form_url -vs
 pytest -k test_user_patch_suspension_url -vs
@@ -832,20 +833,215 @@ async def test_user_post_suspension_form_url(
             )
             await clean_test_database(async_db, Suspension, FileAttached, SuspensionsFiles)
             await delete_files_in_folder(file_paths)
+    await clean_test_database(async_db, User)
 
+
+async def test_user_get_suspension_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        suspensions_orm: Suspension,
+) -> None:
+    """
+    Тестирует возможность получения по id информации о случае простоя, или загрузки прикрепленных файлов:
+    pytest -k test_user_get_suspension_url -vs
+
+    before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
+
+    create_scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
+    Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
+    поэтому используем разные сценарии при тестировании редактирования параметров простая.
+
+    expected - словарь ожидаемых значений параметров простоя:
+    если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании простоя).
+
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+
+    """
+    test_url = SUSPENSIONS_PATH+"/"  # /api/suspensions/{suspension_id}
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
+    day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_TIME_FORMAT)
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
+    for file_name in test_files:
+        if not os.path.exists(TEST_ROUTES_DIR.joinpath(file_name)):
+            with open(TEST_ROUTES_DIR.joinpath(file_name), "w") as file:
+                file.write(f"{file_name} has been created: {now}")
+    json_choice = next(iter(json.loads(settings.CHOICE_DOWNLOAD_FILES).values()))  # 1st in dictionary == "json"
+    print(f'json_choice: {json_choice}')  # todo
+    scenario_number = 0
+    # Сценарии завязаны друг на друга - не изолированы
+    # todo - поробовать второй сценарий с suspension_id = 2
+    create_scenarios = (
+        # login, params, status, uploaded_file, suspension_id
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 2),  # 1
+        # empty params with 1 file, suspension_id = 2
+        # (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 2),  # 10
+        # # add 1 more file (total 2 files), suspension_id = 2
+        # (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 2),  # 11
+        # # add 1 more file (total 3 files), suspension_id = 2
+        # (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2),  # 12
+        # (
+        #     user_orm_login,
+        #     {FILES_UNLINK: True}, 406, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2
+        # ),  # 13 unlink files simultaneously with upload
+        # (user_orm_login, {FILES_UNLINK: True}, 200, None, 2),  # 14 and now unlink all the files
+    )
+    async with async_client as ac:
+        for login, params, status, uploaded_file, suspension_id in create_scenarios:
+            scenario_number += 1
+            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *******************************")
+            # gather info of objects in db before testing:
+            objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
+            objects_in_db_before = objects_before.all()  # сколько объектов до сценария
+            object_before_testing = [
+                suspension for suspension in objects_in_db_before if suspension.id == suspension_id
+            ]
+            suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
+            suspension_files_in_db_before = suspension_files_object_before.all()
+            attached_files_objects_before = await async_db.scalars(  # какие файлы были привязаны к простою
+                select(FileAttached)
+                .join(Suspension.files)
+                .where(Suspension.id == suspension_id)
+            )
+            attached_files_in_db_before = attached_files_objects_before.all()
+            attached_files_paths_before = [
+                FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
+                if attached_files_in_db_before is not None
+            ]
+
+            if suspension_files_in_db_before:
+                suspension_files_records_before = [
+                    (record.suspension_id, record.file_id) for record in suspension_files_in_db_before
+                ]
+            else:
+                suspension_files_records_before = []
+
+            response_login_user = await ac.post(LOGIN, data=login)  # TODO WORKING HERE
+            response = await ac.get(
+                test_url + f"{suspension_id}",
+                params=params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+            )
+            assert response.status_code == status, f"User: {login} couldn't get {test_url}. Response: {response}"
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: ",
+                    login_data=login,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"_________STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}"
+                )
+                continue
+
+            # patched suspensions:
+            objects = await async_db.scalars(select(Suspension))
+            objects_in_db = objects.all()
+            patched = objects_in_db[suspension_id-1] if objects_in_db is not None else None
+
+            # patched files:
+            files_in_response = response.json().get(FILES_SET_TO)
+            file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
+            files_in_db = file_objects.all() if file_objects is not None else []
+            file_paths = [
+                FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
+            ]
+            all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+
+            # patched files relations:
+            suspension_files_object = await async_db.scalars(select(SuspensionsFiles))
+            suspension_files_in_db = suspension_files_object.all()
+            suspension_files_records = set(
+                ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
+            )
+            # if uploaded_file and (create_params.get(FILES_UNLINK) is not True):
+            #     suspension_files_in_scenario = (
+            #             tuple(suspension_files_records_before)
+            #             + ((suspension_id, len(suspension_files_records_before) + 1),)
+            #     )
+            # elif create_params.get(FILES_UNLINK):
+            #     suspension_files_in_scenario = ()
+            # else:
+            #     suspension_files_in_scenario = tuple(suspension_files_records_before)
+            suspension_files_in_scenario = tuple(suspension_files_records_before)  # todo
+
+            # expected values in scenario
+            expected = {
+                "total_suspensions_expected": len(objects_in_db_before),
+                "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_before_testing[0].id),
+                "suspension_files": suspension_files_in_scenario,
+                "start": object_before_testing[0].suspension_start.strftime(DATE_TIME_FORMAT),
+                "finish": object_before_testing[0].suspension_finish.strftime(DATE_TIME_FORMAT),
+                "description": object_before_testing[0].description,
+                "measures": object_before_testing[0].implementing_measures,
+                "risk_accident": object_before_testing[0].risk_accident,
+                "tech_process": object_before_testing[0].tech_process,
+                "user_id": object_before_testing[0].user_id,
+            }
+            # run asserts in a scenario:
+            match_values = (
+                # name value, expected_value, exist_value
+                ("Suspension id: ", suspension_id, object_before_testing[0].id),
+                ("Total suspensions: ", expected.get("total_suspensions_expected"), len(objects_in_db)),
+                ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),
+                ("Suspension files: ", set(expected.get("suspension_files")), suspension_files_records),  # TODO
+                ("Suspension start: ", expected.get("start"), response.json().get(SUSPENSION_START)),
+                ("Suspension finish: ", expected.get("finish"), response.json().get(SUSPENSION_FINISH)),
+                ("Description: ", expected.get("description"), response.json().get(SUSPENSION_DESCRIPTION)),
+                ("Implementing measures: ", expected.get("measures"), response.json().get(IMPLEMENTING_MEASURES)),
+                ("Risk accident: ", expected.get("risk_accident"), response.json().get(RISK_ACCIDENT)),
+                (
+                    "Tech process: ",
+                    expected.get("tech_process"),
+                    json.loads(settings.TECH_PROCESS).get(response.json().get(TECH_PROCESS))
+                ),
+                (
+                    "Duration: ",
+                    (
+                        (object_before_testing[0].suspension_finish
+                            - object_before_testing[0].suspension_start).total_seconds() / SUSPENSION_DURATION_RESPONSE
+                    ),
+                    response.json().get(SUSPENSION_DURATION)
+                ),
+                ("user_id: ", expected.get("user_id"), response.json().get(USER_ID)),
+                # (": ",),  # more scenarios
+            )
+            for name, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name} {exist_value} not as expected: {expected_value}"
+            if files_in_response is not None:
+                for file in files_in_response:
+                    assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+            # if create_params.get(FILES_UNLINK) is True and attached_files_paths_before:
+            #     for file in attached_files_paths_before:
+            #         assert file.name not in all_files_in_folder, f"File: {file} is not deleted in folder: {FILES_DIR}"
+            await log.ainfo(
+                f"SCENARIO: _{scenario_number}_ info: ",
+                files_attached_before=attached_files_paths_before,
+                files_attached_expected=expected.get("files_attached"),
+                files_in_db=files_in_db,
+                files_in_response=files_in_response,
+                file_paths=file_paths,
+                login_data=login,
+                params=params,
+                response=response.json(),
+                suspension_files_expected=set(expected.get("suspension_files")),
+                wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
+            )
+    await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)
 
 
 # TODO endpoints suspensions
 
-# ANALYTICS = "/analytics"  # GET is done!
+# GET ANALYTICS = "/analytics"  # is done!
 # POST_SUSPENSION_FORM = "/post_suspension_form"  # is done!
 # POST_SUSPENSION_FILES_FORM = "/post_suspension_with_files_form"  # is done!
+# PATCH SUSPENSION_ID = "/{suspension_id}"  #
 
-# SUSPENSION_ID = "/{suspension_id}"  # PATCH todo after /api/suspensions/{suspension_id}
+# SUSPENSION_ID = "/{suspension_id}"  # GET todo
 # SUSPENSION_ID = "/{suspension_id}"  # DELETE todo /api/suspensions/{suspension_id}
 
 # MY_SUSPENSIONS = "/my_suspensions"  # GET todo
-# SUSPENSION_ID = "/{suspension_id}"  # GET todo
+
 # MAIN_ROUTE = "/"   # GET all todo
 
 # ADD_FILES_TO_SUSPENSION = "/add_files_to_suspension"  # POST todo
