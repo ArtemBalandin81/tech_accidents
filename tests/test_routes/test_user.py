@@ -5,6 +5,20 @@ pytest -k test_unauthorized_get_urls -vs
 pytest -k test_user.py -vs  # тесты только из этого файла
 pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
+
+pytest -k test_unauthorized_tries_service_and_auth_urls -vs
+pytest -k test_user_register_login_and_logout -vs
+pytest -k test_password_policy -vs
+pytest -k test_super_user_get_users_id -vs
+pytest -k test_super_user_patch_users_id -vs
+pytest -k test_user_patch_users_me -vs
+pytest -k test_super_user_get_api_users -vs
+pytest -k test_super_user_get_db_backup -vs
+
+
+Для отладки рекомендуется использовать:
+print(f'response_dir: {dir(response)}')
+print(f'RESPONSE__dict__: {response.__dict__}')
 """
 import json
 import os

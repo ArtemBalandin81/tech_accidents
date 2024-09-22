@@ -5,6 +5,12 @@ pytest -k test_unauthorized_get_urls -vs
 pytest -k test_attached_files.py -vs  # тесты только из этого файла
 pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
+
+pytest -k test_user_post_download_files_url -vs
+
+Для отладки рекомендуется использовать:
+print(f'response_dir: {dir(response)}')
+print(f'RESPONSE__dict__: {response.__dict__}')
 """
 import json
 import os
