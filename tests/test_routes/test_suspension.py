@@ -9,6 +9,8 @@ https://anyio.readthedocs.io/en/stable/testing.html
 pytest -k test_unauthorized_tries_suspension_urls -vs
 pytest -k test_user_get_suspension_analytics_url -vs
 pytest -k test_user_get_suspension_url -vs
+pytest -k test_user_get_all_suspension_url -vs
+pytest -k test_user_get_my_suspension_url -vs
 pytest -k test_user_post_suspension_form_url -vs
 pytest -k test_user_post_suspension_with_files_form_url -vs
 pytest -k test_user_patch_suspension_url -vs
@@ -16,6 +18,7 @@ pytest -k test_user_patch_suspension_url -vs
 Для отладки рекомендуется использовать:
 print(f'response_dir: {dir(response)}')
 print(f'RESPONSE__dict__: {response.__dict__}')
+
 """
 import json
 import os
@@ -219,7 +222,7 @@ async def test_user_patch_suspension_url(
 
     before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
 
-    create_scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
+    scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
     Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
     поэтому используем разные сценарии при тестировании редактирования параметров простая.
 
@@ -260,7 +263,7 @@ async def test_user_patch_suspension_url(
     )
     scenario_number = 0
     # Сценарии завязаны друг на друга - не изолированы
-    create_scenarios = (
+    scenarios = (
         # login, params, status, uploaded_file, suspension_id, name
         (user_settings_login, {
             ANALYTICS_START: error_in_time,
@@ -313,7 +316,7 @@ async def test_user_patch_suspension_url(
         (user_orm_login, {FILES_UNLINK: True}, 200, None, 2, "and now unlink all the files"),  # 14
     )
     async with async_client as ac:
-        for login, create_params, status, uploaded_file, suspension_id, name in create_scenarios:
+        for login, create_params, status, uploaded_file, suspension_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
             # gather info of objects in db before testing:
@@ -435,7 +438,7 @@ async def test_user_patch_suspension_url(
             }
             # run asserts in a scenario:
             match_values = (
-                # name value, expected_value, exist_value
+                # name_value, expected_value, exist_value
                 ("Suspension id: ", suspension_id, object_in_db.id),
                 ("Total suspensions: ", expected.get("total_suspensions_expected"), len(objects_in_db)),
                 ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),
@@ -465,8 +468,8 @@ async def test_user_patch_suspension_url(
                 ("user_id: ", expected.get("user_id"), object_in_db.user_id),
                 # (": ",),  # more scenarios
             )
-            for name, expected_value, exist_value in match_values:
-                assert expected_value == exist_value, f"{name} {exist_value} not as expected: {expected_value}"
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
             if files_in_response is not None:
                 for file in files_in_response:
                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
@@ -504,7 +507,7 @@ async def test_user_post_suspension_with_files_form_url(
     Тестирует фиксацию случая простоя из формы с обязательной загрузкой нескольких файлов:
     pytest -k test_user_post_suspension_with_files_form_url -vs
 
-    create_scenarios - тестовые сценарии создания простоев (сценарии изолированы).
+    scenarios - тестовые сценарии создания простоев (сценарии изолированы).
     expected - словарь ожидаемых значений параметров простоя
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
@@ -526,7 +529,7 @@ async def test_user_post_suspension_with_files_form_url(
         ("files_to_upload", open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb"))
     ]
     scenario_number = 0
-    create_scenarios = (
+    scenarios = (
         # login, params, status, files, name
         (user_orm_login, {
             ANALYTICS_START: error_in_time,
@@ -578,7 +581,7 @@ async def test_user_post_suspension_with_files_form_url(
         }, 200, files, "with files"),  # 6
     )
     async with async_client as ac:
-        for login, create_params, status, files, name in create_scenarios:
+        for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}   ******")
             response_login_user = await ac.post(LOGIN, data=login)
@@ -636,7 +639,7 @@ async def test_user_post_suspension_with_files_form_url(
             }
             # run asserts in a scenario:
             match_values = (
-                # name value, expected_value, exist_value
+                # name_value, expected_value, exist_value
                 ("Suspension id: ", expected.get("suspensions_expected_id"), new_object.id),
                 ("Total suspensions: ", expected.get("total_suspensions_expected"), total_suspensions),
                 ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),
@@ -662,8 +665,8 @@ async def test_user_post_suspension_with_files_form_url(
                 ("user_id: ", expected.get("user_id"), new_object.user_id),
                 # (": ",),  # more scenarios
             )
-            for name, expected_value, exist_value in match_values:
-                assert expected_value == exist_value, f"{name} {exist_value} not as expected: {expected_value}"
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
             if files_in_response is not None:
                 for file in files_in_response:
                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
@@ -693,7 +696,7 @@ async def test_user_post_suspension_form_url(
     Тестирует фиксацию случая простоя из формы с возможностью загрузки 1 файла:
     pytest -k test_user_post_suspension_form_url -vs
 
-    create_scenarios - тестовые сценарии создания простоев (все сценарии изолированы).
+    scenarios - тестовые сценарии создания простоев (все сценарии изолированы).
     expected - словарь ожидаемых значений параметров простоя
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
@@ -711,7 +714,7 @@ async def test_user_post_suspension_form_url(
                 file.write(f"{file_name} has been created: {now}")
     file_to_upload = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
     scenario_number = 0
-    create_scenarios = (
+    scenarios = (
         # login, params, status, file_to_upload, name
         (user_orm_login, {
             ANALYTICS_START: error_in_time,
@@ -755,7 +758,7 @@ async def test_user_post_suspension_form_url(
         }, 200, file_to_upload, "with files"),  # 5
     )
     async with async_client as ac:
-        for login, create_params, status, files, name in create_scenarios:
+        for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  {name} ___*****************")
             response_login_user = await ac.post(LOGIN, data=login)
@@ -815,7 +818,7 @@ async def test_user_post_suspension_form_url(
             }
             # run asserts in a scenario:
             match_values = (
-                # name value, expected_value, exist_value
+                # name_value, expected_value, exist_value
                 ("Suspension id: ", expected.get("suspensions_expected_id"), new_object.id),
                 ("Total suspensions: ", expected.get("total_suspensions_expected"), total_suspensions),
                 ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),
@@ -841,8 +844,8 @@ async def test_user_post_suspension_form_url(
                 ("user_id: ", expected.get("user_id"), new_object.user_id),
                 # (": ",),  # more scenarios
             )
-            for name, expected_value, exist_value in match_values:
-                assert expected_value == exist_value, f"{name} {exist_value} not as expected: {expected_value}"
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
             if files_in_response is not None:
                 for file in files_in_response:
                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
@@ -875,7 +878,7 @@ async def test_user_get_suspension_url(
 
     before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
 
-    create_scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
+    scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
     Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
     поэтому используем разные сценарии при тестировании редактирования параметров простая.
 
@@ -897,7 +900,7 @@ async def test_user_get_suspension_url(
     json_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
     files_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
     scenario_number = 0
-    create_scenarios = (
+    scenarios = (
         # login, params, status, uploaded_file, suspension_id, name
         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 1, "json-choice"),  # 1
         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 2, "json-choice"),  # 2
@@ -907,7 +910,7 @@ async def test_user_get_suspension_url(
         (user_orm_login, {CHOICE_FORMAT: files_choice}, 200, None, 2, "and now try to get attached files"),  # 6
     )
     async with async_client as ac:
-        for login, params, status, uploaded_file, suspension_id, name in create_scenarios:
+        for login, params, status, uploaded_file, suspension_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
             # gather info of objects in db before testing:
@@ -1006,7 +1009,7 @@ async def test_user_get_suspension_url(
             }
             # run asserts in a scenario:
             match_values = (
-                # name value, expected_value, exist_value
+                # name_value, expected_value, exist_value
                 ("Suspension id: ", suspension_id, object_before_testing.id),
                 ("Total suspensions: ", expected.get("total_expected_before"), len(objects_in_db)),
                 ("Attached files after: ", set(expected.get("files_attached")), set(files_in_response)),
@@ -1032,8 +1035,8 @@ async def test_user_get_suspension_url(
                 ("user_id: ", expected.get("user_id"), object_in_db.user_id),
                 # (": ",),  # more scenarios
             )
-            for name, expected_value, exist_value in match_values:
-                assert expected_value == exist_value, f"{name} {exist_value} not as expected: {expected_value}"
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
             if files_in_response is not None:
                 for file in files_in_response:
                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
@@ -1054,17 +1057,242 @@ async def test_user_get_suspension_url(
     await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)
 
 
+async def test_user_get_all_suspension_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        suspensions_orm: Suspension,
+) -> None:
+    """
+    Тестирует возможность получения всех случаев простоя:
+    pytest -k test_user_get_all_suspension_url -vs
+
+    before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
+
+    scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
+    Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
+    поэтому используем разные сценарии при тестировании редактирования параметров простая.
+
+    expected - словарь ожидаемых значений параметров простоя:
+    если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании простоя).
+
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+
+    """
+    test_url = SUSPENSIONS_PATH + MAIN_ROUTE  # /api/suspensions/
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    scenario_number = 0
+    scenarios = (
+        # login, status, name
+        (user_orm_login, 200, "get_all"),  # 1
+    )
+    async with async_client as ac:
+        for login, status, name in scenarios:
+            scenario_number += 1
+            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            response_login_user = await ac.post(LOGIN, data=login)
+            response = await ac.get(
+                test_url,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+            )
+            assert response.status_code == status, (
+                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
+            )
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: {name}",
+                    login_data=login,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  __{name}"
+                )
+                continue
+            for index in enumerate(suspensions_orm):  # проводим сверки по каждому объекту в БД
+                position = index[0] + 1
+                fixture_object = [obj for obj in suspensions_orm if obj.id == position][0]
+                object_in_response = [obj for obj in response.json() if obj["id"] == position][0]
+            # expected values in scenario - take original suspensions_orm
+                expected = {
+                    "total_objects": len(suspensions_orm),
+                    "suspension_files": [],
+                    "start": fixture_object.suspension_start.strftime(DATE_TIME_FORMAT),
+                    "finish": fixture_object.suspension_finish.strftime(DATE_TIME_FORMAT),
+                    "description": fixture_object.description,
+                    "measures": fixture_object.implementing_measures,
+                    "risk_accident": fixture_object.risk_accident,
+                    "tech_process": int(fixture_object.tech_process),
+                    "user_id": fixture_object.user_id,
+                }
+            # run asserts in a scenario:
+                match_values = (
+                    # name_value, expected_value, exist_value
+                    ("Total suspensions: ", expected.get("total_objects"), len(response.json())),
+                    ("Suspension files: ", expected.get("suspension_files"), object_in_response[FILES_SET_TO]),
+                    ("Suspension start: ", expected.get("start"), object_in_response[SUSPENSION_START]),
+                    ("Suspension finish: ", expected.get("finish"), object_in_response[SUSPENSION_FINISH]),
+                    ("Description: ", expected.get("description"), object_in_response[SUSPENSION_DESCRIPTION]),
+                    ("Implementing measures: ", expected.get("measures"), object_in_response[IMPLEMENTING_MEASURES]),
+                    ("Risk accident: ", expected.get("risk_accident"), object_in_response[RISK_ACCIDENT]),
+                    (
+                        "Tech process: ",
+                        expected.get("tech_process"),
+                        int(json.loads(settings.TECH_PROCESS).get(object_in_response.get(TECH_PROCESS)))
+                    ),
+                    (
+                        "Duration: ",
+                        (
+                            (fixture_object.suspension_finish
+                                - fixture_object.suspension_start).total_seconds() / SUSPENSION_DURATION_RESPONSE
+                        ),
+                        object_in_response.get(SUSPENSION_DURATION)
+                    ),
+                    ("user_id: ", expected.get("user_id"), object_in_response[USER_ID]),
+                    # # (": ",),  # more scenarios
+                )
+                for name_value, expected_value, exist_value in match_values:
+                    assert expected_value == exist_value, (
+                        f"{name_value} {exist_value} not as expected: {expected_value}"
+                    )
+                    # await log.ainfo(
+                    #     f"scenario_number: _{scenario_number}_ info: {name}",
+                    #     expected_value=expected_value,
+                    #     exist_value=exist_value,
+                    #     index=index,
+                    # )
+            await log.ainfo(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                login_data=login,
+                response=response.json(),
+                wings_of_end=f"______________ END of SCENARIO: ___ {scenario_number} ____ __{name} _______"
+            )
+    await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)
+
+
+async def test_user_get_my_suspension_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        suspensions_orm: Suspension,
+) -> None:
+    """
+    Тестирует возможность получения всех случаев простоя:
+    pytest -k test_user_get_my_suspension_url -vs
+
+    before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
+
+    scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
+    Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
+    поэтому используем разные сценарии при тестировании редактирования параметров простая.
+
+    expected - словарь ожидаемых значений параметров простоя:
+    если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании простоя).
+
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+
+    """
+    test_url = SUSPENSIONS_PATH + MY_SUSPENSIONS  # /api/suspensions/my_suspensions
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    user_settings_email = json.loads(settings.STAFF)["1"]
+    user_settings_login = {"username": user_settings_email, "password": "testings"}
+    scenario_number = 0
+    scenarios = (
+        # login, status, name
+        (user_orm_login, 200, "get_user_orm_suspensions"),  # 1
+        (user_settings_login, 200, "get_user_settings_suspensions"),  # 2
+    )
+    async with async_client as ac:
+        for login, status, name in scenarios:
+            scenario_number += 1
+            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            response_login_user = await ac.post(LOGIN, data=login)
+            response = await ac.get(
+                test_url,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+            )
+            assert response.status_code == status, (
+                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
+            )
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: {name}",
+                    login_data=login,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  __{name}"
+                )
+                continue
+            current_user = await async_db.scalar(select(User).where(User.email == login.get("username")))
+            objects_by_user = await async_db.scalars(select(Suspension).where(Suspension.user_id == current_user.id))
+            objects_by_user_in_db = objects_by_user.all()
+            for user_object in objects_by_user_in_db:
+                object_in_response = [obj for obj in response.json() if obj["id"] == user_object.id][0]
+                expected = {
+                    "total_objects": len(objects_by_user_in_db),
+                    "suspension_files": [],
+                    "start": user_object.suspension_start.strftime(DATE_TIME_FORMAT),
+                    "finish": user_object.suspension_finish.strftime(DATE_TIME_FORMAT),
+                    "description": user_object.description,
+                    "measures": user_object.implementing_measures,
+                    "risk_accident": user_object.risk_accident,
+                    "tech_process": int(user_object.tech_process),
+                    "user_id": user_object.user_id,
+                }
+            # run asserts in a scenario:
+                match_values = (
+                    # name_value, expected_value, exist_value
+                    ("Total suspensions: ", expected.get("total_objects"), len(response.json())),
+                    # ("Suspension files: ", expected.get("suspension_files"), object_in_response[FILES_SET_TO]),
+                    ("Suspension start: ", expected.get("start"), object_in_response[SUSPENSION_START]),
+                    ("Suspension finish: ", expected.get("finish"), object_in_response[SUSPENSION_FINISH]),
+                    ("Description: ", expected.get("description"), object_in_response[SUSPENSION_DESCRIPTION]),
+                    ("Implementing measures: ", expected.get("measures"), object_in_response[IMPLEMENTING_MEASURES]),
+                    ("Risk accident: ", expected.get("risk_accident"), object_in_response[RISK_ACCIDENT]),
+                    (
+                        "Tech process: ",
+                        expected.get("tech_process"),
+                        int(json.loads(settings.TECH_PROCESS).get(object_in_response.get(TECH_PROCESS)))
+                    ),
+                    (
+                        "Duration: ",
+                        round(
+                            (user_object.suspension_finish
+                                - user_object.suspension_start).total_seconds() / SUSPENSION_DURATION_RESPONSE, 1
+                        ),
+                        round(object_in_response.get(SUSPENSION_DURATION), 1)
+                    ),
+                    ("user_id: ", expected.get("user_id"), object_in_response[USER_ID]),
+                    # # (": ",),  # more scenarios
+                )
+                for name_value, expected_value, exist_value in match_values:
+                    assert expected_value == exist_value, (
+                        f"{name_value} {exist_value} not as expected: {expected_value}"
+                    )
+                    # await log.ainfo(
+                    #     f"scenario_number: _{scenario_number}_ info: {name}",
+                    #     expected_value=expected_value,
+                    #     exist_value=exist_value,
+                    #     object_in_response=object_in_response,
+                    #     user_object=user_object
+                    # )
+            await log.ainfo(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                login_data=login,
+                response=response.json(),
+                wings_of_end=f"______________ END of SCENARIO: ___ {scenario_number} ____ __{name} _______"
+            )
+    await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)
+
 # TODO endpoints suspensions
 
 # GET ANALYTICS = "/analytics"  # is done!
 # GET SUSPENSION_ID = "/{suspension_id}"  # is done!
+# GET MAIN_ROUTE = "/" # GET all is done!
 # POST_SUSPENSION_FORM = "/post_suspension_form"  # is done!
 # POST_SUSPENSION_FILES_FORM = "/post_suspension_with_files_form"  # is done!
 # PATCH SUSPENSION_ID = "/{suspension_id}"  #
 
-# MAIN_ROUTE = "/"   # GET all todo
+# MY_SUSPENSIONS = "/my_suspensions"  # GET todo
 
 
 # SUSPENSION_ID = "/{suspension_id}"  # DELETE todo /api/suspensions/{suspension_id}
-# MY_SUSPENSIONS = "/my_suspensions"  # GET todo
 # ADD_FILES_TO_SUSPENSION = "/add_files_to_suspension"  # POST todo
