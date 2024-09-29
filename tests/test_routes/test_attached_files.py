@@ -112,7 +112,7 @@ async def test_user_post_download_files_url(
     """
     test_url = FILES_PATH+DOWNLOAD_FILES  # /api/files/download_files
     now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
-    super_user_orm_login = {"username": "super_user_fixture@f.com", "password": "testings"}
+    super_user_login = {"username": "super_user_fixture@f.com", "password": "testings"}
     scenario_number = 0
     test_files = ["testfile.txt"]
     for file_name in test_files:
@@ -121,8 +121,8 @@ async def test_user_post_download_files_url(
                 file.write(f"{file_name} has been created: {now}")
 
     async with async_client as ac:
-        response_login_user = await ac.post(LOGIN, data=super_user_orm_login)
-        assert response_login_user.status_code == 200, f"User: {super_user_orm_login} couldn't get {LOGIN}"
+        response_login_user = await ac.post(LOGIN, data=super_user_login)
+        assert response_login_user.status_code == 200, f"User: {super_user_login} couldn't get {LOGIN}"
         response = await ac.post(
             test_url,
             # params=search_params,
@@ -130,7 +130,7 @@ async def test_user_post_download_files_url(
             headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
         )
         assert response.status_code == 200, (
-            f"User: {super_user_orm_login} couldn't get {test_url}. Response: {response}"
+            f"User: {super_user_login} couldn't get {test_url}. Response: {response.__dict__}"
         )
         objects = await async_db.scalars(select(FileAttached))
         files_in_db = objects.all()
@@ -138,7 +138,7 @@ async def test_user_post_download_files_url(
 
         await log.ainfo(
             f"****************  SCENARIO: ___ {scenario_number} ___  *******************************",
-            login_data=super_user_orm_login,
+            login_data=super_user_login,
             # params=search_params,
             status=response.status_code,
             response=response.json(),
