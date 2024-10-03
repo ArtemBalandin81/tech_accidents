@@ -30,7 +30,7 @@ from src.core.db.models import FileAttached, User, Suspension
 from src.core.enums import TechProcess
 from src.settings import settings
 
-from tests.conftest import clean_test_database, delete_files_in_folder, get_file_names_for_model_db, remove_all
+from tests.conftest import clean_test_database, create_test_files, delete_files_in_folder, remove_all
 
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
@@ -115,11 +115,7 @@ async def test_user_post_download_files_url(
     super_user_login = {"username": "super_user_fixture@f.com", "password": "testings"}
     scenario_number = 0
     test_files = ["testfile.txt"]
-    for file_name in test_files:
-        if not os.path.exists(TEST_ROUTES_DIR.joinpath(file_name)):
-            with open(TEST_ROUTES_DIR.joinpath(file_name), "w") as file:
-                file.write(f"{file_name} has been created: {now}")
-
+    await create_test_files(test_files)
     async with async_client as ac:
         response_login_user = await ac.post(LOGIN, data=super_user_login)
         assert response_login_user.status_code == 200, f"User: {super_user_login} couldn't get {LOGIN}"

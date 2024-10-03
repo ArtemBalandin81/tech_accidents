@@ -30,11 +30,15 @@ setup_logging()  # Procharity example of pytest settings (comment this for stand
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 DatabaseModel = TypeVar("DatabaseModel")
+CONFTEST_ROUTES_DIR = Path(__file__).resolve().parent  # todo
+TEST_ROUTES_DIR = CONFTEST_ROUTES_DIR.joinpath("test_routes")  # todo
+
 
 def start_application():
     app = FastAPI()
     app.include_router(api_router)
     return app
+
 
 @pytest.fixture(scope='session')
 def anyio_backend():
@@ -42,8 +46,8 @@ def anyio_backend():
     return 'asyncio'
 
 
-
 engine = create_async_engine(settings.DATABASE_URL_TEST, echo=settings.ECHO_TEST_DB)
+
 
 @pytest.fixture(scope='session')
 async def async_db_engine():
@@ -149,6 +153,7 @@ async def super_user_orm(async_db: AsyncSession) -> User:
     await log.ainfo("super_user_orm_created:", super_user_orm=super_user)
     return super_user
 
+
 @pytest.fixture
 async def user_orm(async_db: AsyncSession) -> User:
     """Create user in database."""
@@ -162,6 +167,7 @@ async def user_orm(async_db: AsyncSession) -> User:
     await log.ainfo("user_orm_created:", user_orm=user)
     return user
 
+
 @pytest.fixture
 async def user_from_settings(async_db: AsyncSession) -> User:
     """Create user_from_settings in database in order to satisfy ENUM STAFF validations in api."""
@@ -174,6 +180,7 @@ async def user_from_settings(async_db: AsyncSession) -> User:
     await async_db.refresh(user)
     await log.ainfo("user_from_settings_created:", email=user.email, id=user.id)
     return user
+
 
 @pytest.fixture
 async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Suspension]:
@@ -255,3 +262,11 @@ async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Pa
             # return {"message": e.args}  # files in folder will not be deleted cause of exception return
     await log.ainfo("Delete_files_in_folder", deleted=files_to_delete)
     return files_to_delete
+
+
+async def create_test_files(test_files: list[str] = ("testfile.txt", "testfile2.txt", "testfile3.txt")) -> None:
+    """Создает в каталоге тестовые файлы для загрузки, если их нет."""
+    for file_name in test_files:
+        if not os.path.exists(TEST_ROUTES_DIR.joinpath(file_name)):
+            with open(TEST_ROUTES_DIR.joinpath(file_name), "w") as file:
+                file.write(f"{file_name} has been created: {datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)}")
