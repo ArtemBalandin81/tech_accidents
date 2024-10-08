@@ -1,4 +1,7 @@
-"""src/core/logging/setup.py"""
+"""
+Основная настройка structlog
+src/core/logging/setup.py
+"""
 import logging
 import logging.config
 import os
@@ -17,7 +20,7 @@ def _drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     """
     Uvicorn логирует сообщение повторно в дополнительной секции
     `color_message`. Данная функция ("процессор") убирает данный ключ из event dict.
-    #  в логах в файле отсутствуе ответ апи
+    В логах в файле отсутствуе ответ апи из-за ее наличия!
     """
     event_dict.pop("color_message", None)
     return event_dict
@@ -43,7 +46,7 @@ PRE_CHAIN: list[Processor] = [
     structlog.stdlib.PositionalArgumentsFormatter(),
     structlog.stdlib.ExtraAdder(),
     #  Uvicorn логирует сообщение повторно ("процессор") убирает данный ключ из event dict.
-    # _drop_color_message_key,  # а также в логах в файле отсутствуе ответ апи
+    # _drop_color_message_key,  # и убивает в файле логов ответ апи (отключили для записи логов в файл) !!!
     TIMESTAMPER,
     structlog.processors.dict_tracebacks,  # ! процессор, для обработки исключений (трассировки стека)
     structlog.processors.StackInfoRenderer(),  # ! процессор, обрабатывающий выходные данные, дб последним в цепочке
@@ -58,10 +61,6 @@ LOGGING_DICTCONFIG = {
             "()": structlog.stdlib.ProcessorFormatter,
             "processors": [
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                # structlog.dev.ConsoleRenderer(
-                #     colors=False,
-                #     exception_formatter=structlog.dev.plain_traceback,
-                # ),
                 _get_renderer(),
             ],
             "foreign_pre_chain": PRE_CHAIN,
@@ -80,10 +79,8 @@ LOGGING_DICTCONFIG = {
         "default": {
             "level": settings.LOG_LEVEL,
             "class": "logging.StreamHandler",
-            # formatter set json or string logs in console
             "formatter": "plain" if settings.JSON_LOGS is True else "colored",
         },
-        #  "file": отвечает за вывод логов в отдельный файл
         "file": {
             "level": settings.LOG_LEVEL,
             "class": "logging.handlers.RotatingFileHandler",
@@ -116,11 +113,9 @@ def _setup_structlog():
         + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
-        context_class=dict,  # https://habr.com/ru/companies/mvideo/articles/744738/
+        context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
-        # logger_factory=structlog.WriteLoggerFactory(file=Path("app2").with_suffix(".log").open("wt")),
         wrapper_class=structlog.stdlib.BoundLogger,
-        # wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, settings.LOG_LEVEL)),
         cache_logger_on_first_use=True,
     )
 
@@ -135,11 +130,9 @@ def _setup_structlog_pretty():
         + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
-        context_class=dict,  # https://habr.com/ru/companies/mvideo/articles/744738/
+        context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
-        # logger_factory=structlog.WriteLoggerFactory(file=Path("app2").with_suffix(".log").open("wt")),
         wrapper_class=structlog.stdlib.BoundLogger,
-        # wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, settings.LOG_LEVEL)),
         cache_logger_on_first_use=True,
     )
 

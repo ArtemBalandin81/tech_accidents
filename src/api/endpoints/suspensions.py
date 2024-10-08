@@ -5,16 +5,16 @@ from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, File, Query, Response, status, UploadFile
+from fastapi import (APIRouter, Depends, File, Query, Response, UploadFile,
+                     status)
 from pydantic import PositiveInt
 from src.api.constants import *
-from src.api.schema import (  # rename to "schemas" todo
-    AnalyticsSuspensions, AnalyticSuspensionResponse, SuspensionCreate,
-    SuspensionDeletedResponse, SuspensionResponse)
+from src.api.schema import (AnalyticsSuspensions,
+                            AnalyticSuspensionResponse, SuspensionCreate,
+                            SuspensionDeletedResponse, SuspensionResponse)
 from src.api.services import FileService, SuspensionService, UsersService
 from src.api.validators import (
-    check_author_or_super_user,
-    check_exist_files_attached,
+    check_author_or_super_user, check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_start_not_exceeds_finish)
 from src.core.db.models import Suspension, User
@@ -25,8 +25,8 @@ from src.core.enums import (ChoiceDownloadFiles, Executor, RiskAccidentSource,
 log = structlog.get_logger()
 suspension_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
 
 @suspension_router.get(
@@ -252,7 +252,6 @@ async def set_files_to_suspension(
 
 @suspension_router.patch(
     SUSPENSION_ID,
-    # dependencies=[Depends(current_user)],  # delete todo
     description=SUSPENSION_PATCH_FORM,
     summary=SUSPENSION_PATCH_FORM,
     tags=[SUSPENSIONS_POST],

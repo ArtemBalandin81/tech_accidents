@@ -44,14 +44,6 @@ class SuspensionRepository(ContentRepository):
         )
         return objects.all()
 
-    async def get_last_created_id_for_user(self, user_id: int) -> int:
-        """Возвращает последний добавленный в БД простой для пользователя."""
-        return await self._session.scalar(
-            select(Suspension.id)
-            .where(Suspension.user_id == user_id)
-            .order_by(Suspension.id.desc())
-        )
-
     async def get_last_id_by_time_for_user(self, user_id: int | None) -> int:
         """Возвращает последний по времени в БД простой для пользователя."""
         if user_id is None:

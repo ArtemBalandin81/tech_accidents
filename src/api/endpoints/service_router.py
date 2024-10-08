@@ -4,7 +4,6 @@ import requests
 import structlog
 from fastapi import APIRouter, Depends, Query, status
 from requests.exceptions import SSLError
-
 from src.api.constants import *
 from src.api.schemas import DBBackupResponse
 from src.core.db.user import current_superuser

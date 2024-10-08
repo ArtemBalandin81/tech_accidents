@@ -2,9 +2,9 @@
 
 from collections.abc import Sequence
 from datetime import date
+from typing import TypeVar
 
 import structlog
-from typing import TypeVar
 from fastapi import HTTPException, UploadFile
 from pydantic import PositiveInt
 from src.api.constants import *

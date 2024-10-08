@@ -1,4 +1,7 @@
-"""src/settings.py"""
+"""
+src/settings.py
+(.env in priority - check it before!)
+"""
 from functools import lru_cache
 from pathlib import Path
 
@@ -37,7 +40,7 @@ class Settings(BaseSettings):
     SUSPENSION_DISPLAY_TIME: int = 60 * 24  # in mins as part of a day
     TOKEN_AUTH_LIFETIME_SEC: int = 60 * 60 * 24 * 5
 
-    # Database connection preferences
+    # Database connection preferences (.env in priority - check it before!)
     DATABASE_URL: str = "sqlite+aiosqlite:///./tech_accident_db_local.db"
     DATABASE_URL_TEST: str = "sqlite+aiosqlite:///./test_db.db"
     DATABASE_NAME: str = "tech_accident_db_local.db"
@@ -54,7 +57,7 @@ class Settings(BaseSettings):
     # DB_HOST: str = "localhost"
     # DB_PORT: int = 5432
 
-    # Logging preferences
+    # Logging preferences (.env in priority - check it before!)
     FILE_NAME_IN_LOG: bool = False  # If true: structlog.get_logger().bind(file_name=__file__)
     JSON_LOGS: bool = False  # true: logs in json with JSONRenderer | false: colored logs with ConsoleRenderer
     LOG_LEVEL: str = "WARN"  # .env in priority: (WARN, INFO, DEBUG)
@@ -63,12 +66,12 @@ class Settings(BaseSettings):
     LOG_FILE_SIZE: int = 10 * 2**20
     LOG_FILES_TO_KEEP: int = 5
 
-    # Internet access test preferences
+    # Internet access test preferences (.env in priority - check it before!)
     CONNECTION_TEST_URL_BASE: str = "https://www.agidel-am.ru"
     CONNECTION_TEST_URL_2: str = "https://www.ya.ru"
     SLEEP_TEST_CONNECTION: int = 20
 
-    # Download and delete files form ENUM-class preferences
+    # Download and delete files form ENUM-class preferences (.env in priority - check it before!)
     CHOICE_DOWNLOAD_FILES: str = '{"JSON": "json", "FILES": "files"}'
     CHOICE_REMOVE_FILES_UNUSED: str = (
         '{"DB_UNUSED": "unused_in_db",'
@@ -77,20 +80,20 @@ class Settings(BaseSettings):
         ' "FOLDER_UNUSED_REMOVE": "delete_unused_in_folder"}'
     )
 
-    # Staff ENUM-class preferences for tasks
+    # Staff ENUM-class preferences for tasks (.env in priority - check it before!)
     BOT_USER: int = 2
     STAFF: str = (
         '{"99": "unload_users@please_check.env",'
         ' "100": "error_of_load_users@please_check.env"}'
     )
-    # Tech-processes suspensions ENUM-class preferences
+    # Tech-processes suspensions ENUM-class preferences (.env in priority - check it before!)
     INTERNET_ACCESS_TECH_PROCESS: int = 25
     TECH_PROCESS: str = (
         '{"DU_25": "25",'
         ' "SPEC_DEP_26": "26",'
         ' "CLIENTS_27": "27"}'
     )
-    # Risk sources ENUM-class preferences
+    # Risk sources ENUM-class preferences (.env in priority - check it before!)
     RISK_SOURCE: str = (
         '{"99": "unload_risk_source_please_check.env.",'
         ' "100": "error_of_load_risk_accident_source@please_check.env",'

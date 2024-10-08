@@ -488,7 +488,7 @@ poetry env use python3.11; poetry install
   - Запуск всех тестов в 1 файле: `pytest -k test_filename.py -vs`
   - Запуск 1 теста: `pytest -k test_unauthorized_tries_suspension_urls -vs`
 
-> **Note**
+  > **Note**
   > 
   > Тесты запускаются в основном каталоге приложения.
   > 
@@ -500,6 +500,7 @@ poetry env use python3.11; poetry install
   > 
   > Для игнорирования предупреждений:
   > - `pytest -s -W ignore::DeprecationWarning`
+
 
 </details>
 

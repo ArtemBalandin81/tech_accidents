@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import sys
+from pathlib import Path
 from typing import Any, Generator, Sequence, TypeVar
 
 import pytest
@@ -11,27 +12,25 @@ import structlog
 from fastapi import FastAPI
 from httpx import AsyncClient
 from passlib.context import CryptContext
-from pathlib import Path
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-#this is to include backend dir in sys.path so that we can import from db,main.py
+# this is to include backend dir in sys.path so that we can import from db,main.py
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.api.constants import *
 from src.api.router import api_router
 from src.core.db.db import get_session
-from src.core.db.models import (Base, FileAttached, Suspension,
-                                SuspensionsFiles, Task, TasksFiles, User)
-from src.settings import settings
+from src.core.db.models import Base, FileAttached, Suspension, Task, User
 from src.core.logging.setup import setup_logging
+from src.settings import settings
 
 setup_logging()  # Procharity example of pytest settings (comment this for standard logging)
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 DatabaseModel = TypeVar("DatabaseModel")
-CONFTEST_ROUTES_DIR = Path(__file__).resolve().parent  # todo
-TEST_ROUTES_DIR = CONFTEST_ROUTES_DIR.joinpath("test_routes")  # todo
+CONFTEST_ROUTES_DIR = Path(__file__).resolve().parent
+TEST_ROUTES_DIR = CONFTEST_ROUTES_DIR.joinpath("test_routes")
 
 
 def start_application():
@@ -66,8 +65,6 @@ async def async_db_engine():
         # await conn.commit()
         # super_user_db = await conn.refresh(super_user)
         # await log.ainfo("super_user_created:", super_user_db=super_user_db)
-
-
     yield engine
 
     async with engine.begin() as conn:
@@ -92,12 +89,6 @@ async def async_db(async_db_engine):
         yield session
 
         await session.rollback()
-
-        # Error sqlalchemy.exc.ArgumentError: Textual SQL expression  todo
-        #  'TRUNCATE tasks_files CASC...' should be explicitly declared as text('TRUNCATE tasks_files CASC...')
-        # for table in reversed(Base.metadata.sorted_tables):
-        #     await session.execute(f'TRUNCATE {table.name} CASCADE;')
-        #     await session.commit()
 
 
 @pytest.fixture(scope="function")
@@ -211,7 +202,6 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     async_db.add_all(suspensions_list)
     await async_db.commit()
     # await async_db.refresh(suspensions_list)
-    # await log.ainfo("suspension_orm_created:", suspension_orm=suspension, user=suspension.user_id)
     await log.ainfo("suspensions_orm_created:", suspensions_orm=suspensions_list)
     return suspensions_list
 
@@ -256,7 +246,7 @@ async def delete_files_in_folder(files_to_delete: Sequence[Path]) -> Sequence[Pa
         try:
             file.unlink()
         except FileNotFoundError as e:
-            details = "{}{}".format(FILES_IN_FOLDER, NOT_FOUND)
+            details = "{}{}{}".format(FILES_IN_FOLDER, NOT_FOUND, e.args)
             await log.aerror(details, file_to_remove=file)
             # raise HTTPException(status_code=403, detail=details)
             # return {"message": e.args}  # files in folder will not be deleted cause of exception return

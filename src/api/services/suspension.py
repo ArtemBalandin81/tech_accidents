@@ -125,27 +125,12 @@ class SuspensionService:
         """Количество простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
         return await self._repository.count_for_period_for_user(user_id, start_sample, finish_sample)
 
-    async def get_last_created_suspension_id(self, user_id: int) -> int:
-        """Возвращает id крайнего случая простоя, зафиксированного текущим пользователем (или всех)."""
-        if user_id is None:
-            return await self._repository.get_last_id()
-        else:
-            return await self._repository.get_last_created_id_for_user(user_id)
-
     async def get_last_suspension_id(self, user_id: int) -> int:
         """Возвращает id крайнего случая простоя, зафиксированного текущим пользователем (или всех)."""
-    #     if user_id is None:
-    #         return await self._repository.get_last_id()
-    #     else:
-    #         return await self._repository.get_last_id_for_user(user_id)
         return await self._repository.get_last_id_by_time_for_user(user_id)
 
     async def get_last_suspension_time(self, user_id: int) -> datetime:
         """Возвращает время крайнего случая простоя, зафиксированного текущим пользователем (или всеми)."""
-        # if user_id is None:
-        #     last_suspension = await self._repository.get(await self._repository.get_last_id())
-        # else:
-        #     last_suspension = await self._repository.get(await self.get_last_suspension_id(user_id))
         last_suspension = await self._repository.get(await self._repository.get_last_id_by_time_for_user(user_id))
         return last_suspension.suspension_start
 
