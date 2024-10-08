@@ -2,13 +2,27 @@
 
 from collections.abc import Sequence
 from datetime import date
+from typing import TypeVar
 
 import structlog
 from fastapi import HTTPException, UploadFile
 from pydantic import PositiveInt
 from src.api.constants import *
+from src.core.db.models import User
 
+DatabaseModel = TypeVar("DatabaseModel")
 log = structlog.get_logger()
+
+
+async def check_author_or_super_user(
+        user: User,
+        instance: DatabaseModel,
+) -> None:
+    """Проверяет пользователя на авторство, или наличие прав админа."""
+    if user.id != instance.user_id and not user.is_superuser:
+        details = "{}".format(ONLY_AUTHOR)
+        await log.aerror(ONLY_AUTHOR, author=instance.user_id, current_user=user.id, is_super_user=user.is_superuser)
+        raise HTTPException(status_code=403, detail=details)
 
 
 async def check_start_not_exceeds_finish(
@@ -16,15 +30,27 @@ async def check_start_not_exceeds_finish(
         finish_process: str | datetime | date,
         format_datetime: str
 ) -> None:
-    """Проверяет, что начало процесса задано не позднее его окончания."""
+    """Проверяет вводимые значения на соответствие формату datetime, а начало периода задано не позднее его конца."""
     if isinstance(start_process, str):
-        start_process: datetime = datetime.strptime(start_process, format_datetime)
+        try:
+            start_process: datetime = datetime.strptime(start_process, format_datetime)
+        except ValueError as e:
+            details = "{}{}{}".format(NOT_DATETIME_FORMAT, ANALYTICS_START, start_process)
+            await log.aerror(details, start_process=start_process, format=format_datetime, error=e)
+            raise HTTPException(status_code=422, detail=details)
     if isinstance(finish_process, str):
-        finish_process: datetime = datetime.strptime(finish_process, format_datetime)
+        try:
+            finish_process: datetime = datetime.strptime(finish_process, format_datetime)
+        except ValueError as e:
+            details = "{}{}{}".format(NOT_DATETIME_FORMAT, ANALYTICS_FINISH, finish_process)
+            await log.aerror(details, finish_process=finish_process, format=format_datetime, error=e)
+            raise HTTPException(status_code=422, detail=details)
+    if start_process is None or finish_process is None:
+        return
     if start_process > finish_process:
         await log.aerror(START_FINISH_TIME, start_process=start_process, finish_process=finish_process)
         raise HTTPException(
-            status_code=422, detail="{}{}{}{}".format(START_FINISH_TIME, start_process, SPACE, finish_process)
+            status_code=422, detail="{}{}{}{}{}".format(START_FINISH_TIME, SPACE, start_process, SPACE, finish_process)
         )
 
 

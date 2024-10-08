@@ -5,15 +5,16 @@ from pathlib import Path
 from typing import Optional
 
 import structlog
-from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
+from fastapi import (APIRouter, Depends, File, Query, Response, UploadFile,
+                     status)
 from pydantic import PositiveInt
 from src.api.constants import *
-from src.api.schema import (  # rename to "schemas" todo
-    AnalyticsSuspensions, AnalyticSuspensionResponse, SuspensionCreate,
-    SuspensionDeletedResponse, SuspensionResponse)
+from src.api.schema import (AnalyticsSuspensions,
+                            AnalyticSuspensionResponse, SuspensionCreate,
+                            SuspensionDeletedResponse, SuspensionResponse)
 from src.api.services import FileService, SuspensionService, UsersService
 from src.api.validators import (
-    check_exist_files_attached,
+    check_author_or_super_user, check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_start_not_exceeds_finish)
 from src.core.db.models import Suspension, User
@@ -24,8 +25,8 @@ from src.core.enums import (ChoiceDownloadFiles, Executor, RiskAccidentSource,
 log = structlog.get_logger()
 suspension_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
 
 @suspension_router.get(
@@ -33,39 +34,54 @@ FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settin
     response_model_exclude_none=True,
     description=ANALYTICS_SUSPENSION_LIST,
     summary=ANALYTICS_SUSPENSION_LIST,
-    tags=[ANALYTICS_SUSPENSION]
+    dependencies=[Depends(current_user)],
+    tags=[ANALYTICS_SUSPENSION],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
+    },
 )
 async def get_all_for_period_time(
-    suspension_start: str = Query(
-        ..., example=ANALYTIC_FROM_TIME, alias=ANALYTICS_START,  # description=ANALYTIC_FROM_TIME,
+    start_sample: str = Query(
+        ...,
+        example=ANALYTIC_FROM_TIME,
+        alias=ANALYTICS_START,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=ANALYTIC_FROM_TIME,
     ),
-    suspension_finish: str = Query(
-        ..., example=ANALYTIC_TO_TIME, alias=ANALYTICS_FINISH,  # description=ANALYTIC_TO_TIME,
+    finish_sample: str = Query(
+        ...,
+        example=ANALYTIC_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=ANALYTIC_TO_TIME,
     ),
     user: Executor = Query(None, alias=USER_MAIL),
     suspension_service: SuspensionService = Depends(),
     users_service: UsersService = Depends(),
 ) -> AnalyticsSuspensions:
-    suspension_start: datetime = datetime.strptime(suspension_start, DATE_TIME_FORMAT)  # convert in datetime
-    suspension_finish: datetime = datetime.strptime(suspension_finish, DATE_TIME_FORMAT)  # convert in datetime
+    """Получение аналитики по простоям."""
+    await check_start_not_exceeds_finish(start_sample, finish_sample, DATE_TIME_FORMAT)
+    start_sample: datetime = datetime.strptime(start_sample, DATE_TIME_FORMAT)  # convert in datetime
+    finish_sample: datetime = datetime.strptime(finish_sample, DATE_TIME_FORMAT)  # convert in datetime
     if user is None:
         user_id = None
     else:
         user: User = await users_service.get_by_email(user.value)
         user_id = user.id
     suspensions: Sequence[Suspension] = await suspension_service.get_suspensions_for_users(
-        user_id, suspension_start, suspension_finish
+        user_id, start_sample, finish_sample
     )
     suspensions_list = await suspension_service.perform_changed_schema(suspensions)
     return AnalyticsSuspensions(
         suspensions_in_mins_total=(
-            await suspension_service.sum_suspensions_time_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.sum_suspensions_time_for_period(user_id, start_sample, finish_sample)
         ),
         suspensions_total=(
-            await suspension_service.count_suspensions_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.count_suspensions_for_period(user_id, start_sample, finish_sample)
         ),
         suspension_max_time_for_period=(
-            await suspension_service.suspension_max_time_for_period(user_id, suspension_start, suspension_finish)
+            await suspension_service.suspension_max_time_for_period(user_id, start_sample, finish_sample)
         ),
         last_time_suspension=await suspension_service.get_last_suspension_time(user_id),
         last_time_suspension_id=await suspension_service.get_last_suspension_id(user_id),
@@ -74,16 +90,31 @@ async def get_all_for_period_time(
 
 
 @suspension_router.post(
-    POST_SUSPENSION_FORM, description=SUSPENSION_CREATE_FORM, summary=SUSPENSION_CREATE_FORM, tags=[SUSPENSIONS_POST]
+    POST_SUSPENSION_FORM,
+    description=SUSPENSION_CREATE_FORM,
+    summary=SUSPENSION_CREATE_FORM,
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
+    },
 )
 async def create_new_suspension_by_form(
     *,
     file_to_upload: UploadFile = None,
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=ANALYTICS_START,  # description=CREATE_SUSPENSION_FROM_TIME,
+        ...,
+        example=CREATE_SUSPENSION_FROM_TIME,
+        alias=ANALYTICS_START,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, alias=ANALYTICS_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
+        ...,
+        example=CREATE_SUSPENSION_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -129,16 +160,28 @@ async def create_new_suspension_by_form(
     POST_SUSPENSION_FILES_FORM,
     description=SUSPENSION_FILES_CREATE_FORM,
     summary=SUSPENSION_FILES_CREATE_FORM,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
+    },
 )
 async def create_new_suspension_by_form_with_files(
     *,
     files_to_upload: list[UploadFile] = File(...),
     suspension_start: str = Query(
-        ..., example=CREATE_SUSPENSION_FROM_TIME, alias=ANALYTICS_START,  # description=CREATE_SUSPENSION_FROM_TIME,
+        ...,
+        example=CREATE_SUSPENSION_FROM_TIME,
+        alias=ANALYTICS_START,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=CREATE_SUSPENSION_FROM_TIME,
     ),
     suspension_finish: str = Query(
-        ..., example=CREATE_SUSPENSION_TO_TIME, alias=ANALYTICS_FINISH,  # description=CREATE_SUSPENSION_TO_TIME,
+        ...,
+        example=CREATE_SUSPENSION_TO_TIME,
+        alias=ANALYTICS_FINISH,
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
+        # description=CREATE_SUSPENSION_TO_TIME,
     ),
     risk_accident: RiskAccidentSource = Query(..., alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
@@ -183,7 +226,11 @@ async def create_new_suspension_by_form_with_files(
     description=SET_FILES_LIST_TO_SUSPENSION,
     summary=SET_FILES_LIST_TO_SUSPENSION,
     dependencies=[Depends(current_superuser)],
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def set_files_to_suspension(
     *,
@@ -205,10 +252,13 @@ async def set_files_to_suspension(
 
 @suspension_router.patch(
     SUSPENSION_ID,
-    dependencies=[Depends(current_user)],
     description=SUSPENSION_PATCH_FORM,
     summary=SUSPENSION_PATCH_FORM,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_422_UNPROCESSABLE_ENTITY: START_FINISH_TIME,
+    },
 )
 async def partially_update_suspension_by_form(
     suspension_id: PositiveInt,
@@ -216,13 +266,13 @@ async def partially_update_suspension_by_form(
         None,
         description=CREATE_SUSPENSION_FROM_TIME,
         alias=ANALYTICS_START,
-        # regex=  # todo
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
     ),
     suspension_finish: Optional[str] = Query(
         None,
         description=CREATE_SUSPENSION_TO_TIME,
         alias=ANALYTICS_FINISH,
-        # regex=  # todo
+        # regex=DATE_TIME_PATTERN_FORM,  # better use "check_start_not_exceeds_finish" validator
     ),
     risk_accident: RiskAccidentSource = Query(None, alias=RISK_ACCIDENT_SOURCE),
     tech_process: TechProcess = Query(None, alias=TECH_PROCESS),
@@ -235,7 +285,9 @@ async def partially_update_suspension_by_form(
     user: User = Depends(current_user),
 ) -> AnalyticSuspensionResponse:
     """Редактирование случая простоя с возможностью очистки прикрепленных файлов, или добавления нового файла."""
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)  # из формы
     suspension_from_db = await suspension_service.get(suspension_id)  # get obj from db and fill in changed fields
+    await check_author_or_super_user(user, suspension_from_db)
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
     suspension_start: datetime = (
         datetime.strptime(str(suspension_start), DATE_TIME_FORMAT)
@@ -247,7 +299,7 @@ async def partially_update_suspension_by_form(
         if suspension_finish is not None
         else datetime.strptime(suspension_from_db.suspension_finish.strftime(DATE_TIME_FORMAT), DATE_TIME_FORMAT)
     )
-    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_FORMAT)
+    await check_start_not_exceeds_finish(suspension_start, suspension_finish, DATE_TIME_FORMAT)  # из формы и бд
     suspension_object = {
         "suspension_start": suspension_start,
         "suspension_finish": suspension_finish,
@@ -321,10 +373,14 @@ async def partially_update_suspension_by_form(
 
 @suspension_router.get(
     MAIN_ROUTE,
+    dependencies=[Depends(current_user)],
     response_model_exclude_none=True,
     description=SUSPENSION_LIST,
     summary=SUSPENSION_LIST,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_all_suspensions(
         suspension_service: SuspensionService = Depends()
@@ -338,7 +394,10 @@ async def get_all_suspensions(
     response_model_exclude_none=True,
     description=SUSPENSION_LIST_CURRENT_USER,
     summary=SUSPENSION_LIST_CURRENT_USER,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_all_my_suspensions(
     suspension_service: SuspensionService = Depends(),
@@ -356,7 +415,10 @@ async def get_all_my_suspensions(
     dependencies=[Depends(current_user)],
     description=SUSPENSION_DESCRIPTION,
     summary=SUSPENSION_DESCRIPTION,
-    tags=[SUSPENSIONS_GET]
+    tags=[SUSPENSIONS_GET],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_suspension_by_id(
     suspension_id: PositiveInt,
@@ -382,7 +444,11 @@ async def get_suspension_by_id(
     description=SUSPENSION_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=SUSPENSION_DELETE,
-    tags=[SUSPENSIONS_POST]
+    tags=[SUSPENSIONS_POST],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def remove_suspension(
         suspension_id: PositiveInt,

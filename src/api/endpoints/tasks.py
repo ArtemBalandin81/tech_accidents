@@ -8,11 +8,11 @@ import structlog
 from fastapi import APIRouter, Depends, File, Query, Response, UploadFile
 from pydantic import EmailStr, PositiveInt
 from src.api.constants import *
-from src.api.schema import (AnalyticTaskResponse, TaskCreate,  # todo "schemas"
+from src.api.schema import (AnalyticTaskResponse, TaskCreate,
                             TaskDeletedResponse, TaskResponse)
 from src.api.services import FileService, TaskService, UsersService
 from src.api.validators import (
-    check_exist_files_attached,
+    check_author_or_super_user, check_exist_files_attached,
     check_not_download_and_delete_files_at_one_time,
     check_same_files_not_to_download, check_start_not_exceeds_finish)
 from src.core.db.models import Task, User
@@ -23,8 +23,8 @@ from src.settings import settings
 log = structlog.get_logger()
 task_router = APIRouter()
 
-SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent  # move to settings todo
-FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)  # move to settings todo
+SERVICES_DIR = Path(__file__).resolve().parent.parent.parent.parent
+FILES_DIR = SERVICES_DIR.joinpath(settings.FILES_DOWNLOAD_DIR)
 
 
 @task_router.post(
@@ -174,7 +174,6 @@ async def partially_update_task_by_form(
         None,
         description=CREATE_TASK_DEADLINE,
         alias=TASK_FINISH,
-        regex=DATE_PATTERN_FORM
     ),
     task: Optional[str] = Query(None, max_length=256, alias=TASK),
     description: Optional[str] = Query(None, max_length=256, alias=TASK_DESCRIPTION),
@@ -190,14 +189,15 @@ async def partially_update_task_by_form(
 ) -> AnalyticTaskResponse:
     """Редактирование задачи с возможностью очистки прикрепленных файлов, или добавления нового файла."""
     task_from_db = await task_service.get(task_id)  # get obj from db and fill in changed fields
+    await check_author_or_super_user(user, task_from_db)
+    task_start: date = datetime.strptime(task_from_db.task_start.strftime(DATE_FORMAT), DATE_FORMAT)
     # get in datetime-format from db -> make it in str -> write in db in datetime again: for equal formats of datetime
+    await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)
     deadline: date = (
         datetime.strptime(str(deadline), DATE_FORMAT)
         if deadline is not None
         else datetime.strptime(task_from_db.deadline.strftime(DATE_FORMAT), DATE_FORMAT)
     )
-    task_start: date = datetime.strptime(task_from_db.task_start.strftime(DATE_FORMAT), DATE_FORMAT)
-    await check_start_not_exceeds_finish(task_start, deadline, DATE_FORMAT)
     executor = await users_service.get_by_email(executor_email.value) if executor_email is not None else None
     task_object = {
         "task_start": task_start,

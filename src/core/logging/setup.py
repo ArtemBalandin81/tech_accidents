@@ -1,12 +1,17 @@
-"""src/core/logging/setup.py"""
+"""
+Основная настройка structlog
+src/core/logging/setup.py
+"""
 import logging
 import logging.config
 import os
 import sys
 
 import structlog
+import ujson
 from src.settings import settings
 from structlog.types import EventDict, Processor
+
 
 os.makedirs(settings.LOG_DIR, exist_ok=True)
 
@@ -15,26 +20,36 @@ def _drop_color_message_key(_, __, event_dict: EventDict) -> EventDict:
     """
     Uvicorn логирует сообщение повторно в дополнительной секции
     `color_message`. Данная функция ("процессор") убирает данный ключ из event dict.
+    В логах в файле отсутствуе ответ апи из-за ее наличия!
     """
     event_dict.pop("color_message", None)
     return event_dict
 
 
+def _get_renderer() -> structlog.processors.JSONRenderer | structlog.dev.ConsoleRenderer:
+    """Получаем рендерер на основании параметров среды: возвращаем рендерер structlog."""
+    if settings.JSON_LOGS is False:
+        return structlog.dev.ConsoleRenderer(colors=True)
+    return structlog.processors.JSONRenderer(
+        indent=2,
+        sort_keys=True,
+        serializer=ujson.dumps,
+        ensure_ascii=False,
+    )
+
 TIMESTAMPER = structlog.processors.TimeStamper(fmt="iso", utc=False)
 
 PRE_CHAIN: list[Processor] = [
-    structlog.contextvars.merge_contextvars,
+    structlog.contextvars.merge_contextvars,  # объединяет контекстные переменные: инфу о запросе, времени, юзере и тп.
     structlog.stdlib.add_logger_name,
     structlog.stdlib.add_log_level,
     structlog.stdlib.PositionalArgumentsFormatter(),
     structlog.stdlib.ExtraAdder(),
-    _drop_color_message_key,
+    #  Uvicorn логирует сообщение повторно ("процессор") убирает данный ключ из event dict.
+    # _drop_color_message_key,  # и убивает в файле логов ответ апи (отключили для записи логов в файл) !!!
     TIMESTAMPER,
     structlog.processors.dict_tracebacks,  # ! процессор, для обработки исключений (трассировки стека)
     structlog.processors.StackInfoRenderer(),  # ! процессор, обрабатывающий выходные данные, дб последним в цепочке
-    # structlog.processors.format_exc_info,
-    # structlog.processors.UnicodeDecoder(),
-    # structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
 ]
 
 
@@ -46,10 +61,7 @@ LOGGING_DICTCONFIG = {
             "()": structlog.stdlib.ProcessorFormatter,
             "processors": [
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-                structlog.dev.ConsoleRenderer(
-                    colors=False,
-                    exception_formatter=structlog.dev.plain_traceback,
-                ),
+                _get_renderer(),
             ],
             "foreign_pre_chain": PRE_CHAIN,
         },
@@ -58,6 +70,7 @@ LOGGING_DICTCONFIG = {
             "processors": [
                 structlog.stdlib.ProcessorFormatter.remove_processors_meta,
                 structlog.dev.ConsoleRenderer(colors=True),
+                # _get_renderer(),
             ],
             "foreign_pre_chain": PRE_CHAIN,
         },
@@ -66,10 +79,8 @@ LOGGING_DICTCONFIG = {
         "default": {
             "level": settings.LOG_LEVEL,
             "class": "logging.StreamHandler",
-            "formatter": "colored",
+            "formatter": "plain" if settings.JSON_LOGS is True else "colored",
         },
-        #  "file": отвечает за вывод логов в отдельный файл
-        #  todo логи выводятся в файл, но не полностью
         "file": {
             "level": settings.LOG_LEVEL,
             "class": "logging.handlers.RotatingFileHandler",
@@ -78,7 +89,8 @@ LOGGING_DICTCONFIG = {
             "maxBytes": settings.LOG_FILE_SIZE,
             "backupCount": settings.LOG_FILES_TO_KEEP,
             "encoding": "UTF-8",
-            "formatter": "plain",
+            # set json or string logs in file
+            "formatter": "plain" if settings.JSON_LOGS is True else "colored",
         },
     },
     "loggers": {
@@ -91,7 +103,6 @@ LOGGING_DICTCONFIG = {
 }
 
 
-# todo печать в файл всех событий log.ainfo(), а не только uvicorn
 def _setup_structlog():
     """Настройки structlog."""
 
@@ -102,11 +113,26 @@ def _setup_structlog():
         + [
             structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
         ],
+        context_class=dict,
         logger_factory=structlog.stdlib.LoggerFactory(),
-        # logger_factory=structlog.WriteLoggerFactory(file=Path("app2").with_suffix(".log").open("wt")),
         wrapper_class=structlog.stdlib.BoundLogger,
-        # wrapper_class=structlog.make_filtering_bound_logger(getattr(logging, settings.LOG_LEVEL)),
-        # context_class=dict,  # https://habr.com/ru/companies/mvideo/articles/744738/
+        cache_logger_on_first_use=True,
+    )
+
+
+def _setup_structlog_pretty():
+    """Альтернативная настройка structlog_pretty."""
+
+    logging.config.dictConfig(LOGGING_DICTCONFIG)
+
+    structlog.configure(
+        processors=PRE_CHAIN
+        + [
+            structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
+        ],
+        context_class=dict,
+        logger_factory=structlog.stdlib.LoggerFactory(),
+        wrapper_class=structlog.stdlib.BoundLogger,
         cache_logger_on_first_use=True,
     )
 
@@ -124,6 +150,7 @@ def _setup_uvicorn_logging():
 def setup_logging():
     """Основные настройки логирования."""
     _setup_structlog()
+    # _setup_structlog_pretty
     _setup_uvicorn_logging()
 
     root_logger = logging.getLogger()

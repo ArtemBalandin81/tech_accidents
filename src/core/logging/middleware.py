@@ -13,9 +13,9 @@ access_logger = structlog.stdlib.get_logger("api.access")
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         """Настройка логирования для Uvicorn."""
-        structlog.contextvars.clear_contextvars()
-        request_id = correlation_id.get()
-        structlog.contextvars.bind_contextvars(request_id=request_id)
+        structlog.contextvars.clear_contextvars()  # Clear previous context variables
+        request_id = correlation_id.get()  # add request_id into logs
+        structlog.contextvars.bind_contextvars(request_id=request_id)  # добавляет в логгер request_id
 
         start_time = time.perf_counter_ns()
         response = Response(status_code=500)

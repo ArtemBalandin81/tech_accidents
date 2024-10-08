@@ -35,7 +35,7 @@ class SuspensionService:
         """Изменяет и добавляет поля в словарь в целях наглядного представления в ответе api."""
         if user is None:
             user: User = await self._users_repository.get(suspension.user_id)  # todo очень затратно!
-            await log.ainfo("{}".format(USER_NOT_PROVIDED), user=user)
+            await log.adebug("{}".format(USER_NOT_PROVIDED), user=user)
         suspension_to_dict = suspension.__dict__
         suspension_to_dict["user_email"] = user.email
         suspension_to_dict["business_process"] = TechProcess(str(suspension.tech_process)).name
@@ -119,25 +119,19 @@ class SuspensionService:
     async def count_suspensions_for_period(
             self,
             user_id: int,
-            suspension_start: datetime = TO_TIME_PERIOD,
-            suspension_finish: datetime = FROM_TIME_NOW
+            start_sample: datetime = TO_TIME_PERIOD,
+            finish_sample: datetime = FROM_TIME_NOW
     ) -> int:
         """Количество простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
-        return await self._repository.count_for_period_for_user(user_id, suspension_start, suspension_finish)
+        return await self._repository.count_for_period_for_user(user_id, start_sample, finish_sample)
 
     async def get_last_suspension_id(self, user_id: int) -> int:
         """Возвращает id крайнего случая простоя, зафиксированного текущим пользователем (или всех)."""
-        if user_id is None:
-            return await self._repository.get_last_id()
-        else:
-            return await self._repository.get_last_id_for_user(user_id)
+        return await self._repository.get_last_id_by_time_for_user(user_id)
 
     async def get_last_suspension_time(self, user_id: int) -> datetime:
         """Возвращает время крайнего случая простоя, зафиксированного текущим пользователем (или всеми)."""
-        if user_id is None:
-            last_suspension = await self._repository.get(await self._repository.get_last_id())
-        else:
-            last_suspension = await self._repository.get(await self.get_last_suspension_id(user_id))
+        last_suspension = await self._repository.get(await self._repository.get_last_id_by_time_for_user(user_id))
         return last_suspension.suspension_start
 
     async def get_all_my_suspensions(self, user_id: int) -> Sequence[Suspension]:
@@ -147,21 +141,21 @@ class SuspensionService:
     async def get_suspensions_for_users(
         self,
         user_id: int | None,
-        suspension_start: datetime = TO_TIME_PERIOD,
-        suspension_finish: datetime = FROM_TIME_NOW
+        start_sample: datetime = TO_TIME_PERIOD,
+        finish_sample: datetime = FROM_TIME_NOW
     ) -> Sequence[Suspension]:
         """Cписок простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
-        return await self._repository.get_suspensions_for_period_for_user(user_id, suspension_start, suspension_finish)
+        return await self._repository.get_suspensions_for_period_for_user(user_id, start_sample, finish_sample)
 
     async def sum_suspensions_time_for_period(
             self,
             user_id: int | None,
-            suspension_start: datetime = TO_TIME_PERIOD,
-            suspension_finish: datetime = FROM_TIME_NOW
+            start_sample: datetime = TO_TIME_PERIOD,
+            finish_sample: datetime = FROM_TIME_NOW
     ) -> int:
         """Сумма простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
         total_time_suspensions = await self._repository.sum_time_for_period_for_user(
-            user_id, suspension_start, suspension_finish
+            user_id, start_sample, finish_sample
         )
         if total_time_suspensions is None:
             return 0
@@ -170,12 +164,12 @@ class SuspensionService:
     async def suspension_max_time_for_period(
             self,
             user_id: int | None,
-            suspension_start: datetime = TO_TIME_PERIOD,
-            suspension_finish: datetime = FROM_TIME_NOW
+            start_sample: datetime = TO_TIME_PERIOD,
+            finish_sample: datetime = FROM_TIME_NOW
     ) -> int:
         """Максимальный простой в периоде для пользователя (или для всех, если пользователь не передан)."""
         max_time_for_period = await self._repository.suspension_max_time_for_period_for_user(
-            user_id, suspension_start, suspension_finish
+            user_id, start_sample, finish_sample
         )
         if max_time_for_period is None:
             return 0

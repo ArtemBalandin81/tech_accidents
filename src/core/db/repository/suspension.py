@@ -21,16 +21,16 @@ class SuspensionRepository(ContentRepository):
     async def count_for_period_for_user(
             self,
             user_id: int,
-            suspension_start: datetime,
-            suspension_finish: datetime,
+            start_sample: datetime,
+            finish_sample: datetime,
     ) -> int:
         """Считает количество простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
         total_suspensions_for_period_query = select(
             func.count(Suspension.suspension_start)
         ).where(
-            Suspension.suspension_start >= suspension_start
+            Suspension.suspension_start >= start_sample
         ).where(
-            Suspension.suspension_finish <= suspension_finish
+            Suspension.suspension_start <= finish_sample
         )
         if user_id is not None:
             return await self._session.scalar(total_suspensions_for_period_query.where(Suspension.user_id == user_id))
@@ -44,12 +44,14 @@ class SuspensionRepository(ContentRepository):
         )
         return objects.all()
 
-    async def get_last_id_for_user(self, user_id: int) -> int:
-        """Возвращает последний по времени простой для пользователя."""
+    async def get_last_id_by_time_for_user(self, user_id: int | None) -> int:
+        """Возвращает последний по времени в БД простой для пользователя."""
+        if user_id is None:
+            return await self._session.scalar(select(Suspension.id).order_by(Suspension.suspension_start.desc()))
         return await self._session.scalar(
             select(Suspension.id)
             .where(Suspension.user_id == user_id)
-            .order_by(Suspension.id.desc())
+            .order_by(Suspension.suspension_start.desc())
         )
 
     async def get_suspensions_for_user(self, user_id: int, limit: int = 3, offset: int = 0) -> Sequence[Suspension]:
@@ -66,14 +68,14 @@ class SuspensionRepository(ContentRepository):
     async def get_suspensions_for_period_for_user(
             self,
             user_id: int | None,
-            suspension_start: datetime,
-            suspension_finish: datetime
+            start_sample: datetime,
+            finish_sample: datetime
     ) -> Sequence[Suspension]:
         """Получить список простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
         suspensions_for_period_query = select(Suspension).where(
-            Suspension.suspension_start >= suspension_start
+            Suspension.suspension_start >= start_sample
         ).where(
-            Suspension.suspension_finish <= suspension_finish
+            Suspension.suspension_start <= finish_sample
         ).order_by(
             Suspension.suspension_start.desc()
         )
@@ -88,16 +90,16 @@ class SuspensionRepository(ContentRepository):
     async def suspension_max_time_for_period_for_user(
             self,
             user_id: int | None,
-            suspension_start: datetime,
-            suspension_finish: datetime
+            start_sample: datetime,
+            finish_sample: datetime
     ) -> int:
         """Максимальный простой в периоде для пользователя (или для всех, если пользователь не передан)."""
         max_suspension_for_period_query = select(
             func.max(func.julianday(Suspension.suspension_finish) - func.julianday(Suspension.suspension_start))
         ).where(
-            Suspension.suspension_start >= suspension_start
+            Suspension.suspension_start >= start_sample
         ).where(
-            Suspension.suspension_finish <= suspension_finish
+            Suspension.suspension_start <= finish_sample
         )
         if user_id is not None:
             return await self._session.scalar(max_suspension_for_period_query.where(Suspension.user_id == user_id))
@@ -106,8 +108,8 @@ class SuspensionRepository(ContentRepository):
     async def sum_time_for_period_for_user(
             self,
             user_id: int,
-            suspension_start: datetime,
-            suspension_finish: datetime,
+            start_sample: datetime,
+            finish_sample: datetime,
 
     ) -> int:
         """Сумма простоев в периоде для пользователя (или для всех, если пользователь не передан)."""
@@ -116,9 +118,9 @@ class SuspensionRepository(ContentRepository):
                 func.julianday(Suspension.suspension_finish) - func.julianday(Suspension.suspension_start)
             )
         ).where(
-            Suspension.suspension_start >= suspension_start
+            Suspension.suspension_start >= start_sample
         ).where(
-            Suspension.suspension_finish <= suspension_finish
+            Suspension.suspension_start <= finish_sample
         )
         if user_id is not None:
             return await self._session.scalar(sum_time_for_period_query.where(Suspension.user_id == user_id))

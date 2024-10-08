@@ -23,7 +23,7 @@ def include_router(app: FastAPI):
     app.include_router(api_router)
 
 
-def add_middleware(app: FastAPI):  # todo логгируется только сервер, но не мои инфо - разобраться как так-то!!!
+def add_middleware(app: FastAPI):
     origins = ["*"]
     app.add_middleware(
         CORSMiddleware,
@@ -32,8 +32,8 @@ def add_middleware(app: FastAPI):  # todo логгируется только с
         allow_methods=["*"],
         allow_headers=["*"],
     )
-    setup_logging()
-    app.add_middleware(LoggingMiddleware)
+    setup_logging()  # Procharity example of pytest settings
+    app.add_middleware(LoggingMiddleware)  # creates api logs
     app.add_middleware(CorrelationIdMiddleware)
 
 
@@ -43,7 +43,7 @@ def create_app() -> FastAPI:
         description=settings.APP_DESCRIPTION
     )
     include_router(app)
-    add_middleware(app)  # логгирование
+    add_middleware(app)
 
     @app.on_event("startup")
     @logger_decor

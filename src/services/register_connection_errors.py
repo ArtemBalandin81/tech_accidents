@@ -17,7 +17,7 @@ from src.core.db.models import Suspension
 from src.core.db.repository.suspension import SuspensionRepository
 from src.settings import settings
 
-log = structlog.get_logger().bind(file_name=__file__)
+log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
 
 
 class ConnectionErrorService:
