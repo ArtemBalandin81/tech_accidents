@@ -38,7 +38,7 @@ async def create_new_task_by_form(
     file_to_upload: UploadFile = None,
     task_start: str = Query(..., example=CREATE_TASK_START, alias=TASK_START),
     deadline: str = Query(..., example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),
-    task: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK),
+    task: str = Query(..., max_length=256, example=TASK, alias=TASK),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
     executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
@@ -92,7 +92,7 @@ async def create_new_task_by_form_with_files(
     files_to_upload: list[UploadFile] = File(...),
     task_start: str = Query(..., example=CREATE_TASK_START, alias=TASK_START),
     deadline: str = Query(..., example=CREATE_TASK_DEADLINE, alias=TASK_FINISH),
-    task: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK),
+    task: str = Query(..., max_length=256, example=TASK, alias=TASK),
     tech_process: TechProcess = Query(..., alias=TECH_PROCESS),
     description: str = Query(..., max_length=256, example=TASK_DESCRIPTION, alias=TASK_DESCRIPTION),
     executor_email: Executor = Query(..., alias=TASK_EXECUTOR_MAIL),
@@ -266,6 +266,7 @@ async def partially_update_task_by_form(
 
 @task_router.get(
     MAIN_ROUTE,
+    dependencies=[Depends(current_user)],
     response_model_exclude_none=True,
     description=TASK_LIST,
     summary=TASK_LIST,
@@ -278,6 +279,7 @@ async def get_all_tasks(task_service: TaskService = Depends()) -> Sequence[Analy
 
 @task_router.get(
     GET_OPENED_ROUTE,
+    dependencies=[Depends(current_user)],
     response_model_exclude_none=True,
     description=TASK_OPENED_LIST,
     summary=TASK_OPENED_LIST,

@@ -71,7 +71,6 @@ async def async_db_engine():
         await conn.run_sync(Base.metadata.drop_all)  # drop all database every time when test complete
 
 
-# truncate all table to isolate tests
 @pytest.fixture(scope='function')
 async def async_db(async_db_engine):
     """Create connection to database."""
@@ -94,10 +93,10 @@ async def async_db(async_db_engine):
 @pytest.fixture(scope="function")
 def app() -> Generator[FastAPI, Any, None]:
     """Start app"""
-    # Base.metadata.create_all(engine)  # Create the tables.  # ??? todo
+    # Base.metadata.create_all(engine)  # - another solution has been chosen
     _app = start_application()
     yield _app
-    # Base.metadata.drop_all(engine)  # ??? todo
+    # Base.metadata.drop_all(engine)  # - another solution has been chosen
 
 
 @pytest.fixture(scope="function")
@@ -176,7 +175,7 @@ async def user_from_settings(async_db: AsyncSession) -> User:
 @pytest.fixture
 async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Suspension]:
     """
-    Create a suspension in database by user from settings and by test user from orm.
+    Create suspensions in database by user from settings and by test user from orm.
     for testing intervals: starts = (now - 1 day), finish = now
     """
     now = datetime.now()
@@ -204,6 +203,40 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     # await async_db.refresh(suspensions_list)
     await log.ainfo("suspensions_orm_created:", suspensions_orm=suspensions_list)
     return suspensions_list
+
+
+@pytest.fixture
+async def tasks_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Task]:
+    """
+    Create tasks in database by user from settings and by test user from orm.
+    for testing intervals: starts = (now - 1 day), finish = now
+    """
+    now = datetime.now().date()
+    scenarios = (
+        # task, description, task_start, deadline, user_id, executor_id:
+        ("1", "2_1_[]", now - timedelta(days=2), now - timedelta(days=1), user_from_settings.id, user_orm.id),
+        ("2", "[_0_]", now, now, user_from_settings.id, user_from_settings.id),
+        ("3", "1_[]_1", now - timedelta(days=1), now + timedelta(days=1), user_orm.id, user_orm.id),
+        ("4", "[]_3", now, now + timedelta(days=3), user_orm.id, user_from_settings.id)
+    )
+    tasks_list = []
+    for task, description, task_start, deadline, user_id, executor_id in scenarios:
+        task = Task(
+            task=task,
+            description=description,
+            task_start=task_start,
+            deadline=deadline,
+            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 -first item in dictionary
+            user_id=user_id,
+            executor_id=executor_id,
+            is_archived=0
+        )
+        tasks_list.append(task)
+    async_db.add_all(tasks_list)
+    await async_db.commit()
+    # await async_db.refresh(tasks_list)
+    await log.ainfo("tasks_orm_created:", tasks_orm=tasks_list)
+    return tasks_list
 
 
 async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:

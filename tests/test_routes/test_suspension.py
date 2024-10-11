@@ -1078,11 +1078,11 @@ async def test_user_get_all_suspension_url(
                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  __{name}"
                 )
                 continue
-            for index in enumerate(suspensions_orm):  # проводим сверки по каждому объекту в БД
+            for index in enumerate(suspensions_orm):  # проводим сверки по каждому объекту фикстуры и в ответе response
                 position = index[0] + 1
                 fixture_object = [obj for obj in suspensions_orm if obj.id == position][0]
                 object_in_response = [obj for obj in response.json() if obj["id"] == position][0]
-            # expected values in scenario - take original suspensions_orm
+                # expected values in scenario - take original suspensions_orm
                 expected = {
                     "total_objects": len(suspensions_orm),
                     "suspension_files": [],
@@ -1094,7 +1094,7 @@ async def test_user_get_all_suspension_url(
                     "tech_process": int(fixture_object.tech_process),
                     "user_id": fixture_object.user_id,
                 }
-            # run asserts in a scenario:
+                # run asserts in a scenario:
                 match_values = (
                     # name_value, expected_value, exist_value
                     ("Total suspensions: ", expected.get("total_objects"), len(response.json())),
