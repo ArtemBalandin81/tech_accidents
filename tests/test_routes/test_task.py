@@ -7,7 +7,7 @@ pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
 
 pytest -k test_unauthorized_tries_task_urls -vs
-pytest -k test_user_get_task_url -vs todo !
+pytest -k test_user_get_task_url -vs
 pytest -k test_user_get_all_tasks_url -vs
 pytest -k test_user_get_all_tasks_opened_url -vs  Todo /api/tasks/opened
 pytest -k test_user_get_my_tasks_ordered_url -vs  Todo /api/tasks/my_tasks_ordered
@@ -209,14 +209,14 @@ async def test_unauthorized_tries_task_urls(async_client: AsyncClient) -> None:
 #             scenario_number += 1
 #             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
 #             # gather info of objects in db before testing:
-#             objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
-#             objects_in_db_before = objects_before.all()  # сколько объектов до сценария
+#             objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
+#             objects_in_db_before = objects_before.all()  # objects before scenarios have started
 #             object_before_to_patch = [
 #                 suspension for suspension in objects_in_db_before if suspension.id == suspension_id
 #             ]
 #             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
 #             suspension_files_in_db_before = suspension_files_object_before.all()
-#             attached_files_objects_before = await async_db.scalars(  # какие файлы были привязаны к простою
+#             attached_files_objects_before = await async_db.scalars(
 #                 select(FileAttached)
 #                 .join(Suspension.files)
 #                 .where(Suspension.id == suspension_id)
@@ -739,187 +739,203 @@ async def test_unauthorized_tries_task_urls(async_client: AsyncClient) -> None:
 #             await clean_test_database(async_db, Suspension, FileAttached, SuspensionsFiles)
 #             await delete_files_in_folder(file_paths)
 #     await clean_test_database(async_db, User)
-#
-#  TODO:
-# async def test_user_get_suspension_url(
-#         async_client: AsyncClient,
-#         async_db: AsyncSession,
-#         suspensions_orm: Suspension,
-# ) -> None:
-#     """
-#     Тестирует возможность получения по id информации о случае простоя, или загрузки прикрепленных файлов:
-#     pytest -k test_user_get_suspension_url -vs
-#
-#     before_patched - параметры простоя при его создании: тождественны "scenarios" из suspensions_orm в confest.py
-#
-#     scenarios - тестовые сценарии редактирования простоев (сценарии не изолированы друг от друга).
-#     Параметры простоев не сбрасываются на базовые ("scenarios" из suspensions_orm в confest.py) в цикле сценариев,
-#     поэтому используем разные сценарии при тестировании редактирования параметров простая.
-#
-#     expected - словарь ожидаемых значений параметров простоя:
-#     если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании простоя).
-#
-#     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
-#
-#     """
-#     test_url = SUSPENSIONS_PATH + "/"  # /api/suspensions/{suspension_id}
-#     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
-#     test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
-#     await create_test_files(test_files)
-#     file_to_attach = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}  # todo
-#     json_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
-#     files_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
-#     scenario_number = 0
-#     scenarios = (
-#         # login, params, status, uploaded_file, suspension_id, name
-#         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 1, "json-choice"),  # 1
-#         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 2, "json-choice"),  # 2
-#         (user_orm_login, {CHOICE_FORMAT: files_choice}, 404, None, 2, "files_choice when no files attached"),  # 3
-#         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 2, "patch object by adding a file"),  # 4
-#         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 2, "adding one more file to object"),  # 5
-#         (user_orm_login, {CHOICE_FORMAT: files_choice}, 200, None, 2, "and now try to get attached files"),  # 6
-#     )
-#     async with async_client as ac:
-#         for login, params, status, uploaded_file, suspension_id, name in scenarios:
-#             scenario_number += 1
-#             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
-#             # gather info of objects in db before testing:
-#             objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
-#             objects_in_db_before = objects_before.all()  # сколько объектов до сценария
-#             object_before_testing = [obj for obj in objects_in_db_before if obj.id == suspension_id][0]
-#             attached_files_objects_before = await async_db.scalars(  # какие файлы были привязаны к простою
-#                 select(FileAttached)
-#                 .join(Suspension.files)
-#                 .where(Suspension.id == suspension_id)
-#             )
-#             attached_files_in_db_before = attached_files_objects_before.all()
-#             attached_files_paths_before = [
-#                 FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
-#                 if attached_files_in_db_before is not None
-#             ]
-#             response_login_user = await ac.post(LOGIN, data=login)
-#             if uploaded_file is not None:  # adding file to the object_id in order to get this file later
-#                 response_patched = await ac.patch(
-#                     test_url + f"{suspension_id}",
-#                     params={SUSPENSION_DESCRIPTION: "suspension is attached with files"},
-#                     headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
-#                     files=uploaded_file
-#                 )
-#                 assert response_patched.status_code == status, (
-#                     f"User: {login} couldn't patch {test_url}. Response: {response.__dict__}"
-#                 )
-#             response = await ac.get(
-#                 test_url + f"{suspension_id}",
-#                 params=params,
-#                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
-#             )
-#             assert response.status_code == status, (
-#                 f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-#             )
-#             if response.status_code != 200:
-#                 await log.ainfo(
-#                     f"SCENARIO: _{scenario_number}_ info: {name}",
-#                     login_data=login,
-#                     response=response.json(),
-#                     status=response.status_code,
-#                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  __{name}"
-#                 )
-#                 continue
-#             if params.get(CHOICE_FORMAT) == files_choice:
-#                 # checking only file zip_name correct in headers
-#                 zip_name = response.headers.get("content-disposition").split(";")[1].split("=")[1]
-#                 expected_zip_name = FILE_NAME_SAVE_FORMAT + "_archive.zip"
-#                 assert zip_name == expected_zip_name, (
-#                     f"Chosen file_choice: {files_choice}, but couldn't get {expected_zip_name}. "
-#                     f"Headers: {response.headers}. Dict: {response.__dict__}"
-#                 )
-#                 await log.ainfo(
-#                     f"SCENARIO: _{scenario_number}_ files_choice: {name}",
-#                     login_data=login,
-#                     headers=response.headers,
-#                     wings_of_end=f"STATUS: {response.status_code}_ END of SCENARIO: _ {scenario_number}____{name}!!"
-#                 )
-#                 await delete_files_in_folder(file_paths)
-#                 continue
-#             # suspensions after test running:
-#             objects = await async_db.scalars(select(Suspension))
-#             objects_in_db = objects.all()
-#             object_in_db = [obj for obj in objects_in_db if obj.id == suspension_id][0]
-#             # files after test running:
-#             files_in_response = response.json().get(FILES_SET_TO)
-#             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
-#             files_in_db = file_objects.all() if file_objects is not None else []
-#             file_paths = [
-#                 FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
-#             ]
-#             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
-#             # files relations after test running:
-#             suspension_files_object = await async_db.scalars(select(SuspensionsFiles))
-#             suspension_files_in_db = suspension_files_object.all()
-#             suspension_files_records = set(
-#                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
-#             )
-#             suspension_files_in_scenario = tuple(suspension_files_records)
-#             # expected values in scenario
-#             expected = {
-#                 "total_expected_before": len(objects_in_db_before),
-#                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_before_testing.id),
-#                 "suspension_files": suspension_files_in_scenario,
-#                 "start": object_before_testing.suspension_start,
-#                 "finish": object_before_testing.suspension_finish,
-#                 "description": object_before_testing.description,
-#                 "measures": object_before_testing.implementing_measures,
-#                 "risk_accident": object_before_testing.risk_accident,
-#                 "tech_process": int(object_before_testing.tech_process),
-#                 "user_id": object_before_testing.user_id,
-#             }
-#             # run asserts in a scenario:
-#             match_values = (
-#                 # name_value, expected_value, exist_value
-#                 ("Suspension id: ", suspension_id, object_before_testing.id),
-#                 ("Total suspensions: ", expected.get("total_expected_before"), len(objects_in_db)),
-#                 ("Attached files after: ", set(expected.get("files_attached")), set(files_in_response)),
-#                 ("Suspension files: ", set(expected.get("suspension_files")), suspension_files_records),
-#                 ("Suspension start: ", expected.get("start"), object_in_db.suspension_start),
-#                 ("Suspension finish: ", expected.get("finish"), object_in_db.suspension_finish),
-#                 ("Description: ", expected.get("description"), object_in_db.description),
-#                 ("Implementing measures: ", expected.get("measures"), object_in_db.implementing_measures),
-#                 ("Risk accident: ", expected.get("risk_accident"), object_in_db.risk_accident),
-#                 (
-#                     "Tech process: ",
-#                     expected.get("tech_process"),
-#                     int(json.loads(settings.TECH_PROCESS).get(response.json().get(TECH_PROCESS)))
-#                 ),
-#                 (
-#                     "Duration: ",
-#                     (
-#                         (object_before_testing.suspension_finish
-#                             - object_before_testing.suspension_start).total_seconds() / SUSPENSION_DURATION_RESPONSE
-#                     ),
-#                     response.json().get(SUSPENSION_DURATION)
-#                 ),
-#                 ("user_id: ", expected.get("user_id"), object_in_db.user_id),
-#             )
-#             for name_value, expected_value, exist_value in match_values:
-#                 assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
-#             if files_in_response is not None:
-#                 for file in files_in_response:
-#                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
-#             await log.ainfo(
-#                 f"SCENARIO: _{scenario_number}_ info: {name}",
-#                 files_attached_before=attached_files_paths_before,
-#                 files_attached_expected=expected.get("files_attached"),
-#                 files_in_db=files_in_db,
-#                 files_in_response=files_in_response,
-#                 file_paths=file_paths,
-#                 login_data=login,
-#                 params=params,
-#                 response=response.json(),
-#                 suspension_files_expected=set(expected.get("suspension_files")),
-#                 wings_of_end=f"______________ END of SCENARIO: ___ {scenario_number} ____ __{name} _______"
-#             )
-#     await delete_files_in_folder(file_paths)
-#     await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)
+
+
+async def test_user_get_task_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        tasks_orm: Task,
+) -> None:
+    """
+    Тестирует возможность получения по id информации о задаче, или загрузки прикрепленных файлов:
+    pytest -k test_user_get_task_url -vs
+
+    before_patched - параметры задачи при ее создании: тождественны "scenarios" из tasks_orm в confest.py
+
+    scenarios - тестовые сценарии редактирования задачи (сценарии не изолированы друг от друга).
+    Параметры простоев не сбрасываются на базовые ("scenarios" из tasks_orm в confest.py) в цикле сценариев,
+    поэтому используем разные сценарии при тестировании редактирования параметров задачи.
+
+    expected - словарь ожидаемых значений параметров задачи:
+    если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании задачи).
+
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+
+    """
+    test_url = TASKS_PATH + "/"  # /api/tasks/{task_id}
+    user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
+    await create_test_files(test_files)
+    file_to_attach = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
+    json_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
+    files_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
+    scenario_number = 0
+    scenarios = (
+        # login, params, status, uploaded_file, task_id, name
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 1, "json-choice"),  # 1
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 2, "json-choice"),  # 2
+        (user_orm_login, {CHOICE_FORMAT: files_choice}, 404, None, 2, "files_choice when no files attached"),  # 3
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 3, "patch object by adding a file"),  # 4
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 3, "adding one more file to object"),  # 5
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 3, "adding one more file to object"),  # 5
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, None, 3, "and now try to get attached files"),  # 6
+        (user_orm_login, {CHOICE_FORMAT: files_choice}, 200, None, 3, "and now try to get attached files"),  # 7
+        (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 4, "and now try to get final json"),  # 8
+    )
+    async with async_client as ac:
+        for login, params, status, uploaded_file, task_id, name in scenarios:
+            scenario_number += 1
+            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            # gather info of objects in db before testing:
+            objects_before = await async_db.scalars(select(Task))  # objects before scenarios have started
+            objects_in_db_before = objects_before.all()  # objects before scenarios have started
+            object_before_testing = [obj for obj in objects_in_db_before if obj.id == task_id][0]
+            attached_files_objects_before = await async_db.scalars(
+                select(FileAttached)
+                .join(Task.files)
+                .where(Task.id == task_id)
+            )
+            attached_files_in_db_before = attached_files_objects_before.all()
+            attached_files_paths_before = [
+                FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
+                if attached_files_in_db_before is not None
+            ]
+            task_files_object_before = await async_db.scalars(select(TasksFiles))
+            task_files_in_db_before = task_files_object_before.all()
+            task_files_records_before = set(
+                ((record.task_id, record.file_id) for record in task_files_in_db_before)
+            )
+            task_manager = await async_db.scalar(select(User).where(User.id == object_before_testing.user_id))
+            executor = await async_db.scalar(select(User).where(User.id == object_before_testing.executor_id))
+            expected = {
+                "total_expected_before": len(objects_in_db_before),
+                "task_id": task_id,
+                "files_attached": [file.name for file in attached_files_in_db_before],
+                "task_files": task_files_records_before,
+                "task": object_before_testing.task,
+                "start": object_before_testing.task_start,
+                "duration": (
+                        (object_before_testing.deadline - datetime.now().date()).total_seconds()
+                        / TASK_DURATION_RESPONSE
+                ),
+                "finish": object_before_testing.deadline,
+                "description": object_before_testing.description,
+                "tech_process": int(object_before_testing.tech_process),
+                "user_id": object_before_testing.user_id,
+                "user_email": task_manager.email,
+                "executor_email": executor.email,
+                "executor_id": object_before_testing.executor_id,
+                "is_archived": object_before_testing.is_archived,
+            }
+            response_login_user = await ac.post(LOGIN, data=login)
+            if uploaded_file is not None:  # adding file to the object_id in order to get this file later
+                response_patched = await ac.patch(
+                    test_url + f"{task_id}",
+                    params={TASK_DESCRIPTION: "task is attached with files"},
+                    headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                    files=uploaded_file
+                )
+                assert response_patched.status_code == status, (
+                    f"User: {login} couldn't patch {test_url}. Response: {response.__dict__}"
+                )
+                file_attached_id = len(task_files_in_db_before) + 1  # fragile too much!
+                expected["description"] = "task is attached with files"  # fragile !!!
+                expected["files_attached"] = expected["files_attached"] + response_patched.json().get(FILES_SET_TO)
+                expected["task_files"] = expected["task_files"].union(((task_id, file_attached_id),))
+            response = await ac.get(
+                test_url + f"{task_id}",
+                params=params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+            )
+            assert response.status_code == status, (
+                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
+            )
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: {name}",
+                    login_data=login,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  __{name}"
+                )
+                continue
+            if params.get(CHOICE_FORMAT) == files_choice:
+                # checking only file zip_name correct in headers
+                zip_name = response.headers.get("content-disposition").split(";")[1].split("=")[1]
+                expected_zip_name = FILE_NAME_SAVE_FORMAT + "_archive.zip"
+                assert zip_name == expected_zip_name, (
+                    f"Chosen file_choice: {files_choice}, but couldn't get {expected_zip_name}. "
+                    f"Headers: {response.headers}. Dict: {response.__dict__}"
+                )
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ files_choice: {name}",
+                    login_data=login,
+                    headers=response.headers,
+                    wings_of_end=f"STATUS: {response.status_code}_ END of SCENARIO: _ {scenario_number}____{name}!!"
+                )
+                await delete_files_in_folder(file_paths)
+                continue
+            # tasks after test running:
+            objects = await async_db.scalars(select(Task))
+            objects_in_db = objects.all()
+            object_in_db = [obj for obj in objects_in_db if obj.id == task_id][0]
+            # files after test running:
+            files_in_response = response.json().get(FILES_SET_TO)
+            file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
+            files_in_db = file_objects.all() if file_objects is not None else []
+            file_paths = [
+                FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
+            ]
+            all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+            # files relations after test running:
+            task_files_object = await async_db.scalars(select(TasksFiles))
+            task_files_in_db = task_files_object.all()
+            task_files_records = set(
+                ((record.task_id, record.file_id) for record in task_files_in_db)
+            )
+            # run asserts in a scenario:
+            match_values = (
+                # name_value, expected_value, exist_value
+                ("Task id: ", expected.get("task_id"), object_before_testing.id),
+                ("Total tasks: ", expected.get("total_expected_before"), len(objects_in_db)),
+                ("Task: ", expected.get("task"), object_in_db.task),
+                ("Attached files after: ", set(expected.get("files_attached")), set(files_in_response)),
+                ("Task files: ", set(expected.get("task_files")), task_files_records),
+                ("Task start: ", expected.get("start"), object_in_db.task_start),
+                ("Task finish: ", expected.get("finish"), object_in_db.deadline),
+                ("Description: ", expected.get("description"), object_in_db.description),
+                (
+                    "Tech process: ",
+                    expected.get("tech_process"),
+                    int(json.loads(settings.TECH_PROCESS).get(response.json().get(TECH_PROCESS)))
+                ),
+                ("Duration: ", expected.get("duration"), response.json().get(TASK_DURATION)),
+                ("user_email: ", expected.get("user_email"), response.json().get(USER_MAIL)),
+                ("user_id: ", expected.get("user_id"), object_in_db.user_id),
+                ("executor_email: ", expected.get("executor_email"), response.json().get(TASK_EXECUTOR_MAIL)),
+                ("executor_id: ", expected.get("executor_id"), object_in_db.executor_id),
+                ("is_archived: ", expected.get("is_archived"), object_in_db.is_archived),
+            )
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
+            if files_in_response is not None:
+                for file in files_in_response:
+                    assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+            await log.ainfo(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                files_attached_before=attached_files_paths_before,
+                files_attached_expected=expected.get("files_attached"),
+                files_in_db=files_in_db,
+                files_in_response=files_in_response,
+                file_paths=file_paths,
+                login_data=login,
+                params=params,
+                response=response.json(),
+                task_files_expected=expected.get("task_files"),
+                wings_of_end=f"______________ END of SCENARIO: ___ {scenario_number} ____ __{name} _______"
+            )
+    await delete_files_in_folder(file_paths)
+    await clean_test_database(async_db, User, Task, FileAttached, TasksFiles)
 
 
 async def test_user_get_all_tasks_url(
@@ -974,7 +990,7 @@ async def test_user_get_all_tasks_url(
                 position = index[0] + 1
                 fixture_object = [obj for obj in tasks_orm if obj.id == position][0]
                 object_in_response = [obj for obj in response.json() if obj["id"] == position][0]
-                # expected values in scenario - take original suspensions_orm
+                # expected values in scenario - take original tasks_orm
                 task_manager = await async_db.scalar(select(User).where(User.id == fixture_object.user_id))
                 executor = await async_db.scalar(select(User).where(User.id == fixture_object.executor_id))
                 expected = {

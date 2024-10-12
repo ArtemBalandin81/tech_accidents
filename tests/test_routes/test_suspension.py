@@ -316,14 +316,14 @@ async def test_user_patch_suspension_url(
             scenario_number += 1
             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
             # gather info of objects in db before testing:
-            objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
-            objects_in_db_before = objects_before.all()  # сколько объектов до сценария
+            objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
+            objects_in_db_before = objects_before.all()  # objects before scenarios have started
             object_before_to_patch = [
                 suspension for suspension in objects_in_db_before if suspension.id == suspension_id
             ]
             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
             suspension_files_in_db_before = suspension_files_object_before.all()
-            attached_files_objects_before = await async_db.scalars(  # какие файлы были привязаны к простою
+            attached_files_objects_before = await async_db.scalars(
                 select(FileAttached)
                 .join(Suspension.files)
                 .where(Suspension.id == suspension_id)
@@ -873,7 +873,7 @@ async def test_user_get_suspension_url(
     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
     test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
     await create_test_files(test_files)
-    file_to_attach = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}  # todo
+    file_to_attach = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
     json_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
     files_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
     scenario_number = 0
@@ -891,10 +891,10 @@ async def test_user_get_suspension_url(
             scenario_number += 1
             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
             # gather info of objects in db before testing:
-            objects_before = await async_db.scalars(select(Suspension))  # сколько объектов до сценария
-            objects_in_db_before = objects_before.all()  # сколько объектов до сценария
+            objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
+            objects_in_db_before = objects_before.all()  # objects before scenarios have started
             object_before_testing = [obj for obj in objects_in_db_before if obj.id == suspension_id][0]
-            attached_files_objects_before = await async_db.scalars(  # какие файлы были привязаны к простою
+            attached_files_objects_before = await async_db.scalars(
                 select(FileAttached)
                 .join(Suspension.files)
                 .where(Suspension.id == suspension_id)
