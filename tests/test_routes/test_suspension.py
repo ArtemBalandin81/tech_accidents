@@ -789,7 +789,7 @@ async def test_user_post_suspension_form_url(
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, new_object.id),
                 "suspension_files": set(
                     ((response.json()["id"], index[0] + 1) for index in enumerate(files_in_response))
-                ),
+                ),  # todo масло масляное по сути files_in_response - обращается к БД, а не к исходникам ожидаемым
                 "start": create_params.get(ANALYTICS_START),
                 "finish": create_params.get(ANALYTICS_FINISH),
                 "description": create_params.get(SUSPENSION_DESCRIPTION),

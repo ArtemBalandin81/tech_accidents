@@ -214,10 +214,10 @@ async def tasks_orm(async_db: AsyncSession, user_from_settings: User, user_orm: 
     now = datetime.now().date()
     scenarios = (
         # task, description, task_start, deadline, user_id, executor_id:
-        ("1", "2_1_[]", now - timedelta(days=2), now - timedelta(days=1), user_from_settings.id, user_orm.id),
+        ("1", "-2_-1_[]", now - timedelta(days=2), now - timedelta(days=1), user_from_settings.id, user_orm.id),
         ("2", "[_0_]", now, now, user_from_settings.id, user_from_settings.id),
-        ("3", "1_[]_1", now - timedelta(days=1), now + timedelta(days=1), user_orm.id, user_orm.id),
-        ("4", "[]_3", now, now + timedelta(days=3), user_orm.id, user_orm.id)
+        ("3", "-1_[]_+1", now - timedelta(days=1), now + timedelta(days=1), user_orm.id, user_orm.id),
+        ("4", "[]_+3", now, now + timedelta(days=3), user_orm.id, user_orm.id)
     )
     tasks_list = []
     for task, description, task_start, deadline, user_id, executor_id in scenarios:
