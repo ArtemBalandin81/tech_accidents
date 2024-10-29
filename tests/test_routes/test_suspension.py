@@ -175,7 +175,7 @@ async def test_user_get_suspension_analytics_url(
                 [implementing_measures.append(suspension[IMPLEMENTING_MEASURES]) for suspension in suspensions_list]
                 [users_ids.append(suspension[USER_ID]) for suspension in suspensions_list]
                 last_time_suspension_id_expected = 3  # Now it's = 3 - !!! FRANGIBLE depends on suspensions_orm
-            assert response.status_code == status, f"User: {login} couldn't get {test_url}. Details: {response.json()}"
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Details: {response.json()}"
             assert total_suspensions == count, (
                 f"Suspensions_total: {total_suspensions} doesn't match expectations: {count}"
             )
@@ -194,7 +194,7 @@ async def test_user_get_suspension_analytics_url(
             )
             scenario_number += 1
             await log.ainfo(
-                f"******  SCENARIO: ___ {scenario_number} ___  *** __ {name} __ ***********************",
+                await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}"),
                 login_data=login,
                 params=search_params,
                 status=response.status_code,
@@ -258,9 +258,8 @@ async def test_user_patch_suspension_url(
         ("[_60]_", datetime.now() - timedelta(minutes=30), datetime.now() + timedelta(minutes=30), "4", 2)
     )
     scenario_number = 0
-    # Each other dependant scenarios
     scenarios = (
-        # login, params, status, uploaded_file, suspension_id, name
+        # login, params, status, uploaded_file, suspension_id, name - Dependant scenarios !!!
         (user_settings_login, {
             ANALYTICS_START: error_in_time,
             ANALYTICS_FINISH: day_ago,
@@ -314,7 +313,7 @@ async def test_user_patch_suspension_url(
     async with async_client as ac:
         for login, create_params, status, uploaded_file, suspension_id, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             # gather info of objects in db before testing:
             objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
@@ -346,9 +345,7 @@ async def test_user_patch_suspension_url(
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
                 files=uploaded_file
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -394,8 +391,7 @@ async def test_user_patch_suspension_url(
                 suspension_files_in_scenario = ()
             else:
                 suspension_files_in_scenario = tuple(suspension_files_records_before)
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_suspensions_expected": len(objects_in_db_before),
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_in_db.id),
                 "suspension_files": suspension_files_in_scenario,
@@ -485,7 +481,8 @@ async def test_user_patch_suspension_url(
                 suspension_files_expected=set(expected.get("suspension_files")),
                 wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
             )
-    await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)  # а файлы удаляются в апи
+    # if files are not deleted in folder - it means, that scenario of "files unlink" doesn't work correctly
+    await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)  # files are deleted in api
 
 
 async def test_user_post_suspension_with_files_form_url(
@@ -569,7 +566,7 @@ async def test_user_post_suspension_with_files_form_url(
     async with async_client as ac:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
-            await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}   ******")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
@@ -577,9 +574,7 @@ async def test_user_post_suspension_with_files_form_url(
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
                 files=files
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: ",
@@ -609,8 +604,7 @@ async def test_user_post_suspension_with_files_form_url(
             file_paths = [
                 FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
             ]
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_suspensions_expected": 1,
                 "suspensions_expected_id": response.json()["id"],
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, new_object.id),
@@ -742,7 +736,7 @@ async def test_user_post_suspension_form_url(
     async with async_client as ac:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
-            await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  {name} ___*****************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
@@ -750,9 +744,7 @@ async def test_user_post_suspension_form_url(
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
                 files=files
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}___ {name}___ info: ",
@@ -782,8 +774,7 @@ async def test_user_post_suspension_form_url(
             suspension_files_records = set(
                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
             )
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_suspensions_expected": 1,
                 "suspensions_expected_id": response.json()["id"],
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, new_object.id),
@@ -889,7 +880,7 @@ async def test_user_get_suspension_url(
     async with async_client as ac:
         for login, params, status, uploaded_file, suspension_id, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             # gather info of objects in db before testing:
             objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
@@ -920,9 +911,7 @@ async def test_user_get_suspension_url(
                 params=params,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -967,8 +956,7 @@ async def test_user_get_suspension_url(
                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
             )
             suspension_files_in_scenario = tuple(suspension_files_records)
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_expected_before": len(objects_in_db_before),
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_before_testing.id),
                 "suspension_files": suspension_files_in_scenario,
@@ -1060,15 +1048,13 @@ async def test_user_get_all_suspension_url(
     async with async_client as ac:
         for login, status, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -1082,8 +1068,7 @@ async def test_user_get_all_suspension_url(
                 position = index[0] + 1
                 fixture_object = [obj for obj in suspensions_orm if obj.id == position][0]
                 object_in_response = [obj for obj in response.json() if obj["id"] == position][0]
-                # expected values in scenario - take original suspensions_orm
-                expected = {
+                expected = {  # expected values in scenario - take original suspensions_orm
                     "total_objects": len(suspensions_orm),
                     "suspension_files": [],
                     "start": fixture_object.suspension_start.strftime(DATE_TIME_FORMAT),
@@ -1166,15 +1151,13 @@ async def test_user_get_my_suspension_url(
     async with async_client as ac:
         for login, status, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -1189,7 +1172,7 @@ async def test_user_get_my_suspension_url(
             objects_by_user_in_db = objects_by_user.all()
             for user_object in objects_by_user_in_db:
                 object_in_response = [obj for obj in response.json() if obj["id"] == user_object.id][0]
-                expected = {
+                expected = {  # expected values in scenario
                     "total_objects": len(objects_by_user_in_db),
                     "suspension_files": [],
                     "start": user_object.suspension_start.strftime(DATE_TIME_FORMAT),
@@ -1282,7 +1265,7 @@ async def test_super_user_add_files_to_suspension_url(
     async with async_client as ac:
         for login, create_params, status, file_index, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             # gather objects in db info before testing:
             suspension_id = create_params.get('suspension_id')
             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
@@ -1356,7 +1339,7 @@ async def test_super_user_add_files_to_suspension_url(
                 ((suspension_id, file_id) for file_id in create_params.get(SET_FILES_LIST_TO_SUSPENSION))
             )
             # run asserts in a scenario:
-            expected = {
+            expected = {  # expected values in scenario
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_in_db.id),
                 "suspension_files":
                     suspension_files_in_scenario.union(suspension_files_records_before)
@@ -1430,7 +1413,7 @@ async def test_super_user_delete_suspension_url(
     async with async_client as ac:
         for login, create_params, status, file_index, name, add_file_to_suspension_id in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             # GATHER objects in db info before testing:
             suspension_id = create_params.get('suspension_id')
             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
@@ -1510,7 +1493,7 @@ async def test_super_user_delete_suspension_url(
             if file_names_added is not None:
                 for file in file_names_added:
                     assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
-            expected = {
+            expected = {  # expected values in scenario
                 "suspensions_after": len(objects_in_db) - 1,
                 "suspension_id_in_db": [],
                 "file_in_db": [],

@@ -211,13 +211,13 @@ async def tasks_orm(async_db: AsyncSession, user_from_settings: User, user_orm: 
     Create tasks in database by user from settings and by test user from orm.
     for testing intervals: starts = (now - 1 day), finish = now
     """
-    now = datetime.now().date()
+    today = datetime.now().date()
     scenarios = (
         # task, description, task_start, deadline, user_id, executor_id:
-        ("1", "-2_-1_[]", now - timedelta(days=2), now - timedelta(days=1), user_from_settings.id, user_orm.id),
-        ("2", "[_0_]", now, now, user_from_settings.id, user_from_settings.id),
-        ("3", "-1_[]_+1", now - timedelta(days=1), now + timedelta(days=1), user_orm.id, user_orm.id),
-        ("4", "[]_+3", now, now + timedelta(days=3), user_orm.id, user_orm.id)
+        ("1", "-2_-1_[]", today - timedelta(days=2), today - timedelta(days=1), user_from_settings.id, user_orm.id),
+        ("2", "[_0_]", today, today, user_from_settings.id, user_from_settings.id),
+        ("3", "-1_[]_+1", today - timedelta(days=1), today + timedelta(days=1), user_orm.id, user_orm.id),
+        ("4", "[]_+3", today, today + timedelta(days=3), user_orm.id, user_orm.id)
     )
     tasks_list = []
     for task, description, task_start, deadline, user_id, executor_id in scenarios:

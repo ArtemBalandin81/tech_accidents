@@ -27,6 +27,7 @@ print(f'RESPONSE__dict__: {response.__dict__}')
 import json
 import os
 import sys
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -103,282 +104,299 @@ async def test_unauthorized_tries_task_urls(async_client: AsyncClient) -> None:
             )
 
 
-# async def test_user_patch_task_url(
-#         async_client: AsyncClient,
-#         async_db: AsyncSession,
-#         tasks_orm: Task,  # todo
-#         super_user_orm: User
-# ) -> None:
-#     """
-#     Тестирует редактирование задачи из формы с возможностью дозагрузки файла:
-#     pytest -k test_user_patch_task_url -vs
-#
-#     before_patched - параметры задачи при ее создании: тождественны "scenarios" из tasks_orm в confest.py
-#
-#     scenarios - тестовые сценарии редактирования задачи (сценарии не изолированы друг от друга).
-#     Параметры задачи не сбрасываются на базовые ("scenarios" из tasks_orm в confest.py) в цикле сценариев,
-#     поэтому используем разные сценарии при тестировании редактирования параметров задачи.
-#
-#     expected - словарь ожидаемых значений параметров задачи:
-#     если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании задачи).
-#
-#     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
-#
-#     """
-#     test_url = TASKS_PATH + "/"  # /api/tasks/{task_id}
-#     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
-#     user_settings_email = json.loads(settings.STAFF)["1"]
-#     user_settings_login = {"username": user_settings_email, "password": "testings"}
-#     super_user_login = {"username": super_user_orm.email, "password": "testings"}
-#     now = datetime.now(TZINFO).strftime(DATE_FORMAT)
-#     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_FORMAT)
-#     error_in_date = "11-07-20244"
-#     # error_in_time = "11-07-2024: 45:18"
-#     test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
-#     await create_test_files(test_files)
-#     # risk_accident_before_patched = [item for item in json.loads(settings.RISK_SOURCE).values()][0]  # next(iter())
-#     tech_process_before_patched = [item for item in json.loads(settings.TECH_PROCESS).values()][0]  # next(iter())
-#     before_patched = (
-#         (
-#             "_1_[]",  # description - [0],
-#             datetime.now() - timedelta(days=2),  # suspension_start - [1],
-#             datetime.now() - timedelta(days=1, hours=23, minutes=59),  # suspension_finish - [2],
-#             "1",  # measures - [3],
-#             1,  # user_id - [4],
-#         ),
-#         ("_[2875_]", datetime.now() - timedelta(days=2), datetime.now() - timedelta(minutes=5), "2", 2),
-#         ("[_10_]", datetime.now() - timedelta(minutes=15), datetime.now() - timedelta(minutes=5), "3", 1),
-#         ("[_60]_", datetime.now() - timedelta(minutes=30), datetime.now() + timedelta(minutes=30), "4", 2)
-#     )
-#     scenario_number = 0
-#     # Each other dependant scenarios
-#     scenarios = (
-#         # login, params, status, uploaded_file, suspension_id, name
-#         (user_settings_login, {
-#             ANALYTICS_START: error_in_time,
-#             ANALYTICS_FINISH: day_ago,
-#             SUSPENSION_DESCRIPTION: "error_in_time",
-#         }, 422, None, 1, "error_in_time"),  # 1
-#         (user_settings_login, {
-#             ANALYTICS_START: error_in_date,
-#             ANALYTICS_FINISH: day_ago,
-#             SUSPENSION_DESCRIPTION: "error_in_date",
-#         }, 422, None, 1, "error_in_date"),  # 2
-#         (user_settings_login, {
-#             ANALYTICS_START: now,
-#             ANALYTICS_FINISH: day_ago,
-#             SUSPENSION_DESCRIPTION: "L > R",
-#         }, 422, None, 1, "L > R"),  # 3
-#         (
-#             user_settings_login, {SUSPENSION_DESCRIPTION: "not author or admin"}, 403, None, 2, "not author or admin"
-#         ),  # 4
-#         (
-#             super_user_login, {SUSPENSION_DESCRIPTION: "admin", IMPLEMENTING_MEASURES: "admin"}, 200, None, 4, "admin"
-#         ),  # 5
-#         (user_settings_login, {
-#             IMPLEMENTING_MEASURES: "Just a single parameter has changed",
-#             FILES_UNLINK: False
-#         }, 200, None, 1, "Just a single parameter has changed"),  # 6
-#         (user_settings_login, {
-#             IMPLEMENTING_MEASURES: "Cause the measures have been changed in scenario 4 need to edit again",
-#             FILES_UNLINK: True
-#         }, 200, [], 1, "FILES_UNLINK TRUE when there is no files"),  # 7
-#         (user_orm_login, {}, 200, None, 2, "empty params / suspension_id = 2 -> user_orm_login"),  # 8
-#         (user_settings_login, {
-#             ANALYTICS_START: day_ago,
-#             ANALYTICS_FINISH: now,
-#             SUSPENSION_DESCRIPTION: "test_description_patched",
-#             IMPLEMENTING_MEASURES: "test_measures",
-#             TECH_PROCESS: json.loads(settings.TECH_PROCESS)["SPEC_DEP_26"],
-#             RISK_ACCIDENT_SOURCE: json.loads(settings.RISK_SOURCE)["ANOTHER"],
-#             FILES_UNLINK: False
-#         }, 200, None, 1, "with params / suspension_id = 1"),  # 9
-#         (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 2,
-#          "empty params with 1 file, suspension_id = 2"),  # 10
-#         (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 2,
-#          "add 1 more file (total 2 files), suspension_id = 2"),  # 11
-#         (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2,
-#          "add 1 more file (total 3 files), suspension_id = 2"),  # 12
-#         (user_orm_login,
-#             {FILES_UNLINK: True}, 406, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2,
-#          "unlink files simultaneously with upload"),  # 13
-#         (user_orm_login, {FILES_UNLINK: True}, 200, None, 2, "and now unlink all the files"),  # 14
-#     )
-#     async with async_client as ac:
-#         for login, create_params, status, uploaded_file, suspension_id, name in scenarios:
-#             scenario_number += 1
-#             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
-#             # gather info of objects in db before testing:
-#             objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
-#             objects_in_db_before = objects_before.all()  # objects before scenarios have started
-#             object_before_to_patch = [
-#                 suspension for suspension in objects_in_db_before if suspension.id == suspension_id
-#             ]
-#             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
-#             suspension_files_in_db_before = suspension_files_object_before.all()
-#             attached_files_objects_before = await async_db.scalars(
-#                 select(FileAttached)
-#                 .join(Suspension.files)
-#                 .where(Suspension.id == suspension_id)
-#             )
-#             attached_files_in_db_before = attached_files_objects_before.all()
-#             attached_files_paths_before = [
-#                 FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
-#                 if attached_files_in_db_before is not None
-#             ]
-#             if suspension_files_in_db_before:
-#                 suspension_files_records_before = [
-#                     (record.suspension_id, record.file_id) for record in suspension_files_in_db_before
-#                 ]
-#             else:
-#                 suspension_files_records_before = []
-#             response_login_user = await ac.post(LOGIN, data=login)
-#             response = await ac.patch(
-#                 test_url + f"{suspension_id}",
-#                 params=create_params,
-#                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
-#                 files=uploaded_file
-#             )
-#             assert response.status_code == status, (
-#                 f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-#             )
-#             if response.status_code != 200:
-#                 await log.ainfo(
-#                     f"SCENARIO: _{scenario_number}_ info: {name}",
-#                     login_data=login,
-#                     orm_before_patched={
-#                         "orm_description": before_patched[suspension_id - 1][0],
-#                         "orm_start": before_patched[suspension_id - 1][1].strftime(DATE_TIME_FORMAT),
-#                         "orm_finish": before_patched[suspension_id - 1][2].strftime(DATE_TIME_FORMAT),
-#                         "duration": before_patched[suspension_id - 1][2] - before_patched[suspension_id - 1][1],
-#                     },
-#                     params=create_params,
-#                     response=response.json(),
-#                     status=response.status_code,
-#                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  _{name}_"
-#                 )
-#                 continue
-#             # current_user: author or super_user?
-#             current_user = await async_db.scalar(select(User).where(User.email == login.get("username")))
-#             # patched suspensions:
-#             objects = await async_db.scalars(select(Suspension))
-#             objects_in_db = objects.all()
-#             object_in_db = [obj for obj in objects_in_db if obj.id == suspension_id][0]
-#             # patched files:
-#             files_in_response = response.json().get(FILES_SET_TO)
-#             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
-#             files_in_db = file_objects.all() if file_objects is not None else []
-#             file_paths = [
-#                 FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
-#             ]
-#             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
-#             # patched files relations:
-#             suspension_files_object = await async_db.scalars(select(SuspensionsFiles))
-#             suspension_files_in_db = suspension_files_object.all()
-#             suspension_files_records = set(
-#                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
-#             )
-#             if uploaded_file and (create_params.get(FILES_UNLINK) is not True):
-#                 suspension_files_in_scenario = (
-#                     tuple(suspension_files_records_before)
-#                     + ((suspension_id, len(suspension_files_records_before) + 1),)
-#                 )
-#             elif create_params.get(FILES_UNLINK):
-#                 suspension_files_in_scenario = ()
-#             else:
-#                 suspension_files_in_scenario = tuple(suspension_files_records_before)
-#             # expected values in scenario
-#             expected = {
-#                 "total_suspensions_expected": len(objects_in_db_before),
-#                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_in_db.id),
-#                 "suspension_files": suspension_files_in_scenario,
-#                 "start": (
-#                     create_params.get(ANALYTICS_START) if create_params.get(ANALYTICS_START) is not None
-#                     else before_patched[suspension_id - 1][1].strftime(DATE_TIME_FORMAT)
-#                 ),
-#                 "finish": (
-#                     create_params.get(ANALYTICS_FINISH) if create_params.get(ANALYTICS_FINISH) is not None
-#                     else before_patched[suspension_id - 1][2].strftime(DATE_TIME_FORMAT)
-#                 ),
-#                 "description": (
-#                     create_params.get(SUSPENSION_DESCRIPTION) if create_params.get(SUSPENSION_DESCRIPTION) is not None
-#                     else before_patched[suspension_id - 1][0]
-#                 ),
-#                 "measures": (
-#                     create_params.get(IMPLEMENTING_MEASURES) if create_params.get(IMPLEMENTING_MEASURES) is not None
-#                     else before_patched[suspension_id - 1][3]
-#                 ),
-#                 "risk_accident": (
-#                     create_params.get(RISK_ACCIDENT_SOURCE) if create_params.get(RISK_ACCIDENT_SOURCE) is not None
-#                     else risk_accident_before_patched
-#                 ),
-#                 "tech_process": (
-#                     create_params.get(TECH_PROCESS) if create_params.get(TECH_PROCESS) is not None
-#                     else tech_process_before_patched
-#                 ),
-#                 "user_id": (object_before_to_patch[0].user_id if current_user.is_superuser is not True
-#                             else current_user.id)
-#             }
-#             # run asserts in a scenario:
-#             match_values = (
-#                 # name_value, expected_value, exist_value
-#                 ("Suspension id: ", suspension_id, object_in_db.id),
-#                 ("Total suspensions: ", expected.get("total_suspensions_expected"), len(objects_in_db)),
-#                 ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),
-#                 ("Suspension files: ", set(expected.get("suspension_files")), suspension_files_records),
-#                 (
-#                     "Suspension start: ",
-#                     expected.get("start"),
-#                     object_in_db.suspension_start.strftime(DATE_TIME_FORMAT)
-#                 ),
-#                 (
-#                     "Suspension finish: ",
-#                     expected.get("finish"),
-#                     object_in_db.suspension_finish.strftime(DATE_TIME_FORMAT)
-#                 ),
-#                 ("Description: ", expected.get("description"), object_in_db.description),
-#                 ("Implementing measures: ", expected.get("measures"), object_in_db.implementing_measures),
-#                 ("Risk accident: ", expected.get("risk_accident"), object_in_db.risk_accident),
-#                 ("Tech_process: ", int(expected.get("tech_process")), object_in_db.tech_process),
-#                 (
-#                     "Duration: ",
-#                     (
-#                         datetime.strptime(expected["finish"], DATE_TIME_FORMAT)
-#                         - datetime.strptime(expected["start"], DATE_TIME_FORMAT)
-#                     ),
-#                     object_in_db.suspension_finish - object_in_db.suspension_start
-#                 ),
-#                 ("user_id: ", expected.get("user_id"), object_in_db.user_id),
-#                 # (": ",),  # more scenarios
-#             )
-#             for name_value, expected_value, exist_value in match_values:
-#                 assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
-#             if files_in_response is not None:
-#                 for file in files_in_response:
-#                     assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
-#             if create_params.get(FILES_UNLINK) is True and attached_files_paths_before:
-#                 for file in attached_files_paths_before:
-#                     assert file.name not in all_files_in_folder, f"File: {file} is not deleted in folder: {FILES_DIR}"
-#             await log.ainfo(
-#                 f"SCENARIO: _{scenario_number}_ info: {name}",
-#                 files_attached_before=attached_files_paths_before,
-#                 files_attached_expected=expected.get("files_attached"),
-#                 files_in_db=files_in_db,
-#                 files_in_response=files_in_response,
-#                 file_paths=file_paths,
-#                 login_data=login,
-#                 orm_before_patched={
-#                     "orm_description": before_patched[suspension_id - 1][0],
-#                     "orm_start": before_patched[suspension_id - 1][1].strftime(DATE_TIME_FORMAT),
-#                     "orm_finish": before_patched[suspension_id - 1][2].strftime(DATE_TIME_FORMAT),
-#                     "duration": before_patched[suspension_id - 1][2] - before_patched[suspension_id - 1][1],
-#                 },
-#                 params=create_params,
-#                 response=response.json(),
-#                 suspension_files_expected=set(expected.get("suspension_files")),
-#                 wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
-#             )
-#     await clean_test_database(async_db, User, Suspension, FileAttached, SuspensionsFiles)  # а файлы удаляются в апи
+async def test_user_patch_task_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        tasks_orm: Task,
+        super_user_orm: User
+) -> None:
+    """
+    Тестирует редактирование задачи из формы с возможностью дозагрузки файла:
+    pytest -k test_user_patch_task_url -vs
+
+    before_patched - параметры задачи при ее создании: тождественны "scenarios" из tasks_orm в confest.py
+
+    scenarios - тестовые сценарии редактирования задачи (сценарии не изолированы друг от друга).
+    Параметры задачи не сбрасываются на базовые ("scenarios" из tasks_orm в confest.py) в цикле сценариев,
+    поэтому используем разные сценарии при тестировании редактирования параметров задачи.
+
+    expected - словарь ожидаемых значений параметров задачи:
+    если в эндпоинте параметр меняется, то изменяется значение и в словаре, либо берется из БД (при создании задачи).
+
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+
+    """
+    test_url = TASKS_PATH + "/"  # /api/tasks/{task_id}
+    user_orm_email = "user_fixture@f.com"
+    user_orm_login = {"username": user_orm_email, "password": "testings"}
+    user_settings_email = json.loads(settings.STAFF)["1"]
+    user_settings_login = {"username": user_settings_email, "password": "testings"}
+    super_user_login = {"username": super_user_orm.email, "password": "testings"}
+    now = datetime.now(TZINFO).strftime(DATE_FORMAT)
+    day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_FORMAT)
+    tomorrow = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_FORMAT)
+    error_in_date = "11-07-20244"
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
+    await create_test_files(test_files)
+    tech_process_before_patched = [item for item in json.loads(settings.TECH_PROCESS).values()][0]
+    today = datetime.now().date()
+    user_from_settings = await async_db.scalar(select(User).where(User.email == user_settings_email))
+    user_orm = await async_db.scalar(select(User).where(User.email == user_orm_email))
+    before_patched = (  # todo delete
+        # task, description, task_start, deadline, user_id, executor_id:
+        ("1", "-2_-1_[]", today - timedelta(days=2), today - timedelta(days=1), user_from_settings.id, user_orm.id),
+        ("2", "[_0_]", today, today, user_from_settings.id, user_from_settings.id),
+        ("3", "-1_[]_+1", today - timedelta(days=1), today + timedelta(days=1), user_orm.id, user_orm.id),
+        ("4", "[]_+3", today, today + timedelta(days=3), user_orm.id, user_orm.id)  # todo user_from_settings- executor
+    )
+    scenario_number = 0
+    scenarios = (
+        # login, params, status, uploaded_file, file_index, task_id, name - Dependant scenarios !!!
+        (user_settings_login, {TASK_FINISH: error_in_date}, 422, None, None, 1, "error_in_date"),  # 1
+        (user_settings_login, {TASK_FINISH: day_ago}, 422, None, None, 2, "L > R: -1_[0] deadline < task start"),  # 2
+        (user_orm_login, {TASK_DESCRIPTION: "not author or admin"}, 403, None, None, 2, "not author or admin"),  # 3
+        (super_user_login, {TASK_EXECUTOR_MAIL: user_orm.email}, 422, None, None, 2, "executor not from ENUM"),  # 4
+        (super_user_login, {
+            TASK_DESCRIPTION: "executor has changed by admin",
+            TASK_EXECUTOR_MAIL: user_from_settings.email
+            }, 200, None, None, 3, "executor has changed by admin"),  # 5
+        (user_orm_login, {
+            TASK_FINISH: tomorrow,
+            TASK: "4 edited",
+            TASK_DESCRIPTION: "tomorrow edited",
+            IS_ARCHIVED: True,
+            TECH_PROCESS: json.loads(settings.TECH_PROCESS)["SPEC_DEP_26"],
+            TASK_EXECUTOR_MAIL: user_from_settings.email,
+            IMPLEMENTING_MEASURES: "aLL possible parameters have been changed",
+            FILES_UNLINK: False
+        }, 200,
+         {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 0, 4,
+         "ALL possible parameters have been changed"),  # 6
+        (user_settings_login, {
+            TASK_DESCRIPTION: "unlink if no files",
+            FILES_UNLINK: True
+        }, 200, None, None, 1, "FILES_UNLINK TRUE when there is no files"),  # 7
+        (user_settings_login, {}, 200, None, None, 1, "empty params in task_id = 2 edited"),  # 8
+        (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 1, 4,
+         "add 1 more file (total 2 files), task_id = 4"),  # 9
+        (user_orm_login, {}, 200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2, 4,
+         "add 1 more file (total 3 files), task_id = 4"),  # 10
+        (user_orm_login, {FILES_UNLINK: True}, 406,
+         {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 0, 4, "unlink simultaneously"),  # 11
+        (user_orm_login, {FILES_UNLINK: True}, 200, None, None, 4, "and now unlink all the files"),  # 12
+    )
+    async with async_client as ac:
+        for login, create_params, status, uploaded_file, file_index, task_id, name in scenarios:
+            scenario_number += 1
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
+            # gather info of objects in db before testing:
+            objects_before = await async_db.scalars(select(Task))
+            objects_in_db_before = objects_before.all()  # objects before scenarios have started
+            object_before_to_patch = [task for task in objects_in_db_before if task.id == task_id][0]
+            # object_before_to_patch = await async_db.scalar(select(Task).where(Task.id == task_id))  # it is worse
+            # object_before_to_patch = deepcopy(object_before_to_patch)  # illustration of how copy and deepcopy works
+
+            # for making shore, that files are saved in folder todo - как-то иначе может можно удостовериться?
+            # attached_files_objects_before = await async_db.scalars(
+            #     select(FileAttached)
+            #     .join(Task.files)
+            #     .where(Task.id == task_id)
+            # )
+            # attached_files_in_db_before = attached_files_objects_before.all()
+            # attached_files_paths_before = [
+            #     FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
+            #     if attached_files_in_db_before is not None
+            # ]
+
+            # file_names_attached_before
+            file_names_attached = await get_file_names_for_model_db(async_db, Task, task_id)
+            file_names_attached_copy = file_names_attached.copy()
+            file_names_attached_before = (
+                [file.split("_")[-1] for file in file_names_attached_copy if len(file_names_attached_copy) > 0]
+            )
+            # file_names_attached_before = deepcopy(file_names_attached)
+            attached_files_paths_before = [
+                FILES_DIR.joinpath(name) for name in file_names_attached if file_names_attached is not None
+            ]
+
+            # task files objects before  # todo
+            task_files_object_before = await async_db.scalars(select(TasksFiles))
+            task_files_in_db_before = task_files_object_before.all()
+            if task_files_in_db_before:  # todo
+                task_files_records_before = [
+                    (record.task_id, record.file_id) for record in task_files_in_db_before
+                ]
+            else:
+                task_files_records_before = []
+
+            # starting test scenarios
+            response_login_user = await ac.post(LOGIN, data=login)
+            response = await ac.patch(
+                test_url + f"{task_id}",
+                params=create_params,
+                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                files=uploaded_file
+            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: {name}",
+                    login_data=login,
+                    orm_before_patched={
+                        "orm_description": object_before_to_patch.description,
+                        "orm_start": object_before_to_patch.task_start.strftime(DATE_FORMAT),
+                        "orm_finish": object_before_to_patch.deadline.strftime(DATE_FORMAT),
+                        "duration": (object_before_to_patch.deadline - object_before_to_patch.task_start),
+                    },
+                    params=create_params,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  _{name}_"
+                )
+                continue
+            # current_user: author or super_user?
+            current_user = await async_db.scalar(select(User).where(User.email == login.get("username")))
+            # patched tasks:
+            objects = await async_db.scalars(select(Task))
+            objects_in_db = objects.all()
+            object_in_db = [obj for obj in objects_in_db if obj.id == task_id][0]
+            total_objects = len(objects_in_db) if objects_in_db is not None else None
+
+            # patched files:  # todo
+            files_in_response = response.json().get(FILES_SET_TO)
+            file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
+            files_in_db = file_objects.all() if file_objects is not None else []
+            file_paths = [
+                FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
+            ]
+            file_names_attached = await get_file_names_for_model_db(async_db, Task, task_id)
+            file_names_attached = [file.split("_")[-1] for file in file_names_attached if len(file_names_attached) > 0]
+            # file_names_attached_copy = file_names_attached.copy()
+            all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+
+            # patched files relations:
+            task_files_object = await async_db.scalars(select(TasksFiles))
+            task_files_in_db = task_files_object.all()
+            task_files_records = set(
+                ((record.task_id, record.file_id) for record in task_files_in_db)
+            )
+
+            if uploaded_file and (create_params.get(FILES_UNLINK) is not True):
+                task_files_in_scenario = (
+                    tuple(task_files_records_before)
+                    + ((task_id, len(task_files_records_before) + 1),)
+                )
+                file_names_attached_expected = file_names_attached_before.copy()
+                file_names_attached_expected.append(test_files[file_index])
+                # file_names_attached_expected = file_names_attached_before.append(test_files[0])
+            elif create_params.get(FILES_UNLINK):
+                task_files_in_scenario = ()
+                file_names_attached_expected = []
+            else:
+                task_files_in_scenario = tuple(task_files_records_before)
+                file_names_attached_expected = file_names_attached_before  # todo
+            task_manager = await async_db.scalar(select(User).where(User.email == login.get("username")))
+            if create_params.get(TASK_EXECUTOR_MAIL) is not None:
+                executor = await async_db.scalar(
+                    select(User).where(User.email == create_params.get(TASK_EXECUTOR_MAIL))
+                )
+            else:
+                executor = await async_db.scalar(select(User).where(User.id == object_before_to_patch.executor_id))
+            expected = {  # expected values in scenario
+                "total_tasks_expected": len(objects_in_db_before),
+                "task_expected_id": task_id,
+                "start": (
+                    create_params.get(TASK_START) if create_params.get(TASK_START) is not None
+                    # else before_patched[task_id - 1][2].strftime(DATE_FORMAT)
+                    else object_before_to_patch.task_start.strftime(DATE_FORMAT)
+                ),
+                "finish": (
+                    create_params.get(TASK_FINISH) if create_params.get(TASK_FINISH) is not None
+                    # else before_patched[task_id - 1][3].strftime(DATE_FORMAT)
+                    else object_before_to_patch.deadline.strftime(DATE_FORMAT)
+                ),
+                "task": (
+                    create_params.get(TASK) if create_params.get(TASK) is not None
+                    # else before_patched[task_id - 1][0]
+                    else object_before_to_patch.task
+                ),
+                "description": (
+                    create_params.get(TASK_DESCRIPTION) if create_params.get(TASK_DESCRIPTION) is not None
+                    # else before_patched[task_id - 1][1]
+                    else object_before_to_patch.description
+                ),
+                "tech_process": (
+                    create_params.get(TECH_PROCESS) if create_params.get(TECH_PROCESS) is not None
+                    # else tech_process_before_patched
+                    else object_before_to_patch.tech_process
+                ),
+                "is_archived": (
+                    create_params.get(IS_ARCHIVED) if create_params.get(IS_ARCHIVED) is not None
+                    # else False
+                    else object_before_to_patch.is_archived
+                ),
+                "user_id": task_manager.id,
+                "executor_id": executor.id,
+                "files_attached": file_names_attached_expected,  # загружаемый + имеющийся в БД
+    #             "suspension_files": suspension_files_in_scenario,
+            }
+            # run asserts in a scenario:
+            match_values = (
+                # name_value, expected_value, exist_value
+                ("Task id: ", expected.get("task_expected_id"), object_in_db.id),
+                ("Total tasks: ", expected.get("total_tasks_expected"), len(objects_in_db)),
+                # ("Attached files: ", set(expected.get("files_attached")), set(file_names_attached)),  # todo
+                ("Attached files: ", expected.get("files_attached"), file_names_attached),  # todo
+                # ("Task files: ", expected.get("task_files"), task_files_records),
+                ("Task start: ", expected.get("start"), object_in_db.task_start.strftime(DATE_FORMAT)),
+                ("Task finish: ", expected.get("finish"), object_in_db.deadline.strftime(DATE_FORMAT)),
+                ("Task: ", expected.get("task"), object_in_db.task),
+                ("Description: ", expected.get("description"), object_in_db.description),
+                ("Tech_process: ", int(expected.get("tech_process")), object_in_db.tech_process),
+                ("is_archived: ", int(expected.get("is_archived")), object_in_db.is_archived),
+                (
+                    "Duration: ",
+                    (
+                            datetime.strptime(expected["finish"], DATE_FORMAT)
+                            - datetime.strptime(expected["start"], DATE_FORMAT)
+                    ),
+                    object_in_db.deadline - object_in_db.task_start
+                ),
+                ("user_id: ", expected.get("user_id"), object_in_db.user_id),
+                ("executor_id: ", expected.get("executor_id"), object_in_db.executor_id),
+                # ("Attached files: ", set(expected.get("files_attached")), set(files_in_response)),  # todo
+                # ("Attached files: ", expected.get("files_attached"), files_in_response),
+    #             ("Suspension files: ", set(expected.get("suspension_files")), suspension_files_records),
+            )
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
+            if files_in_response is not None:
+                for file in files_in_response:
+                    assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+            if create_params.get(FILES_UNLINK) is True and attached_files_paths_before:
+                for file in attached_files_paths_before:
+                    assert file.name not in all_files_in_folder, f"File: {file} is not deleted in folder: {FILES_DIR}"
+            await log.ainfo(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                files_attached_before=attached_files_paths_before,
+                # files_attached_expected=expected.get("files_attached"),
+                # files_in_db=files_in_db,
+                files_in_response=files_in_response,
+                # file_paths=file_paths,
+                login_data=login,
+                orm_before_patched={
+                    "orm_description": object_before_to_patch.description,
+                    "orm_start": object_before_to_patch.task_start.strftime(DATE_FORMAT),
+                    "orm_finish": object_before_to_patch.deadline.strftime(DATE_FORMAT),
+                    "duration": (object_before_to_patch.deadline - object_before_to_patch.task_start),
+                },
+                params=create_params,
+                response=response.json(),
+                # task_files_expected=set(expected.get("task_files")),
+                wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
+            )
+    # if files are not deleted in folder - it means, that scenario of "files unlink" doesn't work correctly
+    await clean_test_database(async_db, User, Task, FileAttached, TasksFiles)  # files are deleted in api
 
 
 async def test_user_post_task_with_files_form_url(
@@ -488,7 +506,7 @@ async def test_user_post_task_with_files_form_url(
     async with async_client as ac:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
-            await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}   ******")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
@@ -496,9 +514,7 @@ async def test_user_post_task_with_files_form_url(
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
                 files=files
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: ",
@@ -539,9 +555,7 @@ async def test_user_post_task_with_files_form_url(
             task_files_records = set(
                 ((record.task_id, record.file_id) for record in task_files_in_db)
             ) if files else None
-
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_objects_expected": 1,
                 "task_expected_id": 1,  # could be response.json()["id"]
                 "files_attached": set(test_files) if files else None,
@@ -568,7 +582,6 @@ async def test_user_post_task_with_files_form_url(
                     expected.get("files_attached"),
                     set(file_names_attached)
                 ),
-                ("Task files: ", expected.get("task_files"), task_files_records),
                 ("Task files: ", expected.get("task_files"), task_files_records),
                 ("Task start: ", expected.get("start"), new_object.task_start.strftime(DATE_FORMAT)),
                 ("Task finish: ", expected.get("finish"), new_object.deadline.strftime(DATE_FORMAT)),
@@ -705,7 +718,7 @@ async def test_user_post_task_form_url(
     async with async_client as ac:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
-            await log.awarning(f"*************  SCENARIO: ___ {scenario_number} ___  {name} ___*****************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
@@ -713,9 +726,7 @@ async def test_user_post_task_form_url(
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
                 files=files
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}___ {name}___ info: ",
@@ -754,8 +765,7 @@ async def test_user_post_task_form_url(
                 executor = await async_db.scalar(
                     select(User).where(User.email == create_params.get(TASK_EXECUTOR_MAIL))
                 )
-            # expected values in scenario
-            expected = {
+            expected = {  # expected values in scenario
                 "total_objects_expected": 1,
                 "task_expected_id": 1,  # could be response.json()["id"]
                 "files_attached": test_files[0] if files else None,
@@ -867,7 +877,7 @@ async def test_user_get_task_url(
     async with async_client as ac:
         for login, params, status, uploaded_file, task_id, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             # gather info of objects in db before testing:
             objects_before = await async_db.scalars(select(Task))  # objects before scenarios have started
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
@@ -889,7 +899,7 @@ async def test_user_get_task_url(
             )
             task_manager = await async_db.scalar(select(User).where(User.id == object_before_testing.user_id))
             executor = await async_db.scalar(select(User).where(User.id == object_before_testing.executor_id))
-            expected = {
+            expected = {  # expected values in scenario
                 "total_expected_before": len(objects_in_db_before),
                 "task_id": task_id,
                 "files_attached": [file.name for file in attached_files_in_db_before],
@@ -929,9 +939,7 @@ async def test_user_get_task_url(
                 params=params,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -1050,15 +1058,13 @@ async def test_user_get_all_tasks_url(
     async with async_client as ac:
         for login, status, name in scenarios:
             scenario_number += 1
-            await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
             )
-            assert response.status_code == status, (
-                f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-            )
+            assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
                 await log.ainfo(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -1075,7 +1081,7 @@ async def test_user_get_all_tasks_url(
                 # expected values in scenario - take original tasks_orm
                 task_manager = await async_db.scalar(select(User).where(User.id == fixture_object.user_id))
                 executor = await async_db.scalar(select(User).where(User.id == fixture_object.executor_id))
-                expected = {
+                expected = {  # expected values in scenario
                     "total_objects": len(tasks_orm),
                     "task_files": [],
                     "task": fixture_object.task,
@@ -1158,15 +1164,13 @@ async def test_user_get_all_tasks_url(
 #     async with async_client as ac:
 #         for login, status, name in scenarios:
 #             scenario_number += 1
-#             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  *****  {name}  *************")
+#             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
 #             response_login_user = await ac.post(LOGIN, data=login)
 #             response = await ac.get(
 #                 test_url,
 #                 headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
 #             )
-#             assert response.status_code == status, (
-#                 f"User: {login} couldn't get {test_url}. Response: {response.__dict__}"
-#             )
+#             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
 #             if response.status_code != 200:
 #                 await log.ainfo(
 #                     f"SCENARIO: _{scenario_number}_ info: {name}",
@@ -1181,7 +1185,7 @@ async def test_user_get_all_tasks_url(
 #             objects_by_user_in_db = objects_by_user.all()
 #             for user_object in objects_by_user_in_db:
 #                 object_in_response = [obj for obj in response.json() if obj["id"] == user_object.id][0]
-#                 expected = {
+#                 expected = {  # expected values in scenario
 #                     "total_objects": len(objects_by_user_in_db),
 #                     "suspension_files": [],
 #                     "start": user_object.suspension_start.strftime(DATE_TIME_FORMAT),
@@ -1274,7 +1278,7 @@ async def test_user_get_all_tasks_url(
 #     async with async_client as ac:
 #         for login, create_params, status, file_index, name in scenarios:
 #             scenario_number += 1
-#             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
+#             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
 #             # gather objects in db info before testing:
 #             suspension_id = create_params.get('suspension_id')
 #             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
@@ -1348,7 +1352,7 @@ async def test_user_get_all_tasks_url(
 #                 ((suspension_id, file_id) for file_id in create_params.get(SET_FILES_LIST_TO_SUSPENSION))
 #             )
 #             # run asserts in a scenario:
-#             expected = {
+#             expected = {  # expected values in scenario
 #                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_in_db.id),
 #                 "suspension_files":
 #                     suspension_files_in_scenario.union(suspension_files_records_before)
@@ -1422,7 +1426,7 @@ async def test_user_get_all_tasks_url(
 #     async with async_client as ac:
 #         for login, create_params, status, file_index, name, add_file_to_suspension_id in scenarios:
 #             scenario_number += 1
-#             await log.ainfo(f"*************  SCENARIO: ___ {scenario_number} ___  ***** {name}  ***************")
+#             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
 #             # GATHER objects in db info before testing:
 #             suspension_id = create_params.get('suspension_id')
 #             suspension_files_object_before = await async_db.scalars(select(SuspensionsFiles))
@@ -1502,7 +1506,7 @@ async def test_user_get_all_tasks_url(
 #             if file_names_added is not None:
 #                 for file in file_names_added:
 #                     assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
-#             expected = {
+#             expected = {  # expected values in scenario
 #                 "suspensions_after": len(objects_in_db) - 1,
 #                 "suspension_id_in_db": [],
 #                 "file_in_db": [],
