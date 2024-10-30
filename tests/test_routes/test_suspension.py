@@ -210,7 +210,7 @@ async def test_user_get_suspension_analytics_url(
     await clean_test_database(async_db, User, Suspension)
 
 
-async def test_user_patch_suspension_url(
+async def test_user_patch_suspension_url(  # todo переделать по примеру с test_user_patch_task_url !!!
         async_client: AsyncClient,
         async_db: AsyncSession,
         suspensions_orm: Suspension,
