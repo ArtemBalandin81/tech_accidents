@@ -132,23 +132,13 @@ async def test_user_patch_task_url(
     user_settings_email = json.loads(settings.STAFF)["1"]
     user_settings_login = {"username": user_settings_email, "password": "testings"}
     super_user_login = {"username": super_user_orm.email, "password": "testings"}
-    now = datetime.now(TZINFO).strftime(DATE_FORMAT)
     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_FORMAT)
     tomorrow = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_FORMAT)
     error_in_date = "11-07-20244"
     test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
     await create_test_files(test_files)
-    tech_process_before_patched = [item for item in json.loads(settings.TECH_PROCESS).values()][0]
-    today = datetime.now().date()
     user_from_settings = await async_db.scalar(select(User).where(User.email == user_settings_email))
     user_orm = await async_db.scalar(select(User).where(User.email == user_orm_email))
-    before_patched = (  # todo delete
-        # task, description, task_start, deadline, user_id, executor_id:
-        ("1", "-2_-1_[]", today - timedelta(days=2), today - timedelta(days=1), user_from_settings.id, user_orm.id),
-        ("2", "[_0_]", today, today, user_from_settings.id, user_from_settings.id),
-        ("3", "-1_[]_+1", today - timedelta(days=1), today + timedelta(days=1), user_orm.id, user_orm.id),
-        ("4", "[]_+3", today, today + timedelta(days=3), user_orm.id, user_orm.id)  # todo user_from_settings- executor
-    )
     scenario_number = 0
     scenarios = (
         # login, params, status, uploaded_file, file_index, task_id, name - Dependant scenarios !!!
@@ -158,8 +148,8 @@ async def test_user_patch_task_url(
         (super_user_login, {TASK_EXECUTOR_MAIL: user_orm.email}, 422, None, None, 2, "executor not from ENUM"),  # 4
         (
             super_user_login,
-            {TASK_DESCRIPTION: "executor has been changed by admin", TASK_EXECUTOR_MAIL: user_from_settings.email},
-            200, None, None, 3, "executor has been changed by admin"
+            {TASK_DESCRIPTION: "admin changes an executor task_id=3", TASK_EXECUTOR_MAIL: user_from_settings.email},
+            200, None, None, 3, "admin changes an executor task_id=3"
         ),  # 5
         (
             super_user_login,
@@ -191,21 +181,21 @@ async def test_user_patch_task_url(
             {},
             200,
             {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 1, 4, "file is added task 4 [_2]"
-        ),  # 10
+        ),  # 10 ['<Task 3 - Files 1>', '<Task 4 - Files 2>', '<Task 4 - Files 3>']
         (
             user_orm_login,
             {},
             200,
             {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2, 4, "file is added task 4 [_3]"
-        ),  # 11
+        ),  # 11 ['<Task 3 - Files 1>', '<Task 4 - Files 2>', '<Task 4 - Files 3>', '<Task 4 - Files 4>']
         (
             user_orm_login,
             {FILES_UNLINK: True},
             406,
             {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 0, 4, "unlink & upload at 1 time"
         ),  # 12
-        (user_orm_login, {FILES_UNLINK: True}, 200, None, None, 4, "unlink files of task_id: 4"),  # 13
-        (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of task_id: 3"),  # 14
+        (user_orm_login, {FILES_UNLINK: True}, 200, None, None, 4, "unlink files of task_id: 4"),  # 13 ['<T 3 - F 1>']
+        (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of task_id: 3"),  # 14 []
     )
     async with async_client as ac:
         for login, create_params, status, uploaded_file, file_index, task_id, name in scenarios:
@@ -215,51 +205,23 @@ async def test_user_patch_task_url(
             objects_before = await async_db.scalars(select(Task))
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
             object_before_to_patch = [task for task in objects_in_db_before if task.id == task_id][0]
-            # object_before_to_patch = await async_db.scalar(select(Task).where(Task.id == task_id))  # it is worse
-            # object_before_to_patch = deepcopy(object_before_to_patch)  # illustration of how copy and deepcopy works
-
-            # for making shore, that files are saved in folder todo - как-то иначе может можно удостовериться?
-            # attached_files_objects_before = await async_db.scalars(
-            #     select(FileAttached)
-            #     .join(Task.files)
-            #     .where(Task.id == task_id)
-            # )
-            # attached_files_in_db_before = attached_files_objects_before.all()
-            # attached_files_paths_before = [
-            #     FILES_DIR.joinpath(file.name) for file in attached_files_in_db_before
-            #     if attached_files_in_db_before is not None
-            # ]
-
-            # files_before = await async_db.scalars(select(FileAttached))
-            # files_in_db_before = files_before.all()  # all files in db before scenarios have started (to count file_id)
-            # file_names_attached_before
+            # file_names_attached_before:
             file_names_attached = await get_file_names_for_model_db(async_db, Task, task_id)
-            file_names_attached_copy = file_names_attached.copy()
             file_names_attached_before = (
-                [file.split("_")[-1] for file in file_names_attached_copy if len(file_names_attached_copy) > 0]
+                [file.split("_")[-1] for file in file_names_attached if len(file_names_attached) > 0]
             )
-            # file_names_attached_before = deepcopy(file_names_attached)
             attached_files_paths_before = [
                 FILES_DIR.joinpath(name) for name in file_names_attached if file_names_attached is not None
             ]
-
-            # task_files objects before  # todo
+            # task_files objects before:
             task_files_object_before = await async_db.scalars(select(TasksFiles))  # all task_files objects
             task_files_in_db_before = task_files_object_before.all()
-
-            # todo it doesn't work - needed another method !!!! - не вытягивает по id
-            # Warning: SELECT statement has a cartesian product between FROM element(s) "tasks_files"
-            # and FROM element "tasks".  Apply join condition(s) between each element to resolve.
             object_id_task_files_before = await async_db.scalars(
                 select(TasksFiles)
                 .where(TasksFiles.task_id == task_id)
             )
-            object_id_task_files_before_all = object_id_task_files_before.all()
-            print(f"!!!!!!!!!!! object_id_task_files_before: {object_id_task_files_before_all}")  # todo
-
-
-
-            # starting test scenarios
+            object_id_task_files_before_all = object_id_task_files_before.all()  # task_files attached to the object_id
+            # starting test scenarios:
             response_login_user = await ac.post(LOGIN, data=login)
             response = await ac.patch(
                 test_url + f"{task_id}",
@@ -273,10 +235,12 @@ async def test_user_patch_task_url(
                     f"SCENARIO: _{scenario_number}_ info: {name}",
                     login_data=login,
                     orm_before_patched={
+                        "files_attached_before": attached_files_paths_before,
                         "orm_description": object_before_to_patch.description,
                         "orm_start": object_before_to_patch.task_start.strftime(DATE_FORMAT),
                         "orm_finish": object_before_to_patch.deadline.strftime(DATE_FORMAT),
                         "duration": (object_before_to_patch.deadline - object_before_to_patch.task_start),
+                        "task_files": task_files_in_db_before,
                     },
                     params=create_params,
                     response=response.json(),
@@ -284,74 +248,40 @@ async def test_user_patch_task_url(
                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}  _{name}_"
                 )
                 continue
-            # current_user: author or super_user?
-            current_user = await async_db.scalar(select(User).where(User.email == login.get("username")))
             # patched tasks:
             objects = await async_db.scalars(select(Task))
             objects_in_db = objects.all()
             object_in_db = [obj for obj in objects_in_db if obj.id == task_id][0]
-            total_objects = len(objects_in_db) if objects_in_db is not None else None
-
-            # patched files:  # todo
+            # attached files:
             attached_files_objects = await async_db.scalars(
                 select(FileAttached)
                 .join(Task.files)
                 .where(Task.id == task_id)
             )
             attached_files_in_db = attached_files_objects.all()
-            print(f'!!!!!!!!!!!! attached_files_in_db {attached_files_in_db}')
-            # file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
-            # files_in_db = file_objects.all() if file_objects is not None else []
             file_names_attached = [file.name for file in attached_files_in_db]
-            # file_names_attached = await get_file_names_for_model_db(async_db, Task, task_id)
-            # file_names_attached = [file.split("_")[-1] for file in file_names_attached if len(file_names_attached) > 0]
-            # file_names_attached_copy = file_names_attached.copy()
             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
             files_in_response = response.json().get(FILES_SET_TO)
             new_file_name_in_response = [
                 file for file in files_in_response if file.split("_")[-1] == test_files[file_index]
             ]
-            print(f'!!! new_file_in_response: {new_file_name_in_response}')
-            print(f'!!! new_file_object: {[file for file in attached_files_in_db if file.name == new_file_name_in_response]}')
-            # todo IndexError: list index out of range
             new_file_object = [file for file in attached_files_in_db if file.name == new_file_name_in_response[0]]
-            # file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
-            # files_in_db = file_objects.all() if file_objects is not None else []
-            # file_paths = [
-            #     FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
-            # ]
-
-
             # patched files relations:
             task_files_object = await async_db.scalars(select(TasksFiles))
             task_files_in_db = task_files_object.all()
-            task_files_records = set(
-                ((record.task_id, record.file_id) for record in task_files_in_db)
-            )
-
             if uploaded_file and (create_params.get(FILES_UNLINK) is not True):
-                task_files_expected = [str(record) for record in task_files_in_db_before.copy()]
-                # print(f'!!! new_file_object: {new_file_object[0].id}  {new_file_object[0].name}')
+                task_files_expected = [str(record) for record in task_files_in_db_before]
                 # по имени загруженного файла получаем его id, и готовим связку task_id - file_id в task_files_expected
                 task_files_expected.append(f'<Task {task_id} - Files {new_file_object[0].id}>')  # '<Task 3 - Files 1>'
-                file_names_attached_expected = file_names_attached_copy
+                file_names_attached_expected = file_names_attached
                 file_names_attached_expected.append(new_file_name_in_response[0])
-            elif create_params.get(FILES_UNLINK):  # todo отсоединять только для этой таски, а остальные оставлять !!!
+            elif create_params.get(FILES_UNLINK):
                 file_names_attached_expected = []
-                task_files_expected = [str(record) for record in task_files_in_db_before.copy()]  # todo !!!!
-                # todo need to do smth: 8 scenario - unlink files from scenario, but keep it from others
-                # print(f"!!!!!!!!!!! object_id_task_files_before_all: {object_id_task_files_before_all}")
-                # object_id_task_files_before_all
-                # [task_files_expected.remove(record) for record in object_id_task_files_before_all]  # todo could???
-                # for record in object_id_task_files_before_all:
-                #     print(f'!!!!!!!! record {record}')
-                #     print(f'!!!!!!!! task_files_expected {task_files_expected}')
-                #     # task_files_expected.remove(record)
-
+                task_files_expected = [record for record in task_files_in_db_before]
+                task_files_expected = set(task_files_expected).difference(set(object_id_task_files_before_all))  # del task_files for task_id
             else:
                 file_names_attached_expected = file_names_attached_before
-                task_files_expected = task_files_in_db_before.copy()
-
+                task_files_expected = task_files_in_db_before
             task_manager = await async_db.scalar(select(User).where(User.email == login.get("username")))
             if create_params.get(TASK_EXECUTOR_MAIL) is not None:
                 executor = await async_db.scalar(
@@ -359,38 +289,31 @@ async def test_user_patch_task_url(
                 )
             else:
                 executor = await async_db.scalar(select(User).where(User.id == object_before_to_patch.executor_id))
-
             expected = {  # expected values in scenario
                 "total_tasks_expected": len(objects_in_db_before),
                 "task_expected_id": task_id,
                 "start": (
                     create_params.get(TASK_START) if create_params.get(TASK_START) is not None
-                    # else before_patched[task_id - 1][2].strftime(DATE_FORMAT)
                     else object_before_to_patch.task_start.strftime(DATE_FORMAT)
                 ),
                 "finish": (
                     create_params.get(TASK_FINISH) if create_params.get(TASK_FINISH) is not None
-                    # else before_patched[task_id - 1][3].strftime(DATE_FORMAT)
                     else object_before_to_patch.deadline.strftime(DATE_FORMAT)
                 ),
                 "task": (
                     create_params.get(TASK) if create_params.get(TASK) is not None
-                    # else before_patched[task_id - 1][0]
                     else object_before_to_patch.task
                 ),
                 "description": (
                     create_params.get(TASK_DESCRIPTION) if create_params.get(TASK_DESCRIPTION) is not None
-                    # else before_patched[task_id - 1][1]
                     else object_before_to_patch.description
                 ),
                 "tech_process": (
                     create_params.get(TECH_PROCESS) if create_params.get(TECH_PROCESS) is not None
-                    # else tech_process_before_patched
                     else object_before_to_patch.tech_process
                 ),
                 "is_archived": (
                     create_params.get(IS_ARCHIVED) if create_params.get(IS_ARCHIVED) is not None
-                    # else False
                     else object_before_to_patch.is_archived
                 ),
                 "user_id": task_manager.id,
@@ -399,13 +322,11 @@ async def test_user_patch_task_url(
                 "task_files": [str(record) for record in task_files_expected],
             }
             # run asserts in a scenario:
-            # AssertionError: Task files:  [<Task 3 - Files 1>] not as expected: ['<Task 3 - Files 1>'] # todo !!!!!!!
             match_values = (
                 # name_value, expected_value, exist_value
                 ("Task id: ", expected.get("task_expected_id"), object_in_db.id),
                 ("Total tasks: ", expected.get("total_tasks_expected"), len(objects_in_db)),
-                # ("Attached files: ", set(expected.get("files_attached")), set(file_names_attached)),  # todo
-                ("Attached files: ", expected.get("files_attached"), file_names_attached),  # todo
+                ("Attached files: ", expected.get("files_attached"), file_names_attached),
                 ("Task files: ", set(expected.get("task_files")), set([str(record) for record in task_files_in_db])),
                 ("Task start: ", expected.get("start"), object_in_db.task_start.strftime(DATE_FORMAT)),
                 ("Task finish: ", expected.get("finish"), object_in_db.deadline.strftime(DATE_FORMAT)),
@@ -423,7 +344,6 @@ async def test_user_patch_task_url(
                 ),
                 ("user_id: ", expected.get("user_id"), object_in_db.user_id),
                 ("executor_id: ", expected.get("executor_id"), object_in_db.executor_id),
-                # ("Task files: ", set(expected.get("suspension_files")), suspension_files_records),  # todo
             )
             for name_value, expected_value, exist_value in match_values:
                 assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
@@ -435,14 +355,11 @@ async def test_user_patch_task_url(
                     assert file.name not in all_files_in_folder, f"File: {file} is not deleted in folder: {FILES_DIR}"
             await log.ainfo(
                 f"SCENARIO: _{scenario_number}_ info: {name}",
-                files_attached_before=attached_files_paths_before,
                 file_name_in_response_new=new_file_name_in_response,
-                # files_attached_expected=expected.get("files_attached"),
-                # files_in_db=files_in_db,
                 files_in_response=files_in_response,
-                # file_paths=file_paths,
                 login_data=login,
                 orm_before_patched={
+                    "files_attached_before": attached_files_paths_before,
                     "orm_description": object_before_to_patch.description,
                     "orm_start": object_before_to_patch.task_start.strftime(DATE_FORMAT),
                     "orm_finish": object_before_to_patch.deadline.strftime(DATE_FORMAT),
@@ -452,7 +369,6 @@ async def test_user_patch_task_url(
                 params=create_params,
                 response=response.json(),
                 task_files_in_db=task_files_in_db,
-                # task_files_expected=set(expected.get("task_files")),
                 wings_of_end=f"_______________________________________________ END of SCENARIO: ___ {scenario_number}"
             )
     # if files are not deleted in folder - it means, that scenario of "files unlink" doesn't work correctly
