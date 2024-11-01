@@ -14,7 +14,7 @@ pytest -k test_user_get_my_tasks_ordered_url -vs  Todo /api/tasks/my_tasks_order
 pytest -k test_user_get_my_tasks_todo_url -vs Todo /api/tasks/my_tasks_todo
 pytest -k test_user_post_task_form_url -vs
 pytest -k test_user_post_task_with_files_form_url -vs
-pytest -k test_user_patch_task_url -vs todo !
+pytest -k test_user_patch_task_url -vs
 pytest -k test_super_user_delete_task_url -vs todo !
 
 pytest -k test_super_user_add_files_to_task_url -vs todo !
@@ -148,14 +148,14 @@ async def test_user_patch_task_url(
         (super_user_login, {TASK_EXECUTOR_MAIL: user_orm.email}, 422, None, None, 2, "executor not from ENUM"),  # 4
         (
             super_user_login,
-            {TASK_DESCRIPTION: "admin changes an executor task_id=3", TASK_EXECUTOR_MAIL: user_from_settings.email},
-            200, None, None, 3, "admin changes an executor task_id=3"
+            {TASK_DESCRIPTION: "admin changes an executor obj_id=3", TASK_EXECUTOR_MAIL: user_from_settings.email},
+            200, None, None, 3, "admin changes an executor obj_id=3"
         ),  # 5
         (
             super_user_login,
             {TASK_DESCRIPTION: "admin changes an executor & upload f.", TASK_EXECUTOR_MAIL: user_from_settings.email},
             200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2, 3, "admin change executor"
-        ),  # 6 ['<Task 3 - Files 1>']
+        ),  # 6 ['<Obj 3 - Files 1>']
         (
             user_orm_login,
             {
@@ -169,33 +169,33 @@ async def test_user_patch_task_url(
             FILES_UNLINK: False
             },
             200, {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 0, 4, "all parameters & file"
-        ),  # 7 ['<Task 3 - Files 1>', '<Task 4 - Files 2>']
+        ),  # 7 ['<Obj 3 - Files 1>', '<Obj 4 - Files 2>']
         (
             user_settings_login,
             {TASK_DESCRIPTION: "unlink if no files", FILES_UNLINK: True},
-            200, None, None, 1, "unlink if no files in task_id = 1, but ['<Task 3 - Files 1>', '<Task 4 - Files 2>']"
-        ),  # 8 ['<Task 3 - Files 1>', '<Task 4 - Files 2>']
+            200, None, None, 1, "unlink if no files in task_id = 1, but ['<Obj 3 - Files 1>', '<Obj 4 - Files 2>']"
+        ),  # 8 ['<Obj 3 - Files 1>', '<Obj 4 - Files 2>']
         (user_settings_login, {}, 200, None, None, 1, "empty params in task_id = 1 edited"),  # 9
         (
             user_orm_login,
             {},
             200,
-            {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 1, 4, "file is added task 4 [_2]"
-        ),  # 10 ['<Task 3 - Files 1>', '<Task 4 - Files 2>', '<Task 4 - Files 3>']
+            {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")}, 1, 4, "file is added Obj 4 [_2]"
+        ),  # 10 ['<Obj 3 - Files 1>', '<Obj 4 - Files 2>', '<Obj 4 - Files 3>']
         (
             user_orm_login,
             {},
             200,
-            {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2, 4, "file is added task 4 [_3]"
-        ),  # 11 ['<Task 3 - Files 1>', '<Task 4 - Files 2>', '<Task 4 - Files 3>', '<Task 4 - Files 4>']
+            {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb")}, 2, 4, "file is added Obj 4 [_3]"
+        ),  # 11 ['<Obj 3 - Files 1>', '<Obj 4 - Files 2>', '<Obj 4 - Files 3>', '<Obj 4 - Files 4>']
         (
             user_orm_login,
             {FILES_UNLINK: True},
             406,
             {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}, 0, 4, "unlink & upload at 1 time"
         ),  # 12
-        (user_orm_login, {FILES_UNLINK: True}, 200, None, None, 4, "unlink files of task_id: 4"),  # 13 ['<T 3 - F 1>']
-        (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of task_id: 3"),  # 14 []
+        (user_orm_login, {FILES_UNLINK: True}, 200, None, None, 4, "unlink files of Obj_id: 4"),  # 13 ['<T 3 - F 1>']
+        (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of Obj_id: 3"),  # 14 []
     )
     async with async_client as ac:
         for login, create_params, status, uploaded_file, file_index, task_id, name in scenarios:
@@ -204,7 +204,7 @@ async def test_user_patch_task_url(
             # grab info of objects in db before testing:
             objects_before = await async_db.scalars(select(Task))
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
-            object_before_to_patch = [task for task in objects_in_db_before if task.id == task_id][0]
+            object_before_to_patch = [item for item in objects_in_db_before if item.id == task_id][0]
             # file_names_attached_before:
             file_names_attached = await get_file_names_for_model_db(async_db, Task, task_id)
             file_names_attached_before = (
@@ -251,7 +251,7 @@ async def test_user_patch_task_url(
             # patched tasks:
             objects = await async_db.scalars(select(Task))
             objects_in_db = objects.all()
-            object_in_db = [obj for obj in objects_in_db if obj.id == task_id][0]
+            object_in_db = [item for item in objects_in_db if item.id == task_id][0]
             # attached files:
             attached_files_objects = await async_db.scalars(
                 select(FileAttached)
@@ -271,8 +271,8 @@ async def test_user_patch_task_url(
             task_files_in_db = task_files_object.all()
             if uploaded_file and (create_params.get(FILES_UNLINK) is not True):
                 task_files_expected = [str(record) for record in task_files_in_db_before]
-                # по имени загруженного файла получаем его id, и готовим связку task_id - file_id в task_files_expected
-                task_files_expected.append(f'<Task {task_id} - Files {new_file_object[0].id}>')  # '<Task 3 - Files 1>'
+                # get file_id by its name, and make '<Task 3 - Files 1>' в task_files_expected
+                task_files_expected.append(f'<Task {task_id} - Files {new_file_object[0].id}>')
                 file_names_attached_expected = file_names_attached
                 file_names_attached_expected.append(new_file_name_in_response[0])
             elif create_params.get(FILES_UNLINK):
@@ -857,7 +857,7 @@ async def test_user_get_task_url(
             # gather info of objects in db before testing:
             objects_before = await async_db.scalars(select(Task))  # objects before scenarios have started
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
-            object_before_testing = [obj for obj in objects_in_db_before if obj.id == task_id][0]
+            object_before_testing = [item for item in objects_in_db_before if item.id == task_id][0]
             attached_files_objects_before = await async_db.scalars(
                 select(FileAttached)
                 .join(Task.files)
@@ -944,7 +944,7 @@ async def test_user_get_task_url(
             # tasks after test running:
             objects = await async_db.scalars(select(Task))
             objects_in_db = objects.all()
-            object_in_db = [obj for obj in objects_in_db if obj.id == task_id][0]
+            object_in_db = [item for item in objects_in_db if item.id == task_id][0]
             # files after test running:
             files_in_response = response.json().get(FILES_SET_TO)
             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
@@ -1052,8 +1052,8 @@ async def test_user_get_all_tasks_url(
                 continue
             for index in enumerate(tasks_orm):  # проводим сверки по каждому объекту фикстуры и в ответе response
                 position = index[0] + 1
-                fixture_object = [obj for obj in tasks_orm if obj.id == position][0]
-                object_in_response = [obj for obj in response.json() if obj["id"] == position][0]
+                fixture_object = [item for item in tasks_orm if item.id == position][0]
+                object_in_response = [item for item in response.json() if item["id"] == position][0]
                 # expected values in scenario - take original tasks_orm
                 task_manager = await async_db.scalar(select(User).where(User.id == fixture_object.user_id))
                 executor = await async_db.scalar(select(User).where(User.id == fixture_object.executor_id))
@@ -1160,7 +1160,7 @@ async def test_user_get_all_tasks_url(
 #             objects_by_user = await async_db.scalars(select(Suspension).where(Suspension.user_id == current_user.id))
 #             objects_by_user_in_db = objects_by_user.all()
 #             for user_object in objects_by_user_in_db:
-#                 object_in_response = [obj for obj in response.json() if obj["id"] == user_object.id][0]
+#                 object_in_response = [item for item in response.json() if item["id"] == user_object.id][0]
 #                 expected = {  # expected values in scenario
 #                     "total_objects": len(objects_by_user_in_db),
 #                     "suspension_files": [],
@@ -1309,7 +1309,7 @@ async def test_user_get_all_tasks_url(
 #             patched_objects.add(suspension_id)  # множество файлов в обработке для asserts suspension_files_in_scenario
 #             objects = await async_db.scalars(select(Suspension))
 #             objects_in_db = objects.all()
-#             object_in_db = [obj for obj in objects_in_db if obj.id == suspension_id][0]
+#             object_in_db = [item for item in objects_in_db if item.id == suspension_id][0]
 #             # patched files:
 #             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
 #             files_in_db = file_objects.all() if file_objects is not None else []
@@ -1438,7 +1438,7 @@ async def test_user_get_all_tasks_url(
 #             # START TESTINGS WITH FILES ATTACHED!
 #             objects = await async_db.scalars(select(Suspension))
 #             objects_in_db = objects.all()
-#             object_in_db = [obj for obj in objects_in_db if obj.id == suspension_id]
+#             object_in_db = [item for item in objects_in_db if item.id == suspension_id]
 #             # patched files:
 #             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
 #             files_in_db = file_objects.all() if file_objects is not None else []
@@ -1472,10 +1472,10 @@ async def test_user_get_all_tasks_url(
 #             # GATHER objects in db info after testing:
 #             objects_after = await async_db.scalars(select(Suspension))
 #             objects_in_db_after = objects_after.all()
-#             object_in_db_after = [obj for obj in objects_in_db_after if obj.id == suspension_id]
+#             object_in_db_after = [item for item in objects_in_db_after if item.id == suspension_id]
 #             file_objects_after = await async_db.scalars(select(FileAttached))  # == [] when no files attached
 #             files_in_db_after = file_objects_after.all() if file_objects_after is not None else []
-#             file_in_db_after = [obj for obj in files_in_db_after if obj.id == files_list_set_to_suspension[0]]
+#             file_in_db_after = [item for item in files_in_db_after if item.id == files_list_set_to_suspension[0]]
 #             suspension_files_object_after = await async_db.scalars(select(SuspensionsFiles))
 #             suspension_files_in_db_after = suspension_files_object_after.all()
 #             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
