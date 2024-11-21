@@ -303,7 +303,7 @@ async def test_user_patch_suspension_url(
             # grab info of objects in db before testing:
             objects_before = await async_db.scalars(select(Suspension))
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
-            object_before_to_patch = [item for item in objects_in_db_before if item.id == suspension_id][0]
+            object_before_to_patch = [_ for _ in objects_in_db_before if _.id == suspension_id][0]
             # file_names_attached_before:
             file_names_attached = await get_file_names_for_model_db(async_db, Suspension, suspension_id)
             file_names_attached_before = (
@@ -354,7 +354,7 @@ async def test_user_patch_suspension_url(
             current_user = await async_db.scalar(select(User).where(User.email == login.get("username")))
             objects = await async_db.scalars(select(Suspension))
             objects_in_db = objects.all()
-            object_in_db = [item for item in objects_in_db if item.id == suspension_id][0]
+            object_in_db = [_ for _ in objects_in_db if _.id == suspension_id][0]
             # attached files:
             attached_files_objects = await async_db.scalars(
                 select(FileAttached)
@@ -860,8 +860,8 @@ async def test_user_get_suspension_url(
     test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
     await create_test_files(test_files)
     file_to_attach = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
-    json_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
-    files_choice = [item for item in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
+    json_choice = [_ for _ in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
+    files_choice = [_ for _ in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
     scenario_number = 0
     scenarios = (
         # login, params, status, uploaded_file, suspension_id, name
@@ -879,7 +879,7 @@ async def test_user_get_suspension_url(
             # grab info of objects in db before testing:
             objects_before = await async_db.scalars(select(Suspension))  # objects before scenarios have started
             objects_in_db_before = objects_before.all()  # objects before scenarios have started
-            object_before_testing = [item for item in objects_in_db_before if item.id == suspension_id][0]
+            object_before_testing = [_ for _ in objects_in_db_before if _.id == suspension_id][0]
             attached_files_objects_before = await async_db.scalars(
                 select(FileAttached)
                 .join(Suspension.files)
@@ -935,7 +935,7 @@ async def test_user_get_suspension_url(
             # suspensions after test running:
             objects = await async_db.scalars(select(Suspension))
             objects_in_db = objects.all()
-            object_in_db = [item for item in objects_in_db if item.id == suspension_id][0]
+            object_in_db = [_ for _ in objects_in_db if _.id == suspension_id][0]
             # files after test running:
             files_in_response = response.json().get(FILES_SET_TO)
             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
@@ -1056,8 +1056,8 @@ async def test_user_get_all_suspension_url(
                 continue
             for index in enumerate(suspensions_orm):  # проводим сверки по каждому объекту фикстуры и в ответе response
                 position = index[0] + 1
-                fixture_object = [item for item in suspensions_orm if item.id == position][0]
-                object_in_response = [item for item in response.json() if item["id"] == position][0]
+                fixture_object = [_ for _ in suspensions_orm if _.id == position][0]
+                object_in_response = [_ for _ in response.json() if _["id"] == position][0]
                 expected = {  # expected values in scenario - take original suspensions_orm
                     "total_objects": len(suspensions_orm),
                     "suspension_files": [],
@@ -1156,7 +1156,7 @@ async def test_user_get_my_suspension_url(
             objects_by_user = await async_db.scalars(select(Suspension).where(Suspension.user_id == current_user.id))
             objects_by_user_in_db = objects_by_user.all()
             for user_object in objects_by_user_in_db:
-                object_in_response = [item for item in response.json() if item["id"] == user_object.id][0]
+                object_in_response = [_ for _ in response.json() if _["id"] == user_object.id][0]
                 expected = {  # expected values in scenario
                     "total_objects": len(objects_by_user_in_db),
                     "suspension_files": [],
@@ -1294,7 +1294,7 @@ async def test_super_user_add_files_to_suspension_url(
             # patched suspensions:
             objects = await async_db.scalars(select(Suspension))
             objects_in_db = objects.all()
-            object_in_db = [item for item in objects_in_db if item.id == suspension_id][0]
+            object_in_db = [_ for _ in objects_in_db if _.id == suspension_id][0]
             # patched files:
             attached_files_objects = await async_db.scalars(
                 select(FileAttached)
@@ -1430,7 +1430,7 @@ async def test_super_user_delete_suspension_url(
             # START TESTINGS WITH FILES ATTACHED!
             objects = await async_db.scalars(select(Suspension))
             objects_in_db = objects.all()
-            object_in_db = [item for item in objects_in_db if item.id == suspension_id]
+            object_in_db = [_ for _ in objects_in_db if _.id == suspension_id]
             # patched files:
             file_objects = await async_db.scalars(select(FileAttached))  # == [] when no files attached
             files_in_db = file_objects.all() if file_objects is not None else []
@@ -1464,10 +1464,10 @@ async def test_super_user_delete_suspension_url(
             # grab objects in db info after testing:
             objects_after = await async_db.scalars(select(Suspension))
             objects_in_db_after = objects_after.all()
-            object_in_db_after = [item for item in objects_in_db_after if item.id == suspension_id]
+            object_in_db_after = [_ for _ in objects_in_db_after if _.id == suspension_id]
             file_objects_after = await async_db.scalars(select(FileAttached))  # == [] when no files attached
             files_in_db_after = file_objects_after.all() if file_objects_after is not None else []
-            file_in_db_after = [item for item in files_in_db_after if item.id == files_list_set_to_suspension[0]]
+            file_in_db_after = [_ for _ in files_in_db_after if _.id == files_list_set_to_suspension[0]]
             suspension_files_object_after = await async_db.scalars(select(SuspensionsFiles))
             suspension_files_in_db_after = suspension_files_object_after.all()
             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
