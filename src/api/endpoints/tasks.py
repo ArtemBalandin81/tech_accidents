@@ -302,7 +302,7 @@ async def get_my_tasks_ordered(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущим пользователем."""
-    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id), user)  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_tasks_ordered(user.id), user, None)  # noqa
 
 
 @task_router.get(
@@ -317,7 +317,7 @@ async def get_my_tasks_todo(
     user: User = Depends(current_user)
 ) -> Sequence[AnalyticTaskResponse]:
     """Возвращает все неисполненные задачи, выставленные текущему пользователю."""
-    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id), user)  # noqa
+    return await task_service.perform_changed_schema(await task_service.get_my_tasks_todo(user.id), None, user)  # noqa
 
 
 @task_router.get(
