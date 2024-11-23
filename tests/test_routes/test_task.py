@@ -11,7 +11,7 @@ pytest -k test_user_get_task_url -vs
 pytest -k test_user_get_all_tasks_url -vs
 pytest -k test_user_get_all_tasks_opened_url -vs
 pytest -k test_user_get_my_tasks_ordered_url -vs
-pytest -k test_user_get_my_tasks_todo_url -vs Todo /api/tasks/my_tasks_todo
+pytest -k test_user_get_my_tasks_todo_url -vs
 pytest -k test_user_post_task_form_url -vs
 pytest -k test_user_post_task_with_files_form_url -vs
 pytest -k test_user_patch_task_url -vs
@@ -27,7 +27,6 @@ print(f'RESPONSE__dict__: {response.__dict__}')
 import json
 import os
 import sys
-from copy import deepcopy
 from pathlib import Path
 
 import pytest
@@ -67,6 +66,9 @@ async def test_unauthorized_tries_task_urls(async_client: AsyncClient) -> None:
         (TASKS_PATH + MY_TASKS, {}, 401),  # /api/tasks/my_tasks_ordered
         (TASKS_PATH + ME_TODO, {}, 401),  # /api/tasks/my_tasks_todo
     )
+    delete_params_urls = (
+        (TASKS_PATH + TASK_ID, {}, 401),  # /api/tasks/{task_id}
+    )
     patch_data_urls = (
         (TASKS_PATH + TASK_ID, {}, 401),  # /api/tasks/{task_id}
     )
@@ -78,6 +80,14 @@ async def test_unauthorized_tries_task_urls(async_client: AsyncClient) -> None:
     async with async_client as ac:
         for api_url, params, status in get_params_urls:
             response = await ac.get(api_url, params=params)
+            assert response.status_code == status, (
+                f"test_url: {api_url} with params: {params} is not {status}. Response: {response.__dict__}"
+            )
+            await log.ainfo(
+                "{}".format(api_url), response=response.json(), status=response.status_code, request=response._request
+            )
+        for api_url, params, status in delete_params_urls:
+            response = await ac.delete(api_url, params=params)
             assert response.status_code == status, (
                 f"test_url: {api_url} with params: {params} is not {status}. Response: {response.__dict__}"
             )
@@ -548,11 +558,7 @@ async def test_user_post_task_with_files_form_url(
                 # name_value, expected_value, exist_value
                 ("Task id: ", expected.get("task_expected_id"), new_object.id),
                 ("Total tasks: ", expected.get("total_objects_expected"), total_objects),
-                (
-                    "Attached files: ",
-                    expected.get("files_attached"),
-                    set(file_names_attached)
-                ),
+                ("Attached files: ", expected.get("files_attached"), set(file_names_attached)),
                 ("Task files: ", expected.get("task_files"), task_files_records),
                 ("Task start: ", expected.get("start"), new_object.task_start.strftime(DATE_FORMAT)),
                 ("Task finish: ", expected.get("finish"), new_object.deadline.strftime(DATE_FORMAT)),
@@ -616,7 +622,7 @@ async def test_user_post_task_form_url(
     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_FORMAT)
     tomorrow = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_FORMAT)
     error_in_date = "11-07-20244"
-    test_files = ["testfile.txt"]
+    test_files = ["testfile.txt"]  # todo везде замени на кортежи - быстрее и меньше памяти
     await create_test_files(test_files)
     file_to_upload = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
     scenario_number = 0
@@ -708,7 +714,7 @@ async def test_user_post_task_form_url(
                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number}___ {name}"
                 )
                 continue
-            # created suspensions:
+            # created tasks:
             objects = await async_db.scalars(select(Task))
             objects_in_db = objects.all()
             new_object = objects_in_db[0] if objects_in_db is not None else None
@@ -1488,7 +1494,7 @@ async def test_super_user_add_files_to_task_url(
             file_objects = await async_db.scalars(select(FileAttached))
             files_in_db = file_objects.all()
             files_downloaded_response = download_files_response.json().get(FILES_WRITTEN_DB)
-            file_names_added = [file_dict.get("Имя файла.") for file_dict in files_downloaded_response]
+            file_names_added = [file_dict.get(FILE_NAME) for file_dict in files_downloaded_response]
             file_paths = [
                 FILES_DIR.joinpath(file_name) for file_name in file_names_added if file_names_added is not None
             ]
@@ -1583,7 +1589,7 @@ async def test_super_user_delete_task_url(
     Тестирует удаление супер-пользователем задачи по id из формы:
     pytest -k test_super_user_delete_task_url -vs
 
-    before_patched - параметры задачи при ее создании: тождественны "scenarios" из suspensions_orm в confest.py
+    before_patched - параметры задачи при ее создании: тождественны "scenarios" из tasks_orm в confest.py
 
     scenarios - тестовые сценарии использования эндпоинта (сценарии не изолированы друг от друга).
     expected - словарь ожидаемых значений в сценарии.
@@ -1600,7 +1606,7 @@ async def test_super_user_delete_task_url(
     scenario_number = 0
     files_to_delete_at_the_end = []
     scenarios = (
-        # login, params, status, file_index, name, add_file_to_suspension_id
+        # login, params, status, file_index, name, add_file_to_task_id
         (user_orm_login, {'task_id': 1}, 403, 0, "obj_1 not admin", 1),  # 1
         (super_user_login, {'task_id': 1}, 200, 0, "delete obj_1", 1),  # 2
         (super_user_login, {'task_id': 1}, 404, 0, "can't delete obj_1 again", 2),  # 3
@@ -1637,7 +1643,7 @@ async def test_super_user_delete_task_url(
                 f"User: {login} can't get {test_url}. Response: {set_files_response.__dict__}"
             )
             files_in_response = download_files_response.json().get(FILES_WRITTEN_DB)
-            file_names_added = [file_dict.get("Имя файла.") for file_dict in files_in_response]
+            file_names_added = [file_dict.get(FILE_NAME) for file_dict in files_in_response]
             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
             if file_names_added is not None:
                 for file in file_names_added:

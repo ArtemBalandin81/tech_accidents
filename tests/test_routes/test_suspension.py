@@ -64,6 +64,9 @@ async def test_unauthorized_tries_suspension_urls(async_client: AsyncClient) -> 
         (SUSPENSIONS_PATH + MY_SUSPENSIONS, {}, 401),  # /api/my_suspensions/
         (SUSPENSIONS_PATH + SUSPENSION_ID, {}, 401),  # /api/suspensions/{suspension_id}
     )
+    delete_params_urls = (
+        (SUSPENSIONS_PATH + SUSPENSION_ID, {}, 401),  # /api/suspensions/{suspension_id}
+    )
     patch_data_urls = (
         (SUSPENSIONS_PATH + SUSPENSION_ID, {}, 401),  # /api/suspensions/{suspension_id}
     )
@@ -75,6 +78,14 @@ async def test_unauthorized_tries_suspension_urls(async_client: AsyncClient) -> 
     async with async_client as ac:
         for api_url, params, status in get_params_urls:
             response = await ac.get(api_url, params=params)
+            assert response.status_code == status, (
+                f"test_url: {api_url} with params: {params} is not {status}. Response: {response.__dict__}"
+            )
+            await log.ainfo(
+                "{}".format(api_url), response=response.json(), status=response.status_code, request=response._request
+            )
+        for api_url, params, status in delete_params_urls:
+            response = await ac.delete(api_url, params=params)
             assert response.status_code == status, (
                 f"test_url: {api_url} with params: {params} is not {status}. Response: {response.__dict__}"
             )
@@ -1267,7 +1278,7 @@ async def test_super_user_add_files_to_suspension_url(
             file_objects = await async_db.scalars(select(FileAttached))
             files_in_db = file_objects.all()
             files_downloaded_response = download_files_response.json().get(FILES_WRITTEN_DB)
-            file_names_added = [file_dict.get("Имя файла.") for file_dict in files_downloaded_response]
+            file_names_added = [file_dict.get(FILE_NAME) for file_dict in files_downloaded_response]
             file_paths = [
                 FILES_DIR.joinpath(file_name) for file_name in file_names_added if file_names_added is not None
             ]
@@ -1422,7 +1433,7 @@ async def test_super_user_delete_suspension_url(
                 f"User: {login} can't get {test_url}. Response: {set_files_response.__dict__}"
             )
             files_downloaded_response = download_files_response.json().get(FILES_WRITTEN_DB)
-            file_names_added = [file_dict.get("Имя файла.") for file_dict in files_downloaded_response]
+            file_names_added = [file_dict.get(FILE_NAME) for file_dict in files_downloaded_response]
             all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
             if file_names_added is not None:
                 for file in file_names_added:
