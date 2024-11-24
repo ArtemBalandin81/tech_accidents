@@ -227,11 +227,11 @@ async def test_user_patch_task_url(
             )
             object_id_task_files_before_all = object_id_task_files_before.all()  # task_files attached to the object_id
             # starting test scenarios:
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.patch(
                 test_url + f"{task_id}",
                 params=create_params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
                 files=uploaded_file
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
@@ -488,11 +488,11 @@ async def test_user_post_task_with_files_form_url(
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
                 params=create_params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
                 files=files
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
@@ -696,11 +696,11 @@ async def test_user_post_task_form_url(
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.post(
                 test_url,
                 params=create_params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
                 files=files
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
@@ -891,12 +891,12 @@ async def test_user_get_task_url(
                 "executor_id": object_before_testing.executor_id,
                 "is_archived": object_before_testing.is_archived,
             }
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             if uploaded_file is not None:  # adding file to the object_id in order to get this file later
                 response_patched = await ac.patch(
                     test_url + f"{task_id}",
                     params={TASK_DESCRIPTION: "task is attached with files"},
-                    headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                    headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
                     files=uploaded_file
                 )
                 assert response_patched.status_code == status, (
@@ -909,7 +909,7 @@ async def test_user_get_task_url(
             response = await ac.get(
                 test_url + f"{task_id}",
                 params=params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1026,10 +1026,10 @@ async def test_user_get_all_tasks_url(
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1136,10 +1136,10 @@ async def test_user_get_all_tasks_opened_url(
             tasks_opened = not_archived_objects.all()
             archived_objects = await async_db.scalars(select(Task).where(Task.is_archived == 1))
             tasks_closed = archived_objects.all()
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1266,10 +1266,10 @@ async def test_user_get_my_tasks_ordered_url(
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1363,10 +1363,10 @@ async def test_user_get_my_tasks_todo_url(
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.get(
                 test_url,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1480,13 +1480,13 @@ async def test_super_user_add_files_to_task_url(
                 .where(TasksFiles.task_id == task_id)
             )
             object_id_task_files_before_all = object_id_task_files_before.all()  # task_files attached to the object_id
-            response_login_super_user = await ac.post(LOGIN, data=super_user_login)  # only super_user is allowed!
-            assert response_login_super_user.status_code == 200, f"Super_user: {super_user_login} can't get {LOGIN}"
+            login_super_user_response = await ac.post(LOGIN, data=super_user_login)  # only super_user is allowed!
+            assert login_super_user_response.status_code == 200, f"Super_user: {super_user_login} can't get {LOGIN}"
             # downloading files with api to test it in scenarios
             download_files_response = await ac.post(
                 download_files_url,
                 files={"files": open(TEST_ROUTES_DIR.joinpath(test_files[file_index]), "rb")},
-                headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
             )
             assert download_files_response.status_code == 200, (
                 f"User: {super_user_login} can't get {download_files_url} Response: {download_files_response.__dict__}"
@@ -1498,11 +1498,11 @@ async def test_super_user_add_files_to_task_url(
             file_paths = [
                 FILES_DIR.joinpath(file_name) for file_name in file_names_added if file_names_added is not None
             ]
-            response_login_user = await ac.post(LOGIN, data=login)  # files are attached, so tests could be started
+            login_user_response = await ac.post(LOGIN, data=login)  # files are attached, so tests could be started
             response = await ac.post(
                 test_url,
                 params=create_params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"User: {login} can't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:
@@ -1620,13 +1620,13 @@ async def test_super_user_delete_task_url(
             task_id = create_params.get('task_id')
             task_files_object_before = await async_db.scalars(select(TasksFiles))
             task_files_in_db_before = task_files_object_before.all()
-            response_login_super_user = await ac.post(LOGIN, data=super_user_login)  # only super_user is allowed!
-            assert response_login_super_user.status_code == 200, f"Super_user: {super_user_login} can't get {LOGIN}"
+            login_super_user_response = await ac.post(LOGIN, data=super_user_login)  # only super_user is allowed!
+            assert login_super_user_response.status_code == 200, f"Super_user: {super_user_login} can't get {LOGIN}"
             # DOWNLOAD files with api to test removing files along with task
             download_files_response = await ac.post(
                 download_files_url,
                 files={"files": open(TEST_ROUTES_DIR.joinpath(test_files[file_index]), "rb")},
-                headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
             )
             assert download_files_response.status_code == 200, (
                 f"User: {super_user_login} can't get {download_files_url} Response: {download_files_response.__dict__}"
@@ -1637,7 +1637,7 @@ async def test_super_user_delete_task_url(
                     'task_id': add_file_to_task_id,
                     SET_FILES_LIST_TO_TASK: files_list_set_to_task
                 },
-                headers={"Authorization": f"Bearer {response_login_super_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
             )
             assert set_files_response.status_code == 200, (
                 f"User: {login} can't get {test_url}. Response: {set_files_response.__dict__}"
@@ -1663,11 +1663,11 @@ async def test_super_user_delete_task_url(
                 FILES_DIR.joinpath(file_name) for file_name in file_names_added if file_names_added is not None
             ]
             files_to_delete_at_the_end += file_paths  # unified solution
-            response_login_user = await ac.post(LOGIN, data=login)
+            login_user_response = await ac.post(LOGIN, data=login)
             response = await ac.delete(
                 test_url + f"{task_id}",
                 params=create_params,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, f"User: {login} can't get {test_url}. Response: {response.__dict__}"
             if response.status_code != 200:

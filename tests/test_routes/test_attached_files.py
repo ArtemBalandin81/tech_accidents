@@ -7,7 +7,7 @@ pytest -vs  # все тесты
 https://anyio.readthedocs.io/en/stable/testing.html
 
 pytest -k test_unauthorized_tries_file_urls -vs
-pytest -k test_user_post_download_files_url -vs  # todo
+pytest -k test_user_post_download_files_url -vs
 pytest -k test_user_get_files_url -vs  # todo
 pytest -k test_user_get_file_id_url -vs  # todo
 
@@ -104,16 +104,15 @@ async def test_user_post_download_files_url(
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
     test_url = FILES_PATH + DOWNLOAD_FILES  # /api/files/download_files
-    now = datetime.now(TZINFO).strftime(DATE_TIME_FORMAT)
     super_user_login = {"username": super_user_orm.email, "password": "testings"}
     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
-    test_files = ("testfile.txt", "testfile2.txt", "testfile3.txt")  # todo везде замени на кортежи - быстрее и меньше памяти
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
     await create_test_files(test_files)
     files = (
         ("files", open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")),
         ("files", open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")),
         ("files", open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb"))
-    )  # todo везде замени на кортежи
+    )
     scenario_number = 0
     scenarios = (
         # login, status, files, test_files, name
@@ -132,11 +131,11 @@ async def test_user_post_download_files_url(
         for login, status, files, test_files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
-            response_login_user = await ac.post(LOGIN, data=login)
-            assert response_login_user.status_code == 200, f"User: {login} couldn't get {LOGIN}"
+            login_user_response = await ac.post(LOGIN, data=login)
+            assert login_user_response.status_code == 200, f"User: {login} couldn't get {LOGIN}"
             response = await ac.post(
                 test_url,
-                headers={"Authorization": f"Bearer {response_login_user.json()['access_token']}"},
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
                 files=files
             )
             assert response.status_code == status, f"{login} couldn't get {test_url}. Response: {response.__dict__}"
@@ -184,8 +183,154 @@ async def test_user_post_download_files_url(
             )
             await clean_test_database(async_db, FileAttached)  # clean db after each single test
             await delete_files_in_folder(file_paths)
-    all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]  # todo добавить эту проверку во все тесты с файлами
+    all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]  # todo добавить проверку во все тесты с файлами
     if files_in_response is not None:
         for file in files_in_response:
             assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
+    await clean_test_database(async_db, User)
+
+
+async def test_user_get_files_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        user_orm: User,
+        super_user_orm: User,
+) -> None:
+    """
+    Тестирует возможность получения нескольких файлов по запросу по ключевому слову:
+    pytest -k test_user_get_files_url -vs
+
+    scenarios - тестовые сценарии использования эндпоинта (все сценарии изолированы).
+    expected - словарь ожидаемых значений в сценарии.
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+    """
+    test_url = FILES_PATH + GET_FILES  # /api/files/get_files
+    download_files_url = FILES_PATH + DOWNLOAD_FILES  # /api/files/download_files
+    super_user_login = {"username": super_user_orm.email, "password": "testings"}
+    user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
+    now = datetime.now(TZINFO).strftime(DATE_FORMAT)
+    await create_test_files(test_files)
+    files = (
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")),
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")),
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb"))
+    )
+    scenario_number = 0
+    scenarios = (
+        # params, status, expected_key, name
+        # ({SEARCH_FILES_BY_NAME: "???"}, 200, "search by name & ids simultaneously"),  # 1 todo
+        # ({SEARCH_FILES_BY_NAME: "???"}, 200, "no name & ids simultaneously"),  # 2 todo
+        ({SEARCH_FILES_BY_NAME: "testfile"}, 200, "all_db_files", "search 3 files by part name"),  # 3
+        ({SEARCH_FILES_BY_NAME: "testfile3"}, 200, "testfile3", "search 1 file by part name"),  # 4
+        ({SEARCH_FILES_BY_NAME: f"{now}"}, 200, "all_db_files", "search files by date"),  # 5
+        ({SEARCH_FILES_BY_NAME: "no exist"}, 404, "no_files", "search files by name no exist"),  # 6 todo
+        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 1"),  # 1 todo
+        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 1, 2"),  # 1 todo
+        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 55 no exists"),  # 1 todo
+    )
+    async with async_client as ac:
+        login_super_user_response = await ac.post(LOGIN, data=super_user_login)
+        assert login_super_user_response.status_code == 200, f"User: {super_user_login} couldn't get {LOGIN}"
+        uploaded_files_response = await ac.post(
+            download_files_url,
+            headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
+            files=files
+        )
+        assert uploaded_files_response.status_code == 200, (
+            f"{user_orm_login} couldn't get {uploaded_files_response}. Response: {uploaded_files_response.__dict__}"
+        )
+        # files downloaded:
+        file_objects = await async_db.scalars(select(FileAttached))
+        file_objects_in_db = file_objects.all()  # todo это экземпляры модели файлов - в них ищем !!!
+        files_in_db = [file.name for file in file_objects_in_db if len(file_objects_in_db) > 0]
+        # file_names_in_db = [file.name.split("_")[-1] for file in files_in_db if len(files_in_db) > 0]
+        uploaded_files = [_.get(FILE_NAME) for _ in uploaded_files_response.json().get(FILES_WRITTEN_DB)]
+        uploaded_files_names = [file.split("_")[-1] for file in uploaded_files if len(uploaded_files) > 0]
+        file_paths = [
+            FILES_DIR.joinpath(file_name) for file_name in uploaded_files if uploaded_files is not None
+        ]
+        all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+        if uploaded_files is not None:
+            for file in uploaded_files:
+                assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+        # search scenarios expected keys dictionary:
+        expected_key_dictionary = {
+            "all_db_files": files_in_db,
+            "testfile3": [_ for _ in files_in_db if "testfile3" in _],
+            "no_files": []
+        }
+        login_user_response = await ac.post(LOGIN, data=user_orm_login)
+        assert login_user_response.status_code == 200, f"User: {user_orm_login} couldn't get {LOGIN}"
+        for search_params, status, expected_key, name in scenarios:
+            scenario_number += 1
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
+            response = await ac.get(
+                test_url,
+                params=search_params,
+                headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
+            )
+            assert response.status_code == status, f"{user_orm_login} couldn't get {test_url}. Inf:{response.__dict__}"
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: ",
+                    login_data=user_orm_login,
+                    params=search_params,
+                    response=response.json(),
+                    status=response.status_code,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number} ___ {name}"
+                )
+                continue
+            response_attachment = response.headers.get("content-disposition").split(";")[1]
+            response_content_decoded = response._content.decode(errors="ignore")
+            search_results = []
+            if search_params.get(SEARCH_FILES_BY_NAME) is not None:  # todo error:AttributeError: 'NoneType' object has no attribute 'append'
+                for file in files_in_db:
+                    if file in response_content_decoded:
+                        search_results += [file]
+
+
+            expected = {  # expected values in scenario
+                "total_files_in_db": len(files),
+                "response_attachment": "archive.zip",
+                "expected_key_dictionary": expected_key_dictionary[expected_key],
+                # "files_downloaded": set(test_files) if files else None,
+            }
+            match_values = (
+                # name_value, expected_value, exist_value
+                ("Files in db total: ", expected.get("total_files_in_db"), len(files_in_db)),
+                ("Files in db equals uploaded files: ", set(files_in_db), set(uploaded_files)),
+                ("Content-disposition: ", expected.get("response_attachment"), response_attachment.split("_")[-1]),
+                ("Search results: ", set(expected.get("expected_key_dictionary")), set(search_results)),
+                # ("Downloaded files in response: ", expected.get("files_downloaded"), set(uploaded_files_names)),
+                # ("Downloaded files in db: ", expected.get("files_downloaded"), set(file_names_in_db)),
+            )
+            # print(f'!!!!!!!!!!!!!!!!!!!!!!!expected_key_dictionary: {expected["expected_key_dictionary"]}')
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
+            # print(f'!!!!!!!!!!!!!!!!!! response: {response.headers[0]["content-disposition"]}')
+            # print(f'!!!!!!!!!!!!!!!!!! response: {response.headers.get("content-disposition").split(";")[1]}')
+            # print(f'!!!!!!!!!!!!!!!!!! response: {response._content} type: {type(response._content)}')  # 'bytes
+            # print(f'!!!!!!!!!!!!!!!!!! response_decode: {response._content.decode(errors="ignore")}')
+            # "iso-8859-1" "cp437"  "cp850"
+            # print(f'!!!!!!!!!!!!!!!!!! response_dir: {dir(response)}')
+            # print(f'***************  RESPONSE__dict__: {response.__dict__}')
+            await log.awarning(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                files_in_db=files_in_db,
+                response_attachment=response_attachment,
+                response_content_decoded=response_content_decoded,
+                search_params=search_params,
+                search_results=search_results,
+                # uploaded_files=uploaded_files,
+                # login_data=user_orm_login,
+                # response=response.__dict__,
+                wings_of_end=f"_________ END of SCENARIO: ___ {scenario_number}___ {name}"
+            )
+        await clean_test_database(async_db, FileAttached)  # clean db after each single test
+        await delete_files_in_folder(file_paths)
+        all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+        if uploaded_files is not None:
+            for file in uploaded_files:
+                assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
     await clean_test_database(async_db, User)
