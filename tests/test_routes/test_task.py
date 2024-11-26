@@ -203,6 +203,7 @@ async def test_user_patch_task_url(
         (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of Obj_id: 3"),  # 14 []
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, uploaded_file, file_index, task_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -294,7 +295,7 @@ async def test_user_patch_task_url(
                 )
             else:
                 executor = await async_db.scalar(select(User).where(User.id == object_before_to_patch.executor_id))
-            expected = {  # expected values in scenario
+            expected = {
                 "total_tasks_expected": len(objects_in_db_before),
                 "task_expected_id": task_id,
                 "start": (
@@ -485,6 +486,7 @@ async def test_user_post_task_with_files_form_url(
         }, 200, files, "TASK_EXECUTOR_MAIL_NOT_FROM_ENUM == user_orm"),  # 8
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -536,7 +538,7 @@ async def test_user_post_task_with_files_form_url(
             task_files_records = set(
                 ((record.task_id, record.file_id) for record in task_files_in_db)
             ) if files else None
-            expected = {  # expected values in scenario
+            expected = {
                 "total_objects_expected": 1,
                 "task_expected_id": 1,  # could be response.json()["id"]
                 "files_attached": set(test_files) if files else None,
@@ -693,6 +695,7 @@ async def test_user_post_task_form_url(
         }, 200, file_to_upload, "TASK_EXECUTOR_MAIL_NOT_FROM_ENUM == user_orm"),  # 7
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -742,7 +745,7 @@ async def test_user_post_task_form_url(
                 executor = await async_db.scalar(
                     select(User).where(User.email == create_params.get(TASK_EXECUTOR_MAIL))
                 )
-            expected = {  # expected values in scenario
+            expected = {
                 "total_objects_expected": 1,
                 "task_expected_id": 1,  # could be response.json()["id"]
                 "files_attached": test_files[0] if files else None,
@@ -847,6 +850,7 @@ async def test_user_get_task_url(
         (user_orm_login, {CHOICE_FORMAT: json_choice}, 200, file_to_attach, 4, "and now try to get final json"),  # 8
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, params, status, uploaded_file, task_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -871,7 +875,7 @@ async def test_user_get_task_url(
             )
             task_manager = await async_db.scalar(select(User).where(User.id == object_before_testing.user_id))
             executor = await async_db.scalar(select(User).where(User.id == object_before_testing.executor_id))
-            expected = {  # expected values in scenario
+            expected = {
                 "total_expected_before": len(objects_in_db_before),
                 "task_id": task_id,
                 "files_attached": [file.name for file in attached_files_in_db_before],
@@ -1023,6 +1027,7 @@ async def test_user_get_all_tasks_url(
         (user_orm_login, 200, "get_all"),  # 1
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1045,10 +1050,9 @@ async def test_user_get_all_tasks_url(
                 position = index[0] + 1  # task_id == 1
                 fixture_object = [_ for _ in tasks_orm if _.id == position][0]
                 object_in_response = [_ for _ in response.json() if _["id"] == position][0]
-                # expected values in scenario - take original tasks_orm
                 task_manager = await async_db.scalar(select(User).where(User.id == fixture_object.user_id))
                 executor = await async_db.scalar(select(User).where(User.id == fixture_object.executor_id))
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": len(tasks_orm),
                     "task_files": [],
                     "task": fixture_object.task,
@@ -1124,6 +1128,7 @@ async def test_user_get_all_tasks_opened_url(
         (user_orm_login, 200, "task_id_4_is_archived", 4),  # 5 task_id = 4 is_archived
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name, task_id in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1153,10 +1158,9 @@ async def test_user_get_all_tasks_opened_url(
                 continue
             for task_opened in tasks_opened:  # making checks of each object in tasks_opened and response
                 object_in_response = [_ for _ in response.json() if _["id"] == task_opened.id][0]
-                # expected values in scenario - take original tasks_orm
                 task_manager = await async_db.scalar(select(User).where(User.id == task_opened.user_id))
                 executor = await async_db.scalar(select(User).where(User.id == task_opened.executor_id))
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": len(tasks_opened),
                     "task_files": [],
                     "task": task_opened.task,
@@ -1198,8 +1202,7 @@ async def test_user_get_all_tasks_opened_url(
                     )
             for task_closed in tasks_closed:  # making checks of each object in tasks_closed and expectation
                 expected_object = [task for task in tasks_orm if task.id == task_closed.id][0]
-                # expected values in scenario - take original tasks_orm
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": scenario_number - 1,
                     "task": expected_object.task,
                     "start": expected_object.task_start.strftime(DATE_FORMAT),
@@ -1263,6 +1266,7 @@ async def test_user_get_my_tasks_ordered_url(
         (user_from_settings_login, 200, "get_all_user_from_settings_tasks_ordered"),  # 2
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1286,7 +1290,7 @@ async def test_user_get_my_tasks_ordered_url(
             for object_in_response in response.json():
                 fixture_object = [_ for _ in fixture_objects_expected if _.id == object_in_response["id"]][0]
                 executor = await async_db.scalar(select(User).where(User.id == fixture_object.executor_id))
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": len(fixture_objects_expected),
                     "task_files": [],
                     "task": fixture_object.task,
@@ -1360,6 +1364,7 @@ async def test_user_get_my_tasks_todo_url(
         (user_from_settings_login, 200, "get_all_user_from_settings_tasks_todo"),  # 2
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1384,7 +1389,7 @@ async def test_user_get_my_tasks_todo_url(
             for object_in_response in response.json():
                 fixture_object = [_ for _ in fixture_objects_expected if _.id == object_in_response["id"]][0]
                 task_manager = await async_db.scalar(select(User).where(User.id == fixture_object.user_id))
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": len(fixture_objects_expected),
                     "task_files": [],
                     "task": fixture_object.task,
@@ -1468,6 +1473,7 @@ async def test_super_user_add_files_to_task_url(
         (super_user_login, {'task_id': 3, SET_FILES_LIST_TO_TASK: [1, 2, 3, 4, 5]}, 200, 2, "obj_3 5 fls"),
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, file_index, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1547,7 +1553,7 @@ async def test_super_user_add_files_to_task_url(
             for file_id in create_params.get(SET_FILES_LIST_TO_TASK):
                 task_files_expected.append(f'<Task {task_id} - Files {file_id}>')
             # run asserts in a scenario:
-            expected = {  # expected values in scenario
+            expected = {
                 "files_attached": file_names_get_by_set_ids,
                 "task_files": [str(record) for record in task_files_expected],
             }
@@ -1613,6 +1619,7 @@ async def test_super_user_delete_task_url(
         (super_user_login, {'task_id': 2}, 200, 0, "delete obj_2 with 2 files", 2),  # 4
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, file_index, name, add_file_to_task_id in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1701,7 +1708,7 @@ async def test_super_user_delete_task_url(
             if file_names_added is not None:
                 for file in file_names_added:
                     assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
-            expected = {  # expected values in scenario
+            expected = {
                 "tasks_after": len(objects_in_db_before) - 1,
                 "task_id_in_db": [],
                 "file_in_db": [],

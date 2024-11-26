@@ -308,6 +308,7 @@ async def test_user_patch_suspension_url(
         (super_user_login, {FILES_UNLINK: True}, 200, None, None, 3, "unlink files of Obj_id: 3"),  # 14 []
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, uploaded_file, file_index, suspension_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -398,7 +399,7 @@ async def test_user_patch_suspension_url(
             else:
                 file_names_attached_expected = file_names_attached_before
                 suspension_files_expected = suspension_files_in_db_before
-            expected = {  # expected values in scenario
+            expected = {
                 "total_suspensions_expected": len(objects_in_db_before),
                 "suspension_expected_id": suspension_id,
                 "start": (
@@ -575,6 +576,7 @@ async def test_user_post_suspension_with_files_form_url(
         }, 200, files, "with files"),  # 6
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -615,7 +617,7 @@ async def test_user_post_suspension_with_files_form_url(
             file_paths = [
                 FILES_DIR.joinpath(file_name) for file_name in files_in_response if files_in_response is not None
             ]
-            expected = {  # expected values in scenario
+            expected = {
                 "total_suspensions_expected": 1,
                 "suspensions_expected_id": response.json()["id"],
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, new_object.id),
@@ -745,6 +747,7 @@ async def test_user_post_suspension_form_url(
         }, 200, file_to_upload, "with files"),  # 5
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -785,7 +788,7 @@ async def test_user_post_suspension_form_url(
             suspension_files_records = set(
                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
             )
-            expected = {  # expected values in scenario
+            expected = {
                 "total_suspensions_expected": 1,
                 "suspensions_expected_id": response.json()["id"],
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, new_object.id),
@@ -884,6 +887,7 @@ async def test_user_get_suspension_url(
         (user_orm_login, {CHOICE_FORMAT: files_choice}, 200, None, 2, "and now try to get attached files"),  # 6
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, params, status, uploaded_file, suspension_id, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -962,7 +966,7 @@ async def test_user_get_suspension_url(
                 ((record.suspension_id, record.file_id) for record in suspension_files_in_db)
             )
             suspension_files_in_scenario = tuple(suspension_files_records)
-            expected = {  # expected values in scenario
+            expected = {
                 "total_expected_before": len(objects_in_db_before),
                 "files_attached": await get_file_names_for_model_db(async_db, Suspension, object_before_testing.id),
                 "suspension_files": suspension_files_in_scenario,
@@ -1047,6 +1051,7 @@ async def test_user_get_all_suspension_url(
         (user_orm_login, 200, "get_all"),  # 1
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1069,7 +1074,7 @@ async def test_user_get_all_suspension_url(
                 position = index[0] + 1
                 fixture_object = [_ for _ in suspensions_orm if _.id == position][0]
                 object_in_response = [_ for _ in response.json() if _["id"] == position][0]
-                expected = {  # expected values in scenario - take original suspensions_orm
+                expected = {
                     "total_objects": len(suspensions_orm),
                     "suspension_files": [],
                     "start": fixture_object.suspension_start.strftime(DATE_TIME_FORMAT),
@@ -1145,6 +1150,7 @@ async def test_user_get_my_suspension_url(
         (user_settings_login, 200, "get_user_settings_suspensions"),  # 2
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1168,7 +1174,7 @@ async def test_user_get_my_suspension_url(
             objects_by_user_in_db = objects_by_user.all()
             for user_object in objects_by_user_in_db:
                 object_in_response = [_ for _ in response.json() if _["id"] == user_object.id][0]
-                expected = {  # expected values in scenario
+                expected = {
                     "total_objects": len(objects_by_user_in_db),
                     "suspension_files": [],
                     "start": user_object.suspension_start.strftime(DATE_TIME_FORMAT),
@@ -1252,6 +1258,7 @@ async def test_super_user_add_files_to_suspension_url(
         (super_user_login, {'suspension_id': 3, SET_FILES_LIST_TO_SUSPENSION: [1, 2, 3, 4, 5]}, 200, 2, "obj_3 5 fls"),
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, file_index, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1332,8 +1339,7 @@ async def test_super_user_add_files_to_suspension_url(
             suspension_files_expected = list(suspension_files_expected)
             for file_id in create_params.get(SET_FILES_LIST_TO_SUSPENSION):
                 suspension_files_expected.append(f'<Suspension {suspension_id} - Files {file_id}>')
-            # run asserts in a scenario:
-            expected = {  # expected values in scenario
+            expected = {
                 "files_attached": file_names_get_by_set_ids,
                 "suspension_files": [str(record) for record in suspension_files_expected],
             }
@@ -1403,6 +1409,7 @@ async def test_super_user_delete_suspension_url(
         (super_user_login, {'suspension_id': 2}, 200, 0, "delete obj_2 with 2 files", 2),  # 4
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, create_params, status, file_index, name, add_file_to_suspension_id in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -1485,7 +1492,7 @@ async def test_super_user_delete_suspension_url(
             if file_names_added is not None:
                 for file in file_names_added:
                     assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
-            expected = {  # expected values in scenario
+            expected = {
                 "suspensions_after": len(objects_in_db) - 1,
                 "suspension_id_in_db": [],
                 "file_in_db": [],

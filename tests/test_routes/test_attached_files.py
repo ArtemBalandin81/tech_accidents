@@ -8,21 +8,19 @@ https://anyio.readthedocs.io/en/stable/testing.html
 
 pytest -k test_unauthorized_tries_file_urls -vs
 pytest -k test_user_post_download_files_url -vs
-pytest -k test_user_get_files_url -vs  # todo
+pytest -k test_user_get_files_url -vs  #
 pytest -k test_user_get_file_id_url -vs  # todo
 
 pytest -k test_super_user_delete_file_id_url -vs  # todo
-pytest -k test_super_user_delete_files_unused_url -vs  # todo
+pytest -k test_super_user_delete_files_unused_url -vs  # todo - самый сложный !!!
 
 
 Для отладки рекомендуется использовать:
 print(f'response_dir: {dir(response)}')
 print(f'RESPONSE__dict__: {response.__dict__}')
 """
-import json
 import os
 import sys
-from datetime import date
 from pathlib import Path
 import pytest
 import structlog
@@ -32,9 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.api.constants import *
-from src.api.endpoints import file_router, suspension_router
-from src.core.db.models import FileAttached, User, Suspension
-from src.core.enums import TechProcess
+from src.core.db.models import FileAttached, User
 from src.settings import settings
 
 from tests.conftest import clean_test_database, create_test_files, delete_files_in_folder, remove_all
@@ -128,6 +124,7 @@ async def test_user_post_download_files_url(
         (super_user_login, 400, (("files", None),), (None, ), "None file to download"),  # 4
     )
     async with async_client as ac:
+        # !!!! starting testing scenarios:
         for login, status, files, test_files, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -219,15 +216,17 @@ async def test_user_get_files_url(
     scenario_number = 0
     scenarios = (
         # params, status, expected_key, name
-        # ({SEARCH_FILES_BY_NAME: "???"}, 200, "search by name & ids simultaneously"),  # 1 todo
-        # ({SEARCH_FILES_BY_NAME: "???"}, 200, "no name & ids simultaneously"),  # 2 todo
-        ({SEARCH_FILES_BY_NAME: "testfile"}, 200, "all_db_files", "search 3 files by part name"),  # 3
-        ({SEARCH_FILES_BY_NAME: "testfile3"}, 200, "testfile3", "search 1 file by part name"),  # 4
-        ({SEARCH_FILES_BY_NAME: f"{now}"}, 200, "all_db_files", "search files by date"),  # 5
-        ({SEARCH_FILES_BY_NAME: "no exist"}, 404, "no_files", "search files by name no exist"),  # 6 todo
-        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 1"),  # 1 todo
-        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 1, 2"),  # 1 todo
-        # ({SEARCH_FILES_BY_ID: "???"}, 200, "search files by id == 55 no exists"),  # 1 todo
+        ({}, 404, "all_db_files", "empty search by file_name"),  # 1
+        ({SEARCH_FILES_BY_ID: []}, 404, "no_files", "empty search by file_ids == []"),  # 2
+        ({SEARCH_FILES_BY_NAME: "???", SEARCH_FILES_BY_ID: [1]}, 403, "no_files", "by name & ids simultaneously"),  # 3
+        ({SEARCH_FILES_BY_NAME: "no exist"}, 404, "no_files", "search files by name no exist"),  # 4
+        ({SEARCH_FILES_BY_NAME: "testfile"}, 200, "all_db_files", "search 3 files by part name"),  # 5
+        ({SEARCH_FILES_BY_NAME: "testfile3"}, 200, "testfile3", "search 1 file by part name"),  # 6
+        ({SEARCH_FILES_BY_NAME: f"{now}"}, 200, "all_db_files", "search files by date"),  # 7
+        ({SEARCH_FILES_BY_ID: [3]}, 200, "testfile3", "search files by id == 3"),  # 8
+        ({SEARCH_FILES_BY_ID: [3, 2]}, 200, "testfiles_3_2", "search files by id == 1, 2"),  # 9
+        ({SEARCH_FILES_BY_ID: [3, 55]}, 200, "testfile3", "search files by id == 1, 55"),  # 10
+        ({SEARCH_FILES_BY_ID: [55]}, 200, "no_files", "search files by id == 55 no exists"),  # 11
     )
     async with async_client as ac:
         login_super_user_response = await ac.post(LOGIN, data=super_user_login)
@@ -242,26 +241,25 @@ async def test_user_get_files_url(
         )
         # files downloaded:
         file_objects = await async_db.scalars(select(FileAttached))
-        file_objects_in_db = file_objects.all()  # todo это экземпляры модели файлов - в них ищем !!!
+        file_objects_in_db = file_objects.all()
         files_in_db = [file.name for file in file_objects_in_db if len(file_objects_in_db) > 0]
-        # file_names_in_db = [file.name.split("_")[-1] for file in files_in_db if len(files_in_db) > 0]
         uploaded_files = [_.get(FILE_NAME) for _ in uploaded_files_response.json().get(FILES_WRITTEN_DB)]
-        uploaded_files_names = [file.split("_")[-1] for file in uploaded_files if len(uploaded_files) > 0]
-        file_paths = [
-            FILES_DIR.joinpath(file_name) for file_name in uploaded_files if uploaded_files is not None
-        ]
+        file_paths = [FILES_DIR.joinpath(file_name) for file_name in uploaded_files if uploaded_files is not None]
         all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
         if uploaded_files is not None:
             for file in uploaded_files:
                 assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
-        # search scenarios expected keys dictionary:
+        # expected keys dictionary for search scenarios:
         expected_key_dictionary = {
             "all_db_files": files_in_db,
+            "testfile2": [_ for _ in files_in_db if "testfile2" in _],
             "testfile3": [_ for _ in files_in_db if "testfile3" in _],
+            "testfiles_3_2": [_ for _ in files_in_db if "testfile3" in _ or "testfile2" in _],
             "no_files": []
         }
         login_user_response = await ac.post(LOGIN, data=user_orm_login)
         assert login_user_response.status_code == 200, f"User: {user_orm_login} couldn't get {LOGIN}"
+        # !!!! starting testing scenarios:
         for search_params, status, expected_key, name in scenarios:
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
@@ -284,17 +282,14 @@ async def test_user_get_files_url(
             response_attachment = response.headers.get("content-disposition").split(";")[1]
             response_content_decoded = response._content.decode(errors="ignore")
             search_results = []
-            if search_params.get(SEARCH_FILES_BY_NAME) is not None:  # todo error:AttributeError: 'NoneType' object has no attribute 'append'
-                for file in files_in_db:
-                    if file in response_content_decoded:
-                        search_results += [file]
-
-
+            # if search_params.get(SEARCH_FILES_BY_NAME) is not None:
+            for file in files_in_db:
+                if file in response_content_decoded:
+                    search_results += [file]
             expected = {  # expected values in scenario
                 "total_files_in_db": len(files),
                 "response_attachment": "archive.zip",
                 "expected_key_dictionary": expected_key_dictionary[expected_key],
-                # "files_downloaded": set(test_files) if files else None,
             }
             match_values = (
                 # name_value, expected_value, exist_value
@@ -302,19 +297,9 @@ async def test_user_get_files_url(
                 ("Files in db equals uploaded files: ", set(files_in_db), set(uploaded_files)),
                 ("Content-disposition: ", expected.get("response_attachment"), response_attachment.split("_")[-1]),
                 ("Search results: ", set(expected.get("expected_key_dictionary")), set(search_results)),
-                # ("Downloaded files in response: ", expected.get("files_downloaded"), set(uploaded_files_names)),
-                # ("Downloaded files in db: ", expected.get("files_downloaded"), set(file_names_in_db)),
             )
-            # print(f'!!!!!!!!!!!!!!!!!!!!!!!expected_key_dictionary: {expected["expected_key_dictionary"]}')
             for name_value, expected_value, exist_value in match_values:
                 assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
-            # print(f'!!!!!!!!!!!!!!!!!! response: {response.headers[0]["content-disposition"]}')
-            # print(f'!!!!!!!!!!!!!!!!!! response: {response.headers.get("content-disposition").split(";")[1]}')
-            # print(f'!!!!!!!!!!!!!!!!!! response: {response._content} type: {type(response._content)}')  # 'bytes
-            # print(f'!!!!!!!!!!!!!!!!!! response_decode: {response._content.decode(errors="ignore")}')
-            # "iso-8859-1" "cp437"  "cp850"
-            # print(f'!!!!!!!!!!!!!!!!!! response_dir: {dir(response)}')
-            # print(f'***************  RESPONSE__dict__: {response.__dict__}')
             await log.awarning(
                 f"SCENARIO: _{scenario_number}_ info: {name}",
                 files_in_db=files_in_db,
