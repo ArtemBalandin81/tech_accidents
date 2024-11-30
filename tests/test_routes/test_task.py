@@ -624,7 +624,7 @@ async def test_user_post_task_form_url(
     day_ago = (datetime.now(TZINFO) - timedelta(days=1)).strftime(DATE_FORMAT)
     tomorrow = (datetime.now(TZINFO) + timedelta(days=1)).strftime(DATE_FORMAT)
     error_in_date = "11-07-20244"
-    test_files = ["testfile.txt"]  # todo везде замени на кортежи - быстрее и меньше памяти
+    test_files = ["testfile.txt"]
     await create_test_files(test_files)
     file_to_upload = {"file_to_upload": open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")}
     scenario_number = 0
@@ -1420,7 +1420,7 @@ async def test_user_get_my_tasks_todo_url(
                         int(json.loads(settings.TECH_PROCESS).get(object_in_response.get(TECH_PROCESS)))
                     ),
                     ("Duration: ", expected.get("duration"), object_in_response.get(TASK_DURATION)),
-                    ("user_email: ", expected.get("user_email"), object_in_response[USER_MAIL]),  # TODO !!!
+                    ("user_email: ", expected.get("user_email"), object_in_response[USER_MAIL]),
                     ("executor_email: ", expected.get("executor_email"), object_in_response[TASK_EXECUTOR_MAIL]),
                     ("executor_id: ", expected.get("executor_id"), object_in_response[TASK_EXECUTOR]),
                     ("is_archived: ", expected.get("is_archived"), object_in_response["is_archived"]),
@@ -1638,7 +1638,7 @@ async def test_super_user_delete_task_url(
             assert download_files_response.status_code == 200, (
                 f"User: {super_user_login} can't get {download_files_url} Response: {download_files_response.__dict__}"
             )
-            set_files_response = await ac.post(
+            set_files_response = await ac.post(  # todo async_db.add & async_db.commit - is better practice
                 TASKS_PATH + ADD_FILES_TO_TASK,
                 params={
                     'task_id': add_file_to_task_id,
