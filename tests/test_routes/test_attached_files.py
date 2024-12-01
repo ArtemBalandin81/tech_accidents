@@ -11,7 +11,7 @@ pytest -k test_user_post_download_files_url -vs
 pytest -k test_user_get_files_url -vs
 pytest -k test_user_get_file_id_url -vs
 
-pytest -k test_super_user_delete_file_id_url -vs  # todo проверить удаление с привязкой, для этого нужно их привязать!!!
+pytest -k test_super_user_delete_file_id_url -vs
 pytest -k test_super_user_delete_files_unused_url -vs  # todo - самый сложный !!!
 
 
@@ -57,7 +57,8 @@ async def test_unauthorized_tries_file_urls(async_client: AsyncClient) -> None:
         (FILES_PATH + FILE_ID, {}, 401),  # /api/files/{file_id}
     )
     delete_params_urls = (
-        (FILES_PATH + FILE_ID, {}, 401),  # /api/files/{file_id}
+        # (FILES_PATH + FILE_ID, {}, 401),  # /api/files/{file_id}
+        (FILES_PATH + MAIN_ROUTE, {}, 401),  # /api/files/
         (FILES_PATH + GET_FILES_UNUSED, {}, 401),  # /api/files//get_files_unused
     )
     post_data_urls = (
@@ -473,10 +474,7 @@ async def test_super_user_delete_file_id_url(
     expected - словарь ожидаемых значений в сценарии.
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
-    # todo добавить респонсы в схемы ответа в апи!!!
-    # todo - проверять привязку к suspension, но не suspensions_orm - т.к. там создаются повторно пользователи:
-    # использовать async_db.add & async_db.commit
-    test_url = FILES_PATH + "/"  # /api/files/{file_id}  # file_id лишнее и не используется в апи todo
+    test_url = FILES_PATH + MAIN_ROUTE  # /api/files/
     download_files_url = FILES_PATH + DOWNLOAD_FILES  # /api/files/download_files
     super_user_login = {"username": super_user_orm.email, "password": "testings"}
     user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
@@ -544,17 +542,16 @@ async def test_super_user_delete_file_id_url(
         if uploaded_files is not None:
             for file in uploaded_files:
                 assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
-        # checking not admin is forbidden to delete:
+        # checking is forbidden to delete if user is not admin:
         login_user_response = await ac.post(LOGIN, data=user_orm_login)
         assert login_user_response.status_code == 200, f"User: {user_orm_login} couldn't get {LOGIN}"
         user_response = await ac.delete(
-            test_url + f"{1}",  # todo file_id - лишнее НУЖНО ПРАВИТЬ ЭНДПОИНТ В АПИ и потом тесты для неавторизованного
+            test_url,
             params={},
             headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
         )
-        assert user_response.status_code == 403, f"{user_orm_login} got {test_url + f'{1}'}, :{user_response.__dict__}"
-
-        # expected keys dictionary for search scenarios:
+        assert user_response.status_code == 403, f"{user_orm_login} got {test_url}, :{user_response.__dict__}"
+        # expected keys dictionary for search scenarios (the rest of files in db after url was activated):
         expected_key_dictionary = {
             "all_db_files": files_in_db,
             "testfiles_3_1": [_ for _ in files_in_db if "testfile2" not in _],
@@ -579,12 +576,12 @@ async def test_super_user_delete_file_id_url(
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response = await ac.delete(
-                test_url + f"{1}",  # todo file_id - лишнее
+                test_url,
                 params=params,
                 headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
             )
             assert response.status_code == status, (
-                f"{login_super_user_response} couldn't get {test_url + f'{1}'}. Inf:{response.__dict__}"
+                f"{login_super_user_response} couldn't get {test_url}. Inf:{response.__dict__}"
             )
             if response.status_code != 200:
                 await log.ainfo(
