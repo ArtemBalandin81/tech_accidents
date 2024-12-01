@@ -348,8 +348,8 @@ async def test_user_get_file_id_url(
         ("files", open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")),
         ("files", open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb"))
     )
-    json_choice = [_ for _ in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][0]  # next(iter())
-    files_choice = [_ for _ in json.loads(settings.CHOICE_DOWNLOAD_FILES).values()][1]  # 2nd == "files"
+    json_choice = json.loads(settings.CHOICE_DOWNLOAD_FILES)["JSON"]
+    files_choice = json.loads(settings.CHOICE_DOWNLOAD_FILES)["FILES"]
     scenario_number = 0
     scenarios = (
         # params, status, expected_key, file_id, name
@@ -566,7 +566,7 @@ async def test_super_user_delete_file_id_url(
                 task_files_records = await async_db.scalar(select(TasksFiles))  # could wanted: .where(file_id == ???)
                 await async_db.delete(task_files_records)
                 await async_db.commit()
-            elif delete_suspension_files:
+            if delete_suspension_files:
                 suspension_files_records = await async_db.scalar(select(SuspensionsFiles))  # could wanted: .where(???)
                 await async_db.delete(suspension_files_records)
                 await async_db.commit()
@@ -626,6 +626,208 @@ async def test_super_user_delete_file_id_url(
                 response=response.json(),
                 task_files_records=task_files_record,
                 suspension_files_record=suspension_files_record,
+                login_data=user_orm_login,
+                # response=response.__dict__,
+                wings_of_end=f"_________ END of SCENARIO: ___ {scenario_number}___ {name}"
+            )
+        await clean_test_database(async_db, FileAttached, Suspension, SuspensionsFiles, Task, TasksFiles)
+        await delete_files_in_folder(file_paths)
+        all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+        if uploaded_files is not None:
+            for file in uploaded_files:
+                assert file not in all_files_in_folder, f"{file} in files folder: {FILES_DIR}, but shouldn't"
+    await clean_test_database(async_db, User)
+
+
+async def test_super_user_delete_files_unused_url(
+        async_client: AsyncClient,
+        async_db: AsyncSession,
+        tasks_orm: Task,
+        super_user_orm: User,
+) -> None:
+    """
+    Тестирует возможность удаления неиспользуемых в БД и каталоге файлов (непривязанных к простоям, или задачам):
+    привязанный файл не должен удаляться
+    pytest -k test_super_user_delete_files_unused_url -vs
+
+    scenarios - тестовые сценарии использования эндпоинта (сценарии СВЯЗАНЫ!!!).
+    expected - словарь ожидаемых значений в сценарии.
+    match_values - кортеж параметров, используемых в assert (ожидание - реальность).
+    """
+    test_url = FILES_PATH + GET_FILES_UNUSED  # /api/files/get_files_unused
+    download_files_url = FILES_PATH + DOWNLOAD_FILES  # /api/files/download_files
+    super_user_login = {"username": super_user_orm.email, "password": "testings"}
+    user_orm_login = {"username": "user_fixture@f.com", "password": "testings"}
+    test_files = ["testfile.txt", "testfile2.txt", "testfile3.txt"]
+    await create_test_files(test_files)
+    files = (
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[0]), "rb")),
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[1]), "rb")),
+        ("files", open(TEST_ROUTES_DIR.joinpath(test_files[2]), "rb"))
+    )
+    db_unused_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["DB_UNUSED"]
+    db_unused_remove_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["DB_UNUSED_REMOVE"]
+    folder_unused_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["FOLDER_UNUSED"]
+    # folder_unused_remove_choice - удалит все привязанные к рабочей БД файлы, т.к. они не привязаны к тестовой БД
+    # folder_unused_remove_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["FOLDER_UNUSED_REMOVE"]
+    scenario_number = 0
+    # - сначала пытаемся удалить привязанные файлы и не можем (они же привязаны) todo
+    # - из 3х загруженных файлов, привязываем 2, а 3й не использован - его можно сразу удалять!!!
+    # - далее их отвязываем постепенно и пытаемся - снова нет todo
+    # - и вот когда они окончательно отвязаны - тогда удаляем todo
+    scenarios = (
+        # params, status, expected_key (files in db in scenario), delete_task_files, delete_suspension_files, name
+        ({}, 422, "no_files", False, False, "empty choice search is forbidden"),  # 1
+        ({CHOICE_FORMAT: db_unused_choice}, 200, "all_db_files", True, True, "all files in db are unused"),  # 2
+        ({CHOICE_FORMAT: folder_unused_choice}, 200, "all_db_files", False, False, "all files in db are unused"),  # 3
+        # (
+        #     {SEARCH_FILES_BY_NAME: "???", SEARCH_FILES_BY_ID: [1]},
+        #     403, "no_files", False, False, "by name & ids simultaneously"
+        # ),  # 2
+        # ({CHOICE_FORMAT: db_unused_choice}, 404, "no_files", False, False, "search files by name no exist"),  # 3
+        # ({SEARCH_FILES_BY_ID: 1}, 403, "all_db_files", False, False, "can't delete file because of task_files"),  # 4
+        # ({SEARCH_FILES_BY_ID: 1}, 403, "all_db_files", True, False, "can't delete because of suspension_files"),  # 5
+        # ({SEARCH_FILES_BY_ID: 1}, 200, "testfiles_3_2", False, True, "could delete testfile: no file_records"),  # 6
+        # ({SEARCH_FILES_BY_NAME: "testfile2"}, 200, "testfile3", False, False, "delete testfile2"),  # 7
+        # ({SEARCH_FILES_BY_NAME: "testfile"}, 200, "no_files", False, False, "delete files, found by part name"),  # 8
+
+        # ({}, 422, "no_files", 1, "empty choice search is forbidden"),  # 1
+        # ({CHOICE_FORMAT: json_choice}, 422, "no_files", None, "empty file_id search is forbidden"),  # 2
+        # ({CHOICE_FORMAT: json_choice}, 404, "no_files", 55, "search files by id == 55 is not found"),  # 3
+        # ({CHOICE_FORMAT: json_choice}, 200, "testfile2", 2, "testfile2 in json"),  # 4
+        # ({CHOICE_FORMAT: json_choice}, 200, "testfile3", 3, "testfile3 in json"),  # 5
+        # ({CHOICE_FORMAT: files_choice}, 200, "testfile3", 3, "download testfile3"),  # 6
+    )
+    async with async_client as ac:
+        login_super_user_response = await ac.post(LOGIN, data=super_user_login)
+        assert login_super_user_response.status_code == 200, f"User: {super_user_login} couldn't get {LOGIN}"
+        uploaded_files_response = await ac.post(
+            download_files_url,
+            headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
+            files=files
+        )
+        assert uploaded_files_response.status_code == 200, (
+            f"{user_orm_login} couldn't get {uploaded_files_response}. Response: {uploaded_files_response.__dict__}"
+        )
+        # making task_files_record & suspension_files_record with attached file_id=1
+        task_files_record = TasksFiles(task_id=1, file_id=1)
+        async_db.add(task_files_record)
+        await async_db.commit()
+        await log.ainfo("task_files_record created:", task_files_record=task_files_record)
+        suspension = Suspension(
+            risk_accident=next(iter(json.loads(settings.RISK_SOURCE).values())),  # the first item in dictionary
+            description="_1_[]",
+            suspension_start=datetime.now() - timedelta(days=2),  # CREATE_SUSPENSION_FROM_TIME,
+            suspension_finish=datetime.now() - timedelta(days=1, hours=23, minutes=59),  # CREATE_SUSPENSION_TO_TIME,
+            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 -first item in dictionary
+            implementing_measures="1",
+            user_id=super_user_orm.id
+        )
+        async_db.add(suspension)
+        await async_db.commit()
+        await log.ainfo("suspension created:", suspension=suspension)
+        suspension_files_record = SuspensionsFiles(suspension_id=1, file_id=1)
+        async_db.add(suspension_files_record)
+        await async_db.commit()
+        await log.ainfo("suspension_files_record created:", suspension_files_record=suspension_files_record)
+        # files downloaded:
+        file_objects = await async_db.scalars(select(FileAttached))
+        file_objects_in_db = file_objects.all()
+        files_in_db = [file.name for file in file_objects_in_db if len(file_objects_in_db) > 0]
+        uploaded_files = [_.get(FILE_NAME) for _ in uploaded_files_response.json().get(FILES_WRITTEN_DB)]
+        file_paths = [FILES_DIR.joinpath(file_name) for file_name in uploaded_files if uploaded_files is not None]
+        all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
+        if uploaded_files is not None:
+            for file in uploaded_files:
+                assert file in all_files_in_folder, f"Can't find: {file} in files folder: {FILES_DIR}"
+        # checking is forbidden to delete if user is not admin:
+        login_user_response = await ac.post(LOGIN, data=user_orm_login)
+        assert login_user_response.status_code == 200, f"User: {user_orm_login} couldn't get {LOGIN}"
+        user_response = await ac.delete(
+            test_url,
+            params={},
+            headers={"Authorization": f"Bearer {login_user_response.json()['access_token']}"},
+        )
+        assert user_response.status_code == 403, f"{user_orm_login} got {test_url}, :{user_response.__dict__}"
+        # expected keys dictionary for search scenarios (the rest of files in db after url was activated):
+        expected_key_dictionary = {
+            "all_db_files": files_in_db,
+            "testfiles_3_1": [_ for _ in files_in_db if "testfile2" not in _],
+            "testfile2": [_ for _ in files_in_db if "testfile2" in _],
+            "testfile3": [_ for _ in files_in_db if "testfile3" in _],
+            "testfiles_3_2": [_ for _ in files_in_db if "testfile3" in _ or "testfile2" in _],
+            "no_files": []
+        }
+        # !!!! starting testing scenarios:
+        for params, status, expected_key, delete_task_files, delete_suspension_files, name in scenarios:
+            if delete_task_files:
+                task_files_records = await async_db.scalar(select(TasksFiles))  # could wanted: .where(file_id == ???)
+                await async_db.delete(task_files_records)
+                await async_db.commit()
+            if delete_suspension_files:
+                suspension_files_records = await async_db.scalar(select(SuspensionsFiles))  # could wanted: .where(???)
+                await async_db.delete(suspension_files_records)
+                await async_db.commit()
+            task_files_objects = await async_db.scalars(select(TasksFiles))
+            scenario_task_files_record = task_files_objects.all()
+            suspension_files_objects = await async_db.scalars(select(SuspensionsFiles))
+            scenario_suspension_files_record = suspension_files_objects.all()
+            scenario_file_objects = await async_db.scalars(select(FileAttached))
+            scenario_file_objects_in_db = scenario_file_objects.all()
+            scenario_files = [_.name for _ in scenario_file_objects_in_db if len(scenario_file_objects_in_db) > 0]
+            scenario_number += 1
+            await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
+            response = await ac.delete(
+                test_url,
+                params=params,
+                headers={"Authorization": f"Bearer {login_super_user_response.json()['access_token']}"},
+            )
+            assert response.status_code == status, (
+                f"{login_super_user_response} couldn't get {test_url}. Inf:{response.__dict__}"
+            )
+            if response.status_code != 200:
+                await log.ainfo(
+                    f"SCENARIO: _{scenario_number}_ info: ",
+                    login_data=login_super_user_response,
+                    params=params,
+                    response=response.json(),
+                    status=response.status_code,
+                    scenario_task_files_record=scenario_task_files_record,
+                    scenario_suspension_files_record=scenario_suspension_files_record,
+                    wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number} ___ {name}"
+                )
+                continue
+            file_objects_after = await async_db.scalars(select(FileAttached))
+            file_objects_in_db_after = file_objects_after.all()
+            files_names_after = [_.name for _ in file_objects_in_db_after if len(file_objects_in_db_after) > 0]
+            expected = {
+                "total_files_in_db": len(expected_key_dictionary[expected_key]),
+                "files_in_db_after": expected_key_dictionary[expected_key],
+                "scenario_files": set(scenario_files),
+            }
+            match_values = (
+                # name_value, expected_value, exist_value
+                ("Files in db equals uploaded files: ", set(files_in_db), set(uploaded_files)),
+                ("Files in db total: ", expected.get("total_files_in_db"), len(files_names_after)),
+                ("Files in db after: ", set(expected.get("files_in_db_after")), set(files_names_after)),
+                # (
+                #     "File names deleted: ",
+                #     expected.get("scenario_files") - set(files_names_after),
+                #     set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
+                # ),  # todo
+            )
+            for name_value, expected_value, exist_value in match_values:
+                assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
+            await log.awarning(
+                f"SCENARIO: _{scenario_number}_ info: {name}",
+                scenario_files_in_db=scenario_files,
+                files_in_db_after=files_names_after,
+                delete_task_files=delete_task_files,
+                delete_suspension_files=delete_suspension_files,
+                params=params,
+                response=response.json(),
+                scenario_task_files_record=scenario_task_files_record,
+                scenario_suspension_files_record=scenario_suspension_files_record,
                 login_data=user_orm_login,
                 # response=response.__dict__,
                 wings_of_end=f"_________ END of SCENARIO: ___ {scenario_number}___ {name}"
