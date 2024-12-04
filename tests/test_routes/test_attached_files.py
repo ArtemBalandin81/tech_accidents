@@ -671,33 +671,7 @@ async def test_super_user_delete_files_unused_url(
     # folder_unused_remove_choice - удалит все привязанные к рабочей БД файлы, т.к. они не привязаны к тестовой БД
     # folder_unused_remove_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["FOLDER_UNUSED_REMOVE"]
     scenario_number = 0
-    # - сначала пытаемся удалить привязанные файлы и не можем (они же привязаны) todo
-    # - из 3х загруженных файлов, привязываем 2, а 3й не использован - его можно сразу удалять!!!
-    # - далее их отвязываем постепенно и пытаемся - снова нет todo
-    # - и вот когда они окончательно отвязаны - тогда удаляем todo
-    scenarios = (
-        # params, status, expected_key (files in db in scenario), delete_task_files, delete_suspension_files, name
-        ({}, 422, "no_files", False, False, "empty choice search is forbidden"),  # 1
-        ({CHOICE_FORMAT: db_unused_choice}, 200, "all_db_files", True, True, "all files in db are unused"),  # 2
-        ({CHOICE_FORMAT: folder_unused_choice}, 200, "all_db_files", False, False, "all files in db are unused"),  # 3
-        # (
-        #     {SEARCH_FILES_BY_NAME: "???", SEARCH_FILES_BY_ID: [1]},
-        #     403, "no_files", False, False, "by name & ids simultaneously"
-        # ),  # 2
-        # ({CHOICE_FORMAT: db_unused_choice}, 404, "no_files", False, False, "search files by name no exist"),  # 3
-        # ({SEARCH_FILES_BY_ID: 1}, 403, "all_db_files", False, False, "can't delete file because of task_files"),  # 4
-        # ({SEARCH_FILES_BY_ID: 1}, 403, "all_db_files", True, False, "can't delete because of suspension_files"),  # 5
-        # ({SEARCH_FILES_BY_ID: 1}, 200, "testfiles_3_2", False, True, "could delete testfile: no file_records"),  # 6
-        # ({SEARCH_FILES_BY_NAME: "testfile2"}, 200, "testfile3", False, False, "delete testfile2"),  # 7
-        # ({SEARCH_FILES_BY_NAME: "testfile"}, 200, "no_files", False, False, "delete files, found by part name"),  # 8
 
-        # ({}, 422, "no_files", 1, "empty choice search is forbidden"),  # 1
-        # ({CHOICE_FORMAT: json_choice}, 422, "no_files", None, "empty file_id search is forbidden"),  # 2
-        # ({CHOICE_FORMAT: json_choice}, 404, "no_files", 55, "search files by id == 55 is not found"),  # 3
-        # ({CHOICE_FORMAT: json_choice}, 200, "testfile2", 2, "testfile2 in json"),  # 4
-        # ({CHOICE_FORMAT: json_choice}, 200, "testfile3", 3, "testfile3 in json"),  # 5
-        # ({CHOICE_FORMAT: files_choice}, 200, "testfile3", 3, "download testfile3"),  # 6
-    )
     async with async_client as ac:
         login_super_user_response = await ac.post(LOGIN, data=super_user_login)
         assert login_super_user_response.status_code == 200, f"User: {super_user_login} couldn't get {LOGIN}"
@@ -726,14 +700,14 @@ async def test_super_user_delete_files_unused_url(
         async_db.add(suspension)
         await async_db.commit()
         await log.ainfo("suspension created:", suspension=suspension)
-        suspension_files_record = SuspensionsFiles(suspension_id=1, file_id=1)
+        suspension_files_record = SuspensionsFiles(suspension_id=1, file_id=2)
         async_db.add(suspension_files_record)
         await async_db.commit()
         await log.ainfo("suspension_files_record created:", suspension_files_record=suspension_files_record)
         # files downloaded:
         file_objects = await async_db.scalars(select(FileAttached))
         file_objects_in_db = file_objects.all()
-        files_in_db = [file.name for file in file_objects_in_db if len(file_objects_in_db) > 0]
+        files_in_db = [_.name for _ in file_objects_in_db if len(file_objects_in_db) > 0]
         uploaded_files = [_.get(FILE_NAME) for _ in uploaded_files_response.json().get(FILES_WRITTEN_DB)]
         file_paths = [FILES_DIR.joinpath(file_name) for file_name in uploaded_files if uploaded_files is not None]
         all_files_in_folder = [file.name for file in FILES_DIR.glob('*')]
@@ -756,25 +730,47 @@ async def test_super_user_delete_files_unused_url(
             "testfile2": [_ for _ in files_in_db if "testfile2" in _],
             "testfile3": [_ for _ in files_in_db if "testfile3" in _],
             "testfiles_3_2": [_ for _ in files_in_db if "testfile3" in _ or "testfile2" in _],
-            "no_files": []
+            "testfiles_1_2": [_ for _ in files_in_db if "testfile3" not in _],
+            "testfile": [_ for _ in files_in_db if "testfile3" not in _ and "testfile2" not in _],
+            "no_files": [],
         }
+
+        # - и вот когда они окончательно отвязаны - тогда удаляем todo
+        scenarios = (
+            # params, status, files_in_db_after, delete_task_files, delete_suspension_files, name (= unused_files)
+            ({}, 422, "all_db_files", False, False, "testfile3"),  # 1
+            ({CHOICE_FORMAT: db_unused_choice}, 200, "all_db_files", False, False, "testfile3"),  # 2
+            ({CHOICE_FORMAT: db_unused_remove_choice}, 200, "testfiles_1_2", False, False, "testfile3"),  # 3
+            ({CHOICE_FORMAT: db_unused_remove_choice}, 200, "testfile", False, True, "testfile2"),  # 4
+            ({CHOICE_FORMAT: db_unused_choice}, 200, "testfile", True, True, "testfile"),  # 5
+            # ({CHOICE_FORMAT: folder_unused_choice}, 200, "testfile", False, False, "testfile"),  # 6
+
+            # todo # todo нет ids !!! ??? в file response
+            # ({CHOICE_FORMAT: folder_unused_choice}, 200, "all_db_files", False, False, "all folder files are unused"),  # 3
+
+        )
+
         # !!!! starting testing scenarios:
-        for params, status, expected_key, delete_task_files, delete_suspension_files, name in scenarios:
+        for params, status, files_in_db_after, delete_task_files, delete_suspension_files, name in scenarios:
             if delete_task_files:
                 task_files_records = await async_db.scalar(select(TasksFiles))  # could wanted: .where(file_id == ???)
-                await async_db.delete(task_files_records)
+                await async_db.delete(task_files_records) if task_files_records is not None else None
                 await async_db.commit()
             if delete_suspension_files:
                 suspension_files_records = await async_db.scalar(select(SuspensionsFiles))  # could wanted: .where(???)
-                await async_db.delete(suspension_files_records)
+                await async_db.delete(suspension_files_records) if suspension_files_records is not None else None
                 await async_db.commit()
             task_files_objects = await async_db.scalars(select(TasksFiles))
-            scenario_task_files_record = task_files_objects.all()
+            task_files_before_all = task_files_objects.all()
+            task_files_records_before = set(((record.task_id, record.file_id) for record in task_files_before_all))
             suspension_files_objects = await async_db.scalars(select(SuspensionsFiles))
-            scenario_suspension_files_record = suspension_files_objects.all()
-            scenario_file_objects = await async_db.scalars(select(FileAttached))
-            scenario_file_objects_in_db = scenario_file_objects.all()
-            scenario_files = [_.name for _ in scenario_file_objects_in_db if len(scenario_file_objects_in_db) > 0]
+            suspension_files_all = suspension_files_objects.all()
+            suspension_files_records_before = set(((_.suspension_id, _.file_id) for _ in suspension_files_all))
+            files_attached_ids_before = [_[1] for _ in task_files_records_before | suspension_files_records_before]
+            file_objects = await async_db.scalars(select(FileAttached))
+            file_objects_all = file_objects.all()
+            file_names_before = [_.name for _ in file_objects_all if len(file_objects_all) > 0]
+            file_ids_before = [_.id for _ in file_objects_all if len(file_objects_all) > 0]
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response = await ac.delete(
@@ -792,42 +788,56 @@ async def test_super_user_delete_files_unused_url(
                     params=params,
                     response=response.json(),
                     status=response.status_code,
-                    scenario_task_files_record=scenario_task_files_record,
-                    scenario_suspension_files_record=scenario_suspension_files_record,
+                    scenario_task_files_records=task_files_records_before,
+                    scenario_suspension_files_records=suspension_files_records_before,
                     wings_of_end=f"STATUS: {response.status_code}___ END of SCENARIO: ___ {scenario_number} ___ {name}"
                 )
                 continue
             file_objects_after = await async_db.scalars(select(FileAttached))
             file_objects_in_db_after = file_objects_after.all()
-            files_names_after = [_.name for _ in file_objects_in_db_after if len(file_objects_in_db_after) > 0]
-            expected = {
-                "total_files_in_db": len(expected_key_dictionary[expected_key]),
-                "files_in_db_after": expected_key_dictionary[expected_key],
-                "scenario_files": set(scenario_files),
-            }
+            file_names_after = [_.name for _ in file_objects_in_db_after if len(file_objects_in_db_after) > 0]
+            if response.json().get(FILES_UNUSED_IN_DB):
+                files_ids_in_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB)])
+                file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB)])
+                file_names_unused = set(expected_key_dictionary.get(name))
+            if response.json().get(FILES_UNUSED_IN_DB_REMOVED):
+                files_ids_in_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
+                file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
+                file_names_unused = set(file_names_before).difference(file_names_after)
+            if response.json().get(FILES_UNUSED_IN_FOLDER):  # todo нет ids !!! ???
+                files_ids_in_response = set([_ for _ in response.json().get(FILES_UNUSED_IN_FOLDER)])
+                # file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_FOLDER)])
             match_values = (
                 # name_value, expected_value, exist_value
                 ("Files in db equals uploaded files: ", set(files_in_db), set(uploaded_files)),
-                ("Files in db total: ", expected.get("total_files_in_db"), len(files_names_after)),
-                ("Files in db after: ", set(expected.get("files_in_db_after")), set(files_names_after)),
-                # (
-                #     "File names deleted: ",
-                #     expected.get("scenario_files") - set(files_names_after),
-                #     set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
-                # ),  # todo
+                ("Files in db total: ", len(expected_key_dictionary[files_in_db_after]), len(file_names_after)),
+                ("Files in db after: ", set(expected_key_dictionary[files_in_db_after]), set(file_names_after)),
+                (
+                    "DB unused file ids: ",
+                    set(file_ids_before).difference(files_attached_ids_before),
+                    files_ids_in_response
+                ),
+                (
+                    "DB unused file names:  ",
+                    # set(file_names_before).difference(file_names_after),  # todo так не работает, если нет удаления
+                    file_names_unused,
+                    file_names_in_response
+                ),  # todo  TypeError: 'NoneType' object is not iterable
+
             )
             for name_value, expected_value, exist_value in match_values:
                 assert expected_value == exist_value, f"{name_value} {exist_value} not as expected: {expected_value}"
             await log.awarning(
                 f"SCENARIO: _{scenario_number}_ info: {name}",
-                scenario_files_in_db=scenario_files,
-                files_in_db_after=files_names_after,
+                files_in_db_at_start_scenario=file_names_before,
+                files_in_db_after=file_names_after,
                 delete_task_files=delete_task_files,
                 delete_suspension_files=delete_suspension_files,
                 params=params,
                 response=response.json(),
-                scenario_task_files_record=scenario_task_files_record,
-                scenario_suspension_files_record=scenario_suspension_files_record,
+                scenario_task_files_records=task_files_records_before,
+                scenario_suspension_files_records=suspension_files_records_before,
+                files_attached_ids_before=files_attached_ids_before,
                 login_data=user_orm_login,
                 # response=response.__dict__,
                 wings_of_end=f"_________ END of SCENARIO: ___ {scenario_number}___ {name}"

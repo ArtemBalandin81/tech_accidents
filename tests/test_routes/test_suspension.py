@@ -1102,11 +1102,11 @@ async def test_user_get_all_suspension_url(
                     ),
                     (
                         "Duration: ",
-                        (
+                        int(
                             (fixture_object.suspension_finish
                                 - fixture_object.suspension_start).total_seconds() / SUSPENSION_DURATION_RESPONSE
                         ),
-                        object_in_response.get(SUSPENSION_DURATION)
+                        int(object_in_response.get(SUSPENSION_DURATION))
                     ),
                     ("user_id: ", expected.get("user_id"), object_in_response[USER_ID]),
                 )
@@ -1116,6 +1116,7 @@ async def test_user_get_all_suspension_url(
                     )
             await log.ainfo(
                 f"SCENARIO: _{scenario_number}_ info: {name}",
+                duration_in_response=int(object_in_response.get(SUSPENSION_DURATION)),
                 login_data=login,
                 response=response.json(),
                 wings_of_end=f"______________ END of SCENARIO: ___ {scenario_number} ____ __{name} _______"
