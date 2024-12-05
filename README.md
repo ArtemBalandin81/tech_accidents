@@ -482,6 +482,7 @@ poetry env use python3.11; poetry install
 </details>
 
 
+
 <details>
    <summary><h3>Pytest тесты</h3></summary>
    В этом разделе представлены наиболее часто используемые команды.
@@ -502,9 +503,9 @@ poetry env use python3.11; poetry install
   > 
   > Для игнорирования предупреждений:
   > - `pytest -s -W ignore::DeprecationWarning`
-
-
 </details>
+
+
 
 <details>
    <summary><h3>Примеры тестов pytest</h3></summary>
@@ -573,8 +574,8 @@ poetry env use python3.11; poetry install
   - `pytest -k test_user_patch_users_me -vs`
   - `pytest -k test_super_user_get_api_users -vs`
   - `pytest -k test_super_user_get_db_backup -vs`
-
 </details>
+
 
 ## Использование
 
