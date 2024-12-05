@@ -24,8 +24,8 @@
         <li><a href="#установка-и-настройка-приложения">Установка и настройка приложения</a></li>
         <li><a href="#запуск">ЗАПУСК</a></li>
         <li><a href="#работа-с-poetry">Работа с Poetry</a></li>
-        <li><a href="#тестирование">Pytest тесты</a></li>
-        <li><a href="#примеры-тестов">Примеры тестов pytest</a></li>
+        <li><a href="#pytest-тесты">Pytest тесты</a></li>
+        <li><a href="#примеры-тестов">Примеры тестов</a></li>
       </ul>
     </li>
     <li><a href="#использование">Использование</a></li>
@@ -482,7 +482,6 @@ poetry env use python3.11; poetry install
 </details>
 
 
-
 <details>
    <summary><h3>Pytest тесты</h3></summary>
    В этом разделе представлены наиболее часто используемые команды.
@@ -506,9 +505,8 @@ poetry env use python3.11; poetry install
 </details>
 
 
-
 <details>
-   <summary><h3>Примеры тестов pytest</h3></summary>
+   <summary><h3>Примеры тестов</h3></summary>
    В этом разделе представлены примеры тестов.
 
   - Запуск всех тестов: `pytest -vs`
