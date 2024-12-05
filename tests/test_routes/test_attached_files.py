@@ -12,7 +12,7 @@ pytest -k test_user_get_files_url -vs
 pytest -k test_user_get_file_id_url -vs
 
 pytest -k test_super_user_delete_file_id_url -vs
-pytest -k test_super_user_delete_files_unused_url -vs  # todo - самый сложный !!!
+pytest -k test_super_user_delete_files_unused_url -vs
 
 
 Для отладки рекомендуется использовать:
@@ -34,7 +34,7 @@ from src.api.constants import *
 from src.core.db.models import FileAttached, Suspension, SuspensionsFiles, Task, TasksFiles, User
 from src.settings import settings
 
-from tests.conftest import clean_test_database, create_test_files, delete_files_in_folder, remove_all
+from tests.conftest import clean_test_database, create_test_files, delete_files_in_folder
 
 
 log = structlog.get_logger() if settings.FILE_NAME_IN_LOG is False else structlog.get_logger().bind(file_name=__file__)
@@ -470,7 +470,7 @@ async def test_super_user_delete_file_id_url(
     привязанный файл не должен удаляться
     pytest -k test_super_user_delete_file_id_url -vs
 
-    scenarios - тестовые сценарии использования эндпоинта (сценарии СВЯЗАНЫ!!!).
+    scenarios - тестовые сценарии использования эндпоинта (сценарии СВЯЗАНЫ: последовательное исполнение и ожидания!).
     expected - словарь ожидаемых значений в сценарии.
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
@@ -650,7 +650,7 @@ async def test_super_user_delete_files_unused_url(
     привязанный файл не должен удаляться
     pytest -k test_super_user_delete_files_unused_url -vs
 
-    scenarios - тестовые сценарии использования эндпоинта (сценарии СВЯЗАНЫ!!!).
+    scenarios - тестовые сценарии использования эндпоинта (сценарии СВЯЗАНЫ: последовательное исполнение и ожидания!).
     expected - словарь ожидаемых значений в сценарии.
     match_values - кортеж параметров, используемых в assert (ожидание - реальность).
     """
@@ -668,7 +668,7 @@ async def test_super_user_delete_files_unused_url(
     db_unused_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["DB_UNUSED"]
     db_unused_remove_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["DB_UNUSED_REMOVE"]
     folder_unused_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["FOLDER_UNUSED"]
-    # folder_unused_remove_choice - удалит все привязанные к рабочей БД файлы, т.к. они не привязаны к тестовой БД
+    # !!! folder_unused_remove_choice - could delete all the files in folder - they are not linked with test db
     # folder_unused_remove_choice = json.loads(settings.CHOICE_REMOVE_FILES_UNUSED)["FOLDER_UNUSED_REMOVE"]
     scenario_number = 0
 
@@ -734,22 +734,15 @@ async def test_super_user_delete_files_unused_url(
             "testfile": [_ for _ in files_in_db if "testfile3" not in _ and "testfile2" not in _],
             "no_files": [],
         }
-
-        # - и вот когда они окончательно отвязаны - тогда удаляем todo
         scenarios = (
             # params, status, files_in_db_after, delete_task_files, delete_suspension_files, name (= unused_files)
             ({}, 422, "all_db_files", False, False, "testfile3"),  # 1
             ({CHOICE_FORMAT: db_unused_choice}, 200, "all_db_files", False, False, "testfile3"),  # 2
             ({CHOICE_FORMAT: db_unused_remove_choice}, 200, "testfiles_1_2", False, False, "testfile3"),  # 3
             ({CHOICE_FORMAT: db_unused_remove_choice}, 200, "testfile", False, True, "testfile2"),  # 4
-            ({CHOICE_FORMAT: db_unused_choice}, 200, "testfile", True, True, "testfile"),  # 5
-            # ({CHOICE_FORMAT: folder_unused_choice}, 200, "testfile", False, False, "testfile"),  # 6
-
-            # todo # todo нет ids !!! ??? в file response
-            # ({CHOICE_FORMAT: folder_unused_choice}, 200, "all_db_files", False, False, "all folder files are unused"),  # 3
-
+            ({CHOICE_FORMAT: db_unused_choice}, 200, "testfile", True, False, "testfile"),  # 5
+            ({CHOICE_FORMAT: folder_unused_choice}, 200, "no_files", False, False, "testfile"),  # 6
         )
-
         # !!!! starting testing scenarios:
         for params, status, files_in_db_after, delete_task_files, delete_suspension_files, name in scenarios:
             if delete_task_files:
@@ -771,6 +764,9 @@ async def test_super_user_delete_files_unused_url(
             file_objects_all = file_objects.all()
             file_names_before = [_.name for _ in file_objects_all if len(file_objects_all) > 0]
             file_ids_before = [_.id for _ in file_objects_all if len(file_objects_all) > 0]
+            if params.get(CHOICE_FORMAT) == folder_unused_choice:  # simplified the scenario: forced remove files in db
+                await clean_test_database(async_db, FileAttached, SuspensionsFiles, TasksFiles)
+                file_ids_before = ()
             scenario_number += 1
             await log.ainfo(f"**************************************  SCENARIO: __ {scenario_number} __: {name}")
             response = await ac.delete(
@@ -797,32 +793,27 @@ async def test_super_user_delete_files_unused_url(
             file_objects_in_db_after = file_objects_after.all()
             file_names_after = [_.name for _ in file_objects_in_db_after if len(file_objects_in_db_after) > 0]
             if response.json().get(FILES_UNUSED_IN_DB):
-                files_ids_in_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB)])
+                files_ids_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB)])
                 file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB)])
                 file_names_unused = set(expected_key_dictionary.get(name))
             if response.json().get(FILES_UNUSED_IN_DB_REMOVED):
-                files_ids_in_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
+                files_ids_response = set([_["id"] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
                 file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_DB_REMOVED)])
                 file_names_unused = set(file_names_before).difference(file_names_after)
-            if response.json().get(FILES_UNUSED_IN_FOLDER):  # todo нет ids !!! ???
-                files_ids_in_response = set([_ for _ in response.json().get(FILES_UNUSED_IN_FOLDER)])
-                # file_names_in_response = set([_[FILE_NAME] for _ in response.json().get(FILES_UNUSED_IN_FOLDER)])
+            if response.json().get(FILES_UNUSED_IN_FOLDER):
+                # file_names_in_response is filtered by test files (not all files in folder)!
+                file_names_in_response = set(
+                    [_ for _ in response.json().get(FILES_UNUSED_IN_FOLDER) if _ in expected_key_dictionary[name]]
+                )
+                file_names_unused = set(file_names_before).difference(file_names_after)
+                files_ids_response = set()
             match_values = (
                 # name_value, expected_value, exist_value
                 ("Files in db equals uploaded files: ", set(files_in_db), set(uploaded_files)),
                 ("Files in db total: ", len(expected_key_dictionary[files_in_db_after]), len(file_names_after)),
                 ("Files in db after: ", set(expected_key_dictionary[files_in_db_after]), set(file_names_after)),
-                (
-                    "DB unused file ids: ",
-                    set(file_ids_before).difference(files_attached_ids_before),
-                    files_ids_in_response
-                ),
-                (
-                    "DB unused file names:  ",
-                    # set(file_names_before).difference(file_names_after),  # todo так не работает, если нет удаления
-                    file_names_unused,
-                    file_names_in_response
-                ),  # todo  TypeError: 'NoneType' object is not iterable
+                ("Unused file ids: ", set(file_ids_before).difference(files_attached_ids_before), files_ids_response),
+                ("DB unused file names:  ", file_names_unused, file_names_in_response),
 
             )
             for name_value, expected_value, exist_value in match_values:
@@ -831,6 +822,7 @@ async def test_super_user_delete_files_unused_url(
                 f"SCENARIO: _{scenario_number}_ info: {name}",
                 files_in_db_at_start_scenario=file_names_before,
                 files_in_db_after=file_names_after,
+                file_names_in_response=file_names_in_response,
                 delete_task_files=delete_task_files,
                 delete_suspension_files=delete_suspension_files,
                 params=params,
