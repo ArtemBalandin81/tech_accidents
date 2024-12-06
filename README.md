@@ -24,7 +24,8 @@
         <li><a href="#установка-и-настройка-приложения">Установка и настройка приложения</a></li>
         <li><a href="#запуск">ЗАПУСК</a></li>
         <li><a href="#работа-с-poetry">Работа с Poetry</a></li>
-        <li><a href="#тестирование">Pytest тесты</a></li>
+        <li><a href="#pytest-тесты">Pytest тесты</a></li>
+        <li><a href="#примеры-тестов">Примеры тестов</a></li>
       </ul>
     </li>
     <li><a href="#использование">Использование</a></li>
@@ -80,20 +81,21 @@
 - Доступ только из локальной сети Организации и отсутствие доступа из вне;
 - Прикрепление к случаям простоя дополнительных материалав, управление файлами, их удаление.- 
 - Учет (логирование) всех действий пользователей в приложении, а также автоматическое резервное копирование базы данных;
-- Возможность гибкой настройки под изменившиеся задачи, модульную структуру, расширяемость под возможную интеграцию
+- Возможность гибкой настройки под изменившиеся задачи, модульная структура, расширяемость под возможную интеграцию
 с системой управления рисками, реестром рисков, базой данных о риск событиях, журналом нарушений, обращениями клиентов
 и акционеров, запросами и ответами на предписания регулирующих органов и т.п.
 
 #### Модуль постановки и управления задач:
-- Пользователи могут ставить друг другу задачи и сроки их реализации;
+- Возможность постановки задач и сроков реализации;
 - Прикрепление к задачам дополнительных материалав, управление файлами, их удаление.
 - Контроль сроков реализации задач и дедлайнов;
 - Централизованное хранение задач и прикрепленных файлов в базе данных;
-- Получение аналитики по выставленным и полученным задачам по каждому пользователю.
+- Гибко настраиваемая аналитика по выставленным и полученным задачам по каждому пользователю.
 
 #### Сервисные функции:
 - Автоматический бэкап базы данных;
 - Загрузка файлов в каталог с файлами, анализ "бесхозных" файлов и их удаление.
+- Логирование всех операций с апи и сохранение файлов с логами.
 
 ### Технологии
 
@@ -113,7 +115,7 @@
     Чистая архитектура имеет множество разновидностей,
     но любая из них включает в себя 3 слоя (уровня): 
     
-    - представления (API router, bot handlers)
+    - представления (API router)
     - бизнес-логики (services)
     - данных (repository).
 
@@ -500,8 +502,76 @@ poetry env use python3.11; poetry install
   > 
   > Для игнорирования предупреждений:
   > - `pytest -s -W ignore::DeprecationWarning`
+</details>
 
 
+<details>
+   <summary><h3>Примеры тестов</h3></summary>
+   В этом разделе представлены примеры тестов.
+
+  - Запуск всех тестов: `pytest -vs`
+  - Запуск всех тестов в 1 файле: `pytest -k test_filename.py -vs`
+  - Запуск 1 теста: `pytest -k test_unauthorized_tries_suspension_urls -vs`
+
+  > **Note**
+  > 
+  > Тесты запускаются в основном каталоге приложения.
+  > 
+  > Конфигурационный файл для тестов: `tests/conftest.py`.
+  > 
+  > Для отладки можно использовать:
+  > - print(f'response_dir: {dir(response)}')
+  > - print(f'RESPONSE__dict__: {response.__dict__}')
+  > 
+  > Для игнорирования предупреждений:
+  > - `pytest -s -W ignore::DeprecationWarning`
+
+  #### Тестирование эндпоинтов простоев:
+
+  - `pytest -k test_unauthorized_tries_suspension_urls -vs`
+  - `pytest -k test_user_get_suspension_analytics_url -vs`
+  - `pytest -k test_user_get_suspension_url -vs`
+  - `pytest -k test_user_get_all_suspension_url -vs`
+  - `pytest -k test_user_get_my_suspension_url -vs`
+  - `pytest -k test_user_post_suspension_form_url -vs`
+  - `pytest -k test_user_post_suspension_with_files_form_url -vs`
+  - `pytest -k test_user_patch_suspension_url -vs`
+  - `pytest -k test_super_user_delete_suspension_url -vs`
+  - `pytest -k test_super_user_add_files_to_suspension_url -vs`
+
+  #### Тестирование эндпоинтов задач:
+
+  - `pytest -k test_unauthorized_tries_task_urls -vs`
+  - `pytest -k test_user_get_task_url -vs`
+  - `pytest -k test_user_get_all_tasks_url -vs`
+  - `pytest -k test_user_get_all_tasks_opened_url -vs`
+  - `pytest -k test_user_get_my_tasks_ordered_url -vs`
+  - `pytest -k test_user_get_my_tasks_todo_url -vs`
+  - `pytest -k test_user_post_task_form_url -vs`
+  - `pytest -k test_user_post_task_with_files_form_url -vs`
+  - `pytest -k test_user_patch_task_url -vs`
+  - `pytest -k test_super_user_delete_task_url -vs`
+  - `pytest -k test_super_user_add_files_to_task_url -vs`
+
+  #### Тестирование эндпоинтов работы с файлами:
+
+  - `pytest -k test_unauthorized_tries_file_urls -vs`
+  - `pytest -k test_user_post_download_files_url -vs`
+  - `ytest -k test_user_get_files_url -vs`
+  - `pytest -k test_user_get_file_id_url -vs`
+  - `pytest -k test_super_user_delete_file_id_url -vs`
+  - `pytest -k test_super_user_delete_files_unused_url -vs`
+
+  #### Тестирование администрирования пользователей:
+
+  - `pytest -k test_unauthorized_tries_service_and_auth_urls -vs`
+  - `pytest -k test_user_register_login_and_logout -vs`
+  - `pytest -k test_password_policy -vs`
+  - `pytest -k test_super_user_get_users_id -vs`
+  - `pytest -k test_super_user_patch_users_id -vs`
+  - `pytest -k test_user_patch_users_me -vs`
+  - `pytest -k test_super_user_get_api_users -vs`
+  - `pytest -k test_super_user_get_db_backup -vs`
 </details>
 
 

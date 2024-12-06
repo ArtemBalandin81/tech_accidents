@@ -33,12 +33,6 @@ CONFTEST_ROUTES_DIR = Path(__file__).resolve().parent
 TEST_ROUTES_DIR = CONFTEST_ROUTES_DIR.joinpath("test_routes")
 
 
-def start_application():
-    app = FastAPI()
-    app.include_router(api_router)
-    return app
-
-
 @pytest.fixture(scope='session')
 def anyio_backend():
     """Use only 'asyncio' and disable 'trio' tests: https://anyio.readthedocs.io/en/stable/testing.html."""
@@ -71,7 +65,6 @@ async def async_db_engine():
         await conn.run_sync(Base.metadata.drop_all)  # drop all database every time when test complete
 
 
-# truncate all table to isolate tests
 @pytest.fixture(scope='function')
 async def async_db(async_db_engine):
     """Create connection to database."""
@@ -82,22 +75,18 @@ async def async_db(async_db_engine):
         bind=async_db_engine,
         class_=AsyncSession,
     )
-
     async with async_session() as session:
         await session.begin()
-
         yield session
-
         await session.rollback()
 
 
 @pytest.fixture(scope="function")
 def app() -> Generator[FastAPI, Any, None]:
     """Start app"""
-    # Base.metadata.create_all(engine)  # Create the tables.  # ??? todo
-    _app = start_application()
+    _app = FastAPI()
+    _app.include_router(api_router)
     yield _app
-    # Base.metadata.drop_all(engine)  # ??? todo
 
 
 @pytest.fixture(scope="function")
@@ -118,6 +107,7 @@ async def async_client(app, async_db: AsyncSession) -> AsyncClient:
         finally:
             pass
 
+    # httpx (0.27.0)  >>> 0.28.0 raises TypeError: AsyncClient.__init__() got an unexpected keyword argument 'app' todo
     app.dependency_overrides[get_session] = _get_test_db
     return AsyncClient(app=app, base_url="http://testserver")
 
@@ -176,7 +166,7 @@ async def user_from_settings(async_db: AsyncSession) -> User:
 @pytest.fixture
 async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Suspension]:
     """
-    Create a suspension in database by user from settings and by test user from orm.
+    Create suspensions in database by user from settings and by test user from orm.
     for testing intervals: starts = (now - 1 day), finish = now
     """
     now = datetime.now()
@@ -204,6 +194,40 @@ async def suspensions_orm(async_db: AsyncSession, user_from_settings: User, user
     # await async_db.refresh(suspensions_list)
     await log.ainfo("suspensions_orm_created:", suspensions_orm=suspensions_list)
     return suspensions_list
+
+
+@pytest.fixture
+async def tasks_orm(async_db: AsyncSession, user_from_settings: User, user_orm: User) -> Sequence[Task]:
+    """
+    Create tasks in database by user from settings and by test user from orm.
+    for testing intervals: starts = (now - 1 day), finish = now
+    """
+    today = datetime.now().date()
+    scenarios = (
+        # task, description, task_start, deadline, user_id, executor_id:
+        ("1", "-2_-1_[]", today - timedelta(days=2), today - timedelta(days=1), user_from_settings.id, user_orm.id),
+        ("2", "[_0_]", today, today, user_from_settings.id, user_from_settings.id),
+        ("3", "-1_[]_+1", today - timedelta(days=1), today + timedelta(days=1), user_orm.id, user_orm.id),
+        ("4", "[]_+3", today, today + timedelta(days=3), user_orm.id, user_orm.id)
+    )
+    tasks_list = []
+    for task, description, task_start, deadline, user_id, executor_id in scenarios:
+        task = Task(
+            task=task,
+            description=description,
+            task_start=task_start,
+            deadline=deadline,
+            tech_process=next(iter(json.loads(settings.TECH_PROCESS).values())),  # :int = 25 -first item in dictionary
+            user_id=user_id,
+            executor_id=executor_id,
+            is_archived=0
+        )
+        tasks_list.append(task)
+    async_db.add_all(tasks_list)
+    await async_db.commit()
+    # await async_db.refresh(tasks_list)
+    await log.ainfo("tasks_orm_created:", tasks_orm=tasks_list)
+    return tasks_list
 
 
 async def remove_all(async_db, instance: DatabaseModel, instances: Sequence[int] | None = None) -> Sequence[int]:

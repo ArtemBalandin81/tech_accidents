@@ -5,7 +5,7 @@ from typing import Sequence
 
 import structlog
 from fastapi import (APIRouter, Depends, HTTPException, Query, Response,
-                     UploadFile)
+                     UploadFile, status)
 from fastapi.responses import FileResponse
 from pydantic import PositiveInt
 from src.api.constants import *
@@ -37,7 +37,11 @@ async def file_uploader(files: list[UploadFile]):
     description=UPLOAD_FILES_BY_FORM,
     dependencies=[Depends(current_superuser)],
     summary=UPLOAD_FILES_BY_FORM,
-    tags=[FILES]
+    tags=[FILES],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def upload_files_by_form(
     *,
@@ -61,6 +65,9 @@ async def upload_files_by_form(
     dependencies=[Depends(current_user)],
     summary=GET_SEVERAL_FILES,
     tags=[FILES],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_files(
         search_name: str = Query(None, example=SOME_NAME, alias=SEARCH_FILES_BY_NAME),
@@ -92,6 +99,9 @@ async def get_files(
     description=GET_FILE_BY_ID,
     summary=GET_FILE_BY_ID,
     tags=[FILES],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+    },
 )
 async def get_file_by_id(
         file_id: PositiveInt,
@@ -116,6 +126,10 @@ async def get_file_by_id(
     dependencies=[Depends(current_superuser)],
     summary=MANAGE_FILES_UNUSED,
     tags=[FILES],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def get_files_unused(
         choices_with_files_unused: ChoiceRemoveFilesUnused = Query(..., alias=CHOICE_FORMAT),
@@ -177,11 +191,15 @@ async def get_files_unused(
 
 
 @file_router.delete(
-    FILE_ID,
+    MAIN_ROUTE,
     description=FILE_DELETE,
     dependencies=[Depends(current_superuser)],
     summary=FILE_DELETE,
     tags=[FILES],
+    responses={
+        status.HTTP_401_UNAUTHORIZED: INACTIVE_USER_WARNING,
+        status.HTTP_403_FORBIDDEN: NOT_SUPER_USER_WARNING,
+    },
 )
 async def remove_files_from_db_and_folder(
         search_name: str = Query(None, example=SOME_NAME, alias=SEARCH_FILES_BY_NAME),
