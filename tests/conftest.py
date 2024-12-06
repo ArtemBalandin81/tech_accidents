@@ -33,12 +33,6 @@ CONFTEST_ROUTES_DIR = Path(__file__).resolve().parent
 TEST_ROUTES_DIR = CONFTEST_ROUTES_DIR.joinpath("test_routes")
 
 
-def start_application():
-    app = FastAPI()
-    app.include_router(api_router)
-    return app
-
-
 @pytest.fixture(scope='session')
 def anyio_backend():
     """Use only 'asyncio' and disable 'trio' tests: https://anyio.readthedocs.io/en/stable/testing.html."""
@@ -81,22 +75,18 @@ async def async_db(async_db_engine):
         bind=async_db_engine,
         class_=AsyncSession,
     )
-
     async with async_session() as session:
         await session.begin()
-
         yield session
-
         await session.rollback()
 
 
 @pytest.fixture(scope="function")
 def app() -> Generator[FastAPI, Any, None]:
     """Start app"""
-    # Base.metadata.create_all(engine)  # - another solution has been chosen
-    _app = start_application()
+    _app = FastAPI()
+    _app.include_router(api_router)
     yield _app
-    # Base.metadata.drop_all(engine)  # - another solution has been chosen
 
 
 @pytest.fixture(scope="function")
@@ -117,6 +107,7 @@ async def async_client(app, async_db: AsyncSession) -> AsyncClient:
         finally:
             pass
 
+    # httpx (0.27.0)  >>> 0.28.0 raises TypeError: AsyncClient.__init__() got an unexpected keyword argument 'app' todo
     app.dependency_overrides[get_session] = _get_test_db
     return AsyncClient(app=app, base_url="http://testserver")
 
