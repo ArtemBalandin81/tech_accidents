@@ -3,6 +3,8 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../backend_test_homework/.idea/backend_test_homework.iml" filepath="$PROJECT_DIR$/../backend_test_homework/.idea/backend_test_homework.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../django_htmx/.idea/django_htmx.iml" filepath="$PROJECT_DIR$/../django_htmx/.idea/django_htmx.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../django_orm/.idea/django_orm.iml" filepath="$PROJECT_DIR$/../django_orm/.idea/django_orm.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/tech_accidents.iml" filepath="$PROJECT_DIR$/.idea/tech_accidents.iml" />
     </modules>
   </component>
