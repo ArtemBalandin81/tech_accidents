@@ -5,6 +5,8 @@
     <orderEntry type="jdk" jdkName="Python 3.11" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="module" module-name="backend_test_homework" />
+    <orderEntry type="module" module-name="django_orm" />
+    <orderEntry type="module" module-name="django_htmx" />
   </component>
   <component name="PyDocumentationSettings">
     <option name="format" value="PLAIN" />
